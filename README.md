@@ -7,6 +7,22 @@ Unity 2022.3 LTS VRM dance demo. The project drives `willa.vrm` with a data-driv
 - runtime choreography selects motion variants from a local Mixamo-style FBX library
 - Playables drive the avatar with beat-aware speed retiming and clip switching
 
+## 中文快速说明
+
+这是一个 Unity 2022.3 的 VRM 数字人跳舞 Demo。  
+当前项目已经包含：
+
+- `willa.vrm`
+- 多首本地音乐
+- 本地 FBX 动作库
+- Python 离线分析管线
+- Unity 运行时节奏、编舞、动画播放系统
+
+如果你是第一次接手这个项目，先看这两个文件：
+
+- 架构与功能逻辑：[`docs/功能逻辑说明.md`](docs/%E5%8A%9F%E8%83%BD%E9%80%BB%E8%BE%91%E8%AF%B4%E6%98%8E.md)
+- 系统结构图与英文架构说明：[`docs/system-architecture.md`](docs/system-architecture.md)
+
 ## 1. What Is In This Repo
 
 Current committed content:
@@ -71,6 +87,18 @@ Expected startup behavior:
 - click `Start` to begin
 - click `Pause` to freeze both music and dance
 
+### 中文使用流程
+
+1. 用 Unity Hub 打开项目目录。
+2. 等待包恢复和资源导入完成。
+3. 打开 `Assets/MainScene.unity`。
+4. 点击 Play 进入运行。
+5. 此时 `willa` 应该保持初始姿态，不会自动播放。
+6. 在右下角卡片中选择歌曲。
+7. 点击 `Start` 开始正式播放。
+8. 点击 `Pause` 同时暂停音乐和舞蹈。
+9. 切换歌曲后，角色会回到初始姿态，再次点击 `Start` 才会重新开始。
+
 ### Build Desktop App
 
 In Unity:
@@ -124,6 +152,7 @@ Short version:
 Detailed architecture and flowcharts:
 
 - [docs/system-architecture.md](docs/system-architecture.md)
+- [docs/功能逻辑说明.md](docs/%E5%8A%9F%E8%83%BD%E9%80%BB%E8%BE%91%E8%AF%B4%E6%98%8E.md)
 
 ## 6. Song Data Pipeline
 
@@ -256,6 +285,26 @@ Do not commit:
 - `UserSettings`
 
 Those exclusions are already encoded in `.gitignore`.
+
+### GitHub Sync
+
+Target remote:
+
+- `https://github.com/alexLIUMinhao/DigitalDance`
+
+If network access is available, push with:
+
+```bash
+cd "/absolute/path/to/3d-digital-human"
+git push -u origin main
+```
+
+If another device only needs to run the project, it should clone the repo and then:
+
+1. open with Unity `2022.3.62f3`
+2. wait for import
+3. open `Assets/MainScene.unity`
+4. press Play
 
 ## 11. Limitations
 
