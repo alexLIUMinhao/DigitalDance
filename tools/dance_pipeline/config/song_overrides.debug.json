@@ -1,0 +1,43 @@
+{
+  "display_name": "Debug Click Track",
+  "audio_resource_path": "Dance/Audio/debug_click_track",
+  "bpm": 100.0,
+  "beats_per_bar": 4,
+  "segments": [
+    {
+      "segmentId": "intro_0",
+      "label": "intro",
+      "startBeat": 0,
+      "endBeatExclusive": 8,
+      "energy": 0.2
+    },
+    {
+      "segmentId": "verse_1",
+      "label": "verse",
+      "startBeat": 8,
+      "endBeatExclusive": 24,
+      "energy": 0.5
+    },
+    {
+      "segmentId": "chorus_2",
+      "label": "chorus",
+      "startBeat": 24,
+      "endBeatExclusive": 48,
+      "energy": 0.9
+    },
+    {
+      "segmentId": "instrumental_3",
+      "label": "instrumental",
+      "startBeat": 48,
+      "endBeatExclusive": 56,
+      "energy": 0.75
+    },
+    {
+      "segmentId": "outro_4",
+      "label": "outro",
+      "startBeat": 56,
+      "endBeatExclusive": 64,
+      "energy": 0.25
+    }
+  ]
+}

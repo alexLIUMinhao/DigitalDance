@@ -1,0 +1,60 @@
+{
+  "defaultSongId": "audio_mp3",
+  "songs": [
+    {
+      "songId": "audio_mp3",
+      "displayName": "audio",
+      "analysisPath": "DanceData/Songs/audio_mp3.json",
+      "audioResourcePath": "music/audio",
+      "playbackProfile": {
+        "tempoScale": 1.0,
+        "beatGrouping": 1,
+        "energyMode": "balanced"
+      }
+    },
+    {
+      "songId": "audio1_mp3",
+      "displayName": "audio1",
+      "analysisPath": "DanceData/Songs/audio1_mp3.json",
+      "audioResourcePath": "music/audio1",
+      "playbackProfile": {
+        "tempoScale": 1.0,
+        "beatGrouping": 1,
+        "energyMode": "gentle"
+      }
+    },
+    {
+      "songId": "audio2_mp3",
+      "displayName": "audio2",
+      "analysisPath": "DanceData/Songs/audio2_mp3.json",
+      "audioResourcePath": "music/audio2",
+      "playbackProfile": {
+        "tempoScale": 1.0,
+        "beatGrouping": 1,
+        "energyMode": "balanced"
+      }
+    },
+    {
+      "songId": "audio3_mp3",
+      "displayName": "audio3",
+      "analysisPath": "DanceData/Songs/audio3_mp3.json",
+      "audioResourcePath": "music/audio3",
+      "playbackProfile": {
+        "tempoScale": 1.0,
+        "beatGrouping": 1,
+        "energyMode": "balanced"
+      }
+    },
+    {
+      "songId": "audio4_mp3",
+      "displayName": "audio4",
+      "analysisPath": "DanceData/Songs/audio4_mp3.json",
+      "audioResourcePath": "music/audio4",
+      "playbackProfile": {
+        "tempoScale": 1.0,
+        "beatGrouping": 1,
+        "energyMode": "balanced"
+      }
+    }
+  ]
+}

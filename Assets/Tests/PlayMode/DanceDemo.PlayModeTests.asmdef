@@ -1,0 +1,19 @@
+{
+  "name": "DanceDemo.PlayModeTests",
+  "rootNamespace": "DanceDemoTests",
+  "references": [
+    "DanceDemo.Runtime"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

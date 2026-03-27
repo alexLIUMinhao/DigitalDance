@@ -1,0 +1,1509 @@
+{
+  "libraryId": "manual_mixamo_demo",
+  "defaultPhraseBeats": 8,
+  "clips": [
+    {
+      "clipId": "dance_01",
+      "displayName": "Dance 01",
+      "resourcePath": "Dance/Clips/Bboy Hip Hop Move",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "high_energy"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 138.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.2,
+      "retimeProfile": "punchy",
+      "varietyGroup": "bboy_hip_hop",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.8
+    },
+    {
+      "clipId": "dance_16",
+      "displayName": "Dance 16",
+      "resourcePath": "Dance/Clips/Bboy Uprock Start",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "hip_hop",
+        "accent"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 140.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.92,
+      "speedMax": 1.22,
+      "retimeProfile": "punchy",
+      "varietyGroup": "bboy_hip_hop",
+      "role": "accent",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.95
+    },
+    {
+      "clipId": "dance_17",
+      "displayName": "Dance 17",
+      "resourcePath": "Dance/Clips/Belly Dance",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "low_energy",
+        "belly_dance"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "verse",
+        "instrumental",
+        "outro"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 92.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.72,
+      "speedMax": 1.02,
+      "retimeProfile": "gentle",
+      "varietyGroup": "belly_dance",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.02
+    },
+    {
+      "clipId": "dance_18",
+      "displayName": "Dance 18",
+      "resourcePath": "Dance/Clips/Booty Hip Hop Dance",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "hip_hop",
+        "high_energy"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 132.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "hip_hop_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.78
+    },
+    {
+      "clipId": "dance_19",
+      "displayName": "Dance 19",
+      "resourcePath": "Dance/Clips/Breakdance Ready",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "breakdance",
+        "accent"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 138.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.95,
+      "speedMax": 1.22,
+      "retimeProfile": "punchy",
+      "varietyGroup": "breakdance",
+      "role": "accent",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.98
+    },
+    {
+      "clipId": "dance_20",
+      "displayName": "Dance 20",
+      "resourcePath": "Dance/Clips/Breakdance Uprock Var 2",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "breakdance",
+        "accent"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 140.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.94,
+      "speedMax": 1.22,
+      "retimeProfile": "punchy",
+      "varietyGroup": "breakdance",
+      "role": "accent",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.92
+    },
+    {
+      "clipId": "dance_21",
+      "displayName": "Dance 21",
+      "resourcePath": "Dance/Clips/Dancing Maraschino Step",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "low_energy",
+        "classic_step"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "verse",
+        "instrumental",
+        "outro"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 108.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.8,
+      "speedMax": 1.06,
+      "retimeProfile": "gentle",
+      "varietyGroup": "dancing_classic",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.08
+    },
+    {
+      "clipId": "dance_02",
+      "displayName": "Dance 02",
+      "resourcePath": "Dance/Clips/Dancing",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "mid_energy"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 120.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.14,
+      "retimeProfile": "smooth",
+      "varietyGroup": "dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.25
+    },
+    {
+      "clipId": "dance_22",
+      "displayName": "Dance 22",
+      "resourcePath": "Dance/Clips/Dancing_1",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "mid_energy"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 122.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.14,
+      "retimeProfile": "smooth",
+      "varietyGroup": "dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.24
+    },
+    {
+      "clipId": "dance_03",
+      "displayName": "Dance 03",
+      "resourcePath": "Dance/Clips/Hip Hop Dancing (1)",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "high_energy"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 128.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "hip_hop_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.7
+    },
+    {
+      "clipId": "dance_23",
+      "displayName": "Dance 23",
+      "resourcePath": "Dance/Clips/Hip Hop Dancing (2)",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "hip_hop",
+        "high_energy"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 130.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "hip_hop_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.74
+    },
+    {
+      "clipId": "dance_24",
+      "displayName": "Dance 24",
+      "resourcePath": "Dance/Clips/Hip Hop Dancing (3)",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "hip_hop",
+        "high_energy"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 129.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "hip_hop_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.73
+    },
+    {
+      "clipId": "dance_04",
+      "displayName": "Dance 04",
+      "resourcePath": "Dance/Clips/Hip Hop Dancing",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "high_energy"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 132.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "hip_hop_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.75
+    },
+    {
+      "clipId": "dance_25",
+      "displayName": "Dance 25",
+      "resourcePath": "Dance/Clips/Hip Hop Dancing1",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "hip_hop",
+        "high_energy"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 128.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.17,
+      "retimeProfile": "punchy",
+      "varietyGroup": "hip_hop_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.7
+    },
+    {
+      "clipId": "dance_26",
+      "displayName": "Dance 26",
+      "resourcePath": "Dance/Clips/Hip Hop Dancing12",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "hip_hop",
+        "mid_energy"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 122.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.14,
+      "retimeProfile": "smooth",
+      "varietyGroup": "hip_hop_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.42
+    },
+    {
+      "clipId": "dance_05",
+      "displayName": "Dance 05",
+      "resourcePath": "Dance/Clips/Hip Hop Dancing_1",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "high_energy"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 130.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "hip_hop_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.72
+    },
+    {
+      "clipId": "dance_06",
+      "displayName": "Dance 06",
+      "resourcePath": "Dance/Clips/Jazz Dancing (1)",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "low_energy"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "verse",
+        "outro"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 104.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.08,
+      "retimeProfile": "gentle",
+      "varietyGroup": "jazz_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.05
+    },
+    {
+      "clipId": "dance_07",
+      "displayName": "Dance 07",
+      "resourcePath": "Dance/Clips/Jazz Dancing (2)",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "mid_energy"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 114.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.1,
+      "retimeProfile": "gentle",
+      "varietyGroup": "jazz_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.2
+    },
+    {
+      "clipId": "dance_08",
+      "displayName": "Dance 08",
+      "resourcePath": "Dance/Clips/Jazz Dancing",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "mid_energy"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 118.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.87,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "jazz_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.2
+    },
+    {
+      "clipId": "dance_09",
+      "displayName": "Dance 09",
+      "resourcePath": "Dance/Clips/Jazz Dancing_1",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "mid_energy"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 116.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "jazz_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.18
+    },
+    {
+      "clipId": "dance_27",
+      "displayName": "Dance 27",
+      "resourcePath": "Dance/Clips/Northern Soul Spin Combo",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "northern_soul",
+        "accent"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 134.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.92,
+      "speedMax": 1.2,
+      "retimeProfile": "punchy",
+      "varietyGroup": "northern_soul",
+      "role": "accent",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.86
+    },
+    {
+      "clipId": "dance_10",
+      "displayName": "Dance 10",
+      "resourcePath": "Dance/Clips/Northern Soul Spin",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "high_energy"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 134.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "northern_soul",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.68
+    },
+    {
+      "clipId": "dance_11",
+      "displayName": "Dance 11",
+      "resourcePath": "Dance/Clips/Rumba Dancing",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "low_energy"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "verse",
+        "outro"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 96.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.92,
+      "speedMax": 1.08,
+      "retimeProfile": "gentle",
+      "varietyGroup": "rumba_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.0
+    },
+    {
+      "clipId": "dance_12",
+      "displayName": "Dance 12",
+      "resourcePath": "Dance/Clips/Rumba Dancing_1",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "low_energy"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "verse",
+        "outro"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 100.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.92,
+      "speedMax": 1.08,
+      "retimeProfile": "gentle",
+      "varietyGroup": "rumba_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.0
+    },
+    {
+      "clipId": "dance_28",
+      "displayName": "Dance 28",
+      "resourcePath": "Dance/Clips/Salsa Dancing (1)",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "mid_energy",
+        "latin"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 124.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.16,
+      "retimeProfile": "punchy",
+      "varietyGroup": "salsa_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.5
+    },
+    {
+      "clipId": "dance_29",
+      "displayName": "Dance 29",
+      "resourcePath": "Dance/Clips/Salsa Dancing (2)",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "mid_energy",
+        "latin"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 124.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.16,
+      "retimeProfile": "punchy",
+      "varietyGroup": "salsa_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.52
+    },
+    {
+      "clipId": "dance_30",
+      "displayName": "Dance 30",
+      "resourcePath": "Dance/Clips/Salsa Dancing (3)",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "mid_energy",
+        "latin"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental",
+        "verse"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 126.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.16,
+      "retimeProfile": "punchy",
+      "varietyGroup": "salsa_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.56
+    },
+    {
+      "clipId": "dance_31",
+      "displayName": "Dance 31",
+      "resourcePath": "Dance/Clips/Salsa Dancing (4)",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "mid_energy",
+        "latin"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental",
+        "verse"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 126.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.16,
+      "retimeProfile": "punchy",
+      "varietyGroup": "salsa_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.58
+    },
+    {
+      "clipId": "dance_13",
+      "displayName": "Dance 13",
+      "resourcePath": "Dance/Clips/Salsa Dancing",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "mid_energy"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental",
+        "verse"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 4,
+      "nativeBpm": 126.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.16,
+      "retimeProfile": "punchy",
+      "varietyGroup": "salsa_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.55
+    },
+    {
+      "clipId": "dance_32",
+      "displayName": "Dance 32",
+      "resourcePath": "Dance/Clips/Salsa Dancing12",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "mid_energy",
+        "latin"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 122.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.87,
+      "speedMax": 1.15,
+      "retimeProfile": "smooth",
+      "varietyGroup": "salsa_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.44
+    },
+    {
+      "clipId": "dance_33",
+      "displayName": "Dance 33",
+      "resourcePath": "Dance/Clips/Salsa Dancing_1",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "mid_energy",
+        "latin"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 124.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.16,
+      "retimeProfile": "smooth",
+      "varietyGroup": "salsa_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.46
+    },
+    {
+      "clipId": "dance_14",
+      "displayName": "Dance 14",
+      "resourcePath": "Dance/Clips/Samba Dancing (1)",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "high_energy"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 130.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "samba_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.7
+    },
+    {
+      "clipId": "dance_34",
+      "displayName": "Dance 34",
+      "resourcePath": "Dance/Clips/Samba Dancing (2)",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "high_energy",
+        "latin"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 132.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.19,
+      "retimeProfile": "punchy",
+      "varietyGroup": "samba_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.72
+    },
+    {
+      "clipId": "dance_15",
+      "displayName": "Dance 15",
+      "resourcePath": "Dance/Clips/Samba Dancing",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "high_energy"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 136.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.2,
+      "retimeProfile": "punchy",
+      "varietyGroup": "samba_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.7
+    },
+    {
+      "clipId": "dance_35",
+      "displayName": "Dance 35",
+      "resourcePath": "Dance/Clips/Samba Dancing1",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "high_energy",
+        "latin"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 133.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.19,
+      "retimeProfile": "punchy",
+      "varietyGroup": "samba_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.72
+    },
+    {
+      "clipId": "dance_36",
+      "displayName": "Dance 36",
+      "resourcePath": "Dance/Clips/Samba Dancing111",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "high_energy",
+        "latin"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 134.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.2,
+      "retimeProfile": "punchy",
+      "varietyGroup": "samba_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.74
+    },
+    {
+      "clipId": "dance_37",
+      "displayName": "Dance 37",
+      "resourcePath": "Dance/Clips/Shuffling",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "shuffle",
+        "mid_energy"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental",
+        "verse"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 124.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.16,
+      "retimeProfile": "smooth",
+      "varietyGroup": "shuffling",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.38
+    },
+    {
+      "clipId": "dance_38",
+      "displayName": "Dance 38",
+      "resourcePath": "Dance/Clips/Silly Dancing",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "low_energy",
+        "playful"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "verse",
+        "outro"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 100.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.78,
+      "speedMax": 1.06,
+      "retimeProfile": "gentle",
+      "varietyGroup": "silly_dancing",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.04
+    },
+    {
+      "clipId": "dance_39",
+      "displayName": "Dance 39",
+      "resourcePath": "Dance/Clips/Wave Hip Hop Dance (1)",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "hip_hop",
+        "wave"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "instrumental",
+        "chorus"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 118.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.86,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "wave_hip_hop",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.28
+    },
+    {
+      "clipId": "dance_40",
+      "displayName": "Dance 40",
+      "resourcePath": "Dance/Clips/Wave Hip Hop Dance",
+      "clipName": "",
+      "styleTags": [
+        "dance",
+        "mixamo",
+        "hip_hop",
+        "wave"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "instrumental",
+        "chorus"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 120.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.86,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "wave_hip_hop",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.3
+    }
+  ],
+  "generatedAtUtc": "2026-03-27T08:44:22.649976+00:00"
+}
