@@ -259,6 +259,9 @@ namespace DanceDemo
             var clip = candidate.sourceClip;
             var notes = new List<string>(8);
             var score = 0f;
+            var variationMode = ChoreographyVariationModes.Normalize(context.VariationMode);
+            var stableVariation = string.Equals(variationMode, ChoreographyVariationModes.Stable, StringComparison.Ordinal);
+            var exploratoryVariation = string.Equals(variationMode, ChoreographyVariationModes.Exploratory, StringComparison.Ordinal);
 
             if (IsSegmentPreferred(clip, context.CurrentSegment))
             {
@@ -309,12 +312,21 @@ namespace DanceDemo
             {
                 if (string.Equals(context.CurrentVarietyGroup, candidate.EffectiveVarietyGroup, StringComparison.Ordinal))
                 {
-                    score += 1.75f;
+                    var continuityBonus = stableVariation ? 2.35f : (exploratoryVariation ? 1.1f : 1.75f);
+                    score += continuityBonus;
                     notes.Add("continuity group");
                 }
                 else if (!context.SegmentChanged)
                 {
                     var groupJumpPenalty = IsGentleMode(context.EnergyMode) ? 1.25f : 0.85f;
+                    if (stableVariation)
+                    {
+                        groupJumpPenalty += 0.55f;
+                    }
+                    else if (exploratoryVariation)
+                    {
+                        groupJumpPenalty = Mathf.Max(0.2f, groupJumpPenalty - 0.35f);
+                    }
                     score -= groupJumpPenalty;
                     notes.Add(string.Format("group jump -{0:0.00}", groupJumpPenalty));
                 }
@@ -322,18 +334,28 @@ namespace DanceDemo
 
             if (candidate.IsLoop && !string.Equals(context.CurrentRole, "accent", StringComparison.OrdinalIgnoreCase))
             {
-                score += 0.55f;
+                var loopContinuityBonus = stableVariation ? 0.9f : (exploratoryVariation ? 0.25f : 0.55f);
+                score += loopContinuityBonus;
                 notes.Add("loop continuity");
             }
 
             if (candidate.startOffsetBeats == 0)
             {
-                score += 0.6f;
+                var cleanEntryBonus = stableVariation ? 0.9f : (exploratoryVariation ? 0.45f : 0.6f);
+                score += cleanEntryBonus;
                 notes.Add("clean entry");
             }
             else
             {
                 var offsetPenalty = IsGentleMode(context.EnergyMode) ? 1.05f : 0.4f;
+                if (stableVariation)
+                {
+                    offsetPenalty += 0.5f;
+                }
+                else if (exploratoryVariation)
+                {
+                    offsetPenalty = Mathf.Max(0.15f, offsetPenalty - 0.2f);
+                }
                 score -= offsetPenalty;
                 notes.Add(string.Format("offset -{0:0.00}", offsetPenalty));
             }
@@ -341,12 +363,28 @@ namespace DanceDemo
             if (candidate.sliceBeats >= 8)
             {
                 var longPhraseBonus = IsGentleMode(context.EnergyMode) ? 1.35f : 0.9f;
+                if (stableVariation)
+                {
+                    longPhraseBonus += 0.4f;
+                }
+                else if (exploratoryVariation)
+                {
+                    longPhraseBonus -= 0.15f;
+                }
                 score += longPhraseBonus;
                 notes.Add(string.Format("long +{0:0.00}", longPhraseBonus));
             }
             else if (!context.SegmentChanged)
             {
                 var shortPhrasePenalty = IsGentleMode(context.EnergyMode) ? 3.0f : 0.85f;
+                if (stableVariation)
+                {
+                    shortPhrasePenalty += 0.9f;
+                }
+                else if (exploratoryVariation)
+                {
+                    shortPhrasePenalty = Mathf.Max(0.2f, shortPhrasePenalty - 0.55f);
+                }
                 score -= shortPhrasePenalty;
                 notes.Add(string.Format("short -{0:0.00}", shortPhrasePenalty));
             }
@@ -356,6 +394,14 @@ namespace DanceDemo
                 if (!string.IsNullOrEmpty(context.CurrentClipId) && !string.Equals(context.CurrentClipId, clip.clipId, StringComparison.Ordinal))
                 {
                     var strongSwitchBonus = IsGentleMode(context.EnergyMode) ? 0.4f : 1.25f;
+                    if (stableVariation)
+                    {
+                        strongSwitchBonus = Mathf.Max(0.15f, strongSwitchBonus - 0.3f);
+                    }
+                    else if (exploratoryVariation)
+                    {
+                        strongSwitchBonus += 0.65f;
+                    }
                     score += strongSwitchBonus;
                     notes.Add(string.Format("strong +{0:0.00}", strongSwitchBonus));
                 }
@@ -460,6 +506,16 @@ namespace DanceDemo
             noveltyScore += variantRecentCount == 0 ? 0.35f : -0.9f * variantRecentCount;
             noveltyScore += candidate.startOffsetBeats > 0 ? 0.25f : 0f;
             noveltyScore += candidate.sliceBeats <= 4 ? 0.2f : 0f;
+            if (stableVariation)
+            {
+                noveltyScore -= 0.85f;
+            }
+            else if (exploratoryVariation)
+            {
+                noveltyScore += 1.35f;
+                noveltyScore += candidate.startOffsetBeats > 0 ? 0.3f : 0f;
+                noveltyScore += candidate.sliceBeats <= 4 ? 0.45f : 0f;
+            }
             score += noveltyScore;
             notes.Add(string.Format("novelty {0:0.00}", noveltyScore));
 
@@ -513,7 +569,7 @@ namespace DanceDemo
             }
 
             score += ScoreRetimeProfile(clip, context);
-            var jitter = DeterministicJitter(context.SongId, context.PhraseIndex, candidate.variantId);
+            var jitter = ResolveVariationJitter(context, candidate.variantId, variationMode);
             score += jitter;
             score += StableTieBreaker(candidate.variantId);
             notes.Add(string.Format("jitter {0:+0.00;-0.00;0.00}", jitter));
@@ -776,6 +832,36 @@ namespace DanceDemo
 
                 var normalized = Mathf.Abs(hash % 1000) / 1000f;
                 return (normalized - 0.5f) * 0.35f;
+            }
+        }
+
+        private static float SessionJitter(int variationSeed, int phraseIndex, string variantId)
+        {
+            var seed = string.Format("{0}|{1}|{2}", variationSeed, phraseIndex, variantId ?? "variant");
+            unchecked
+            {
+                var hash = 23;
+                for (var i = 0; i < seed.Length; i++)
+                {
+                    hash = (hash * 37) + seed[i];
+                }
+
+                var normalized = Mathf.Abs(hash % 1000) / 1000f;
+                return (normalized - 0.5f) * 1.1f;
+            }
+        }
+
+        private static float ResolveVariationJitter(DanceSelectionContext context, string variantId, string variationMode)
+        {
+            switch (variationMode)
+            {
+                case ChoreographyVariationModes.Stable:
+                    return 0f;
+                case ChoreographyVariationModes.Exploratory:
+                    return (DeterministicJitter(context.SongId, context.PhraseIndex, variantId) * 0.45f)
+                        + (SessionJitter(context.VariationSeed, context.PhraseIndex, variantId) * 0.75f);
+                default:
+                    return DeterministicJitter(context.SongId, context.PhraseIndex, variantId);
             }
         }
 

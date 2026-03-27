@@ -69,6 +69,8 @@ namespace DanceDemo
         private string lastVisibleClipName;
         private string selectedSongId;
         private string loadedSongId;
+        private string variationMode = ChoreographyVariationModes.Balanced;
+        private int playbackVariationSeed;
         private SongPlaybackProfile currentPlaybackProfile = SongPlaybackProfile.CreateDefault();
         private bool pendingStartAfterReload;
 
@@ -182,6 +184,7 @@ namespace DanceDemo
             conductor.PlaybackCompleted += HandlePlaybackCompleted;
 
             debugUi?.SetSongOptions(availableSongs, selectedSongId);
+            debugUi?.SetVariationModeOptions(ChoreographyVariationModes.All, variationMode);
             EnterIdleForCurrentSong(warnings.Count > 0 ? string.Join(" | ", warnings.ToArray()) : "Ready. Press Start.");
             isReloading = false;
         }
@@ -207,14 +210,24 @@ namespace DanceDemo
             if (debugUi == null)
             {
                 debugUi = gameObject.AddComponent<DanceDebugUI>();
-                debugUi.Initialize();
-                debugUi.StartPlaybackRequested += HandleStartPlaybackRequested;
-                debugUi.PausePlaybackRequested += HandlePausePlaybackRequested;
-                debugUi.SongSelectionChanged += HandleSongSelectionChanged;
-                debugUi.ForceSwitchRequested += HandleForceSwitchRequested;
-                debugUi.ReloadDataRequested += HandleReloadDataRequested;
-                debugUi.QuitRequested += HandleQuitRequested;
             }
+
+            debugUi.Initialize();
+            debugUi.StartPlaybackRequested -= HandleStartPlaybackRequested;
+            debugUi.StartPlaybackRequested += HandleStartPlaybackRequested;
+            debugUi.PausePlaybackRequested -= HandlePausePlaybackRequested;
+            debugUi.PausePlaybackRequested += HandlePausePlaybackRequested;
+            debugUi.SongSelectionChanged -= HandleSongSelectionChanged;
+            debugUi.SongSelectionChanged += HandleSongSelectionChanged;
+            debugUi.VariationModeChanged -= HandleVariationModeChanged;
+            debugUi.VariationModeChanged += HandleVariationModeChanged;
+            debugUi.ForceSwitchRequested -= HandleForceSwitchRequested;
+            debugUi.ForceSwitchRequested += HandleForceSwitchRequested;
+            debugUi.ReloadDataRequested -= HandleReloadDataRequested;
+            debugUi.ReloadDataRequested += HandleReloadDataRequested;
+            debugUi.QuitRequested -= HandleQuitRequested;
+            debugUi.QuitRequested += HandleQuitRequested;
+            debugUi.SetVariationModeOptions(ChoreographyVariationModes.All, variationMode);
         }
 
         private IEnumerator LoadJsonData(string preferredSongId)
@@ -1045,6 +1058,7 @@ namespace DanceDemo
             }
 
             ClearPlaybackRuntimeState();
+            playbackVariationSeed = Random.Range(int.MinValue, int.MaxValue);
             PrepareControllerForPlayback();
             conductor.PlayFromStart();
             ScheduleInitialClip(conductor.SongDspStartTime);
@@ -1097,6 +1111,8 @@ namespace DanceDemo
                 PerceivedBeatIndex = 0,
                 BeatGrouping = currentPlaybackProfile.EffectiveBeatGrouping,
                 EnergyMode = currentPlaybackProfile.EffectiveEnergyMode,
+                VariationMode = variationMode,
+                VariationSeed = playbackVariationSeed,
             });
 
             if (lastSelection.SelectedVariant == null || lastSelection.SelectedClip == null)
@@ -1186,6 +1202,8 @@ namespace DanceDemo
                 PerceivedBeatIndex = perceivedBeatIndex,
                 BeatGrouping = beatGrouping,
                 EnergyMode = conductor != null ? rhythm.EnergyMode : currentPlaybackProfile.EffectiveEnergyMode,
+                VariationMode = variationMode,
+                VariationSeed = playbackVariationSeed,
             };
             var shouldEvaluate = choreography.ShouldForceReselect(context, playingVariant, manifest.defaultPhraseBeats);
             if (shouldEvaluate)
@@ -1309,6 +1327,25 @@ namespace DanceDemo
             StartCoroutine(SwitchSongSelectionCoroutine(songId, false));
         }
 
+        private void HandleVariationModeChanged(string modeId)
+        {
+            var normalizedMode = ChoreographyVariationModes.Normalize(modeId);
+            if (string.Equals(normalizedMode, variationMode, System.StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            variationMode = normalizedMode;
+            if (playbackState == PlaybackState.Playing && string.Equals(variationMode, ChoreographyVariationModes.Exploratory, System.StringComparison.Ordinal))
+            {
+                playbackVariationSeed = Random.Range(int.MinValue, int.MaxValue);
+            }
+
+            debugUi?.SetVariationModeOptions(ChoreographyVariationModes.All, variationMode);
+            debugState.RuntimeMessage = "Choreography mode: " + ChoreographyVariationModes.GetDisplayName(variationMode) + ".";
+            Debug.Log("Choreography variation mode set to " + variationMode + ".");
+        }
+
         private IEnumerator SwitchSongSelectionCoroutine(string songId, bool autoStartAfterLoad)
         {
             var selectedEntry = availableSongs.FirstOrDefault(song => string.Equals(song.songId, songId, System.StringComparison.Ordinal));
@@ -1356,6 +1393,7 @@ namespace DanceDemo
             Debug.Log(string.Format("Dance demo selected audio '{0}' ({1:0.00}s).", audioClip.name, audioClip.length));
             conductor.Initialize(songData, audioSource, currentPlaybackProfile);
             debugUi?.SetSongOptions(availableSongs, selectedSongId);
+            debugUi?.SetVariationModeOptions(ChoreographyVariationModes.All, variationMode);
             var shouldAutoStart = autoStartAfterLoad || pendingStartAfterReload;
             pendingStartAfterReload = false;
 
@@ -1563,6 +1601,7 @@ namespace DanceDemo
             debugState.EnergyMode = conductor != null && !string.IsNullOrEmpty(conductor.CurrentRhythm.EnergyMode)
                 ? conductor.CurrentRhythm.EnergyMode
                 : currentPlaybackProfile.EffectiveEnergyMode;
+            debugState.VariationModeLabel = ChoreographyVariationModes.GetDisplayName(variationMode);
             debugState.AvatarInView = lastVisibilityMetrics.InFrustum;
             debugState.AvatarCenterVisible = lastVisibilityMetrics.CenterVisible;
             debugState.AvatarViewportCoverage = lastVisibilityMetrics.ViewportCoverage;
@@ -1643,6 +1682,8 @@ namespace DanceDemo
                         PerceivedBeatIndex = conductor != null ? conductor.CurrentRhythm.PerceivedBeatIndex : 0,
                         BeatGrouping = conductor != null ? conductor.CurrentRhythm.BeatGrouping : currentPlaybackProfile.EffectiveBeatGrouping,
                         EnergyMode = conductor != null ? conductor.CurrentRhythm.EnergyMode : currentPlaybackProfile.EffectiveEnergyMode,
+                        VariationMode = variationMode,
+                        VariationSeed = playbackVariationSeed,
                     },
                     debugVariant,
                     manifest != null ? manifest.defaultPhraseBeats : 8)

@@ -12,6 +12,7 @@ namespace DanceDemo
         public event Action StartPlaybackRequested;
         public event Action PausePlaybackRequested;
         public event Action<string> SongSelectionChanged;
+        public event Action<string> VariationModeChanged;
         public event Action ForceSwitchRequested;
         public event Action ReloadDataRequested;
         public event Action QuitRequested;
@@ -22,8 +23,11 @@ namespace DanceDemo
         private Text statusText;
         private Text compactText;
         private Dropdown compactSongDropdown;
+        private Dropdown compactVariationDropdown;
         private Button compactPrevSongButton;
         private Button compactNextSongButton;
+        private Button compactPrevVariationButton;
+        private Button compactNextVariationButton;
         private Button startButton;
         private Button pauseButton;
         private Button forceSwitchButton;
@@ -33,7 +37,9 @@ namespace DanceDemo
         private Button compactPauseButton;
         private bool isDebugVisible;
         private bool isUpdatingSongDropdown;
+        private bool isUpdatingVariationDropdown;
         private readonly List<string> compactSongIds = new List<string>();
+        private readonly List<string> compactVariationModeIds = new List<string>();
 
         public void Initialize()
         {
@@ -66,8 +72,11 @@ namespace DanceDemo
             compactPrevSongButton = CreateButton(compactPanel.transform, "◀", new Vector2(16f, -162f), () => SelectRelativeSong(-1), new Vector2(34f, 32f));
             compactSongDropdown = CreateDropdown(compactPanel.transform, new Vector2(58f, -162f), new Vector2(188f, 32f), HandleSongDropdownChanged);
             compactNextSongButton = CreateButton(compactPanel.transform, "▶", new Vector2(254f, -162f), () => SelectRelativeSong(1), new Vector2(34f, 32f));
-            compactStartButton = CreateButton(compactPanel.transform, "Start", new Vector2(16f, -204f), () => StartPlaybackRequested?.Invoke(), new Vector2(96f, 30f));
-            compactPauseButton = CreateButton(compactPanel.transform, "Pause", new Vector2(126f, -204f), () => PausePlaybackRequested?.Invoke(), new Vector2(96f, 30f));
+            compactPrevVariationButton = CreateButton(compactPanel.transform, "◀", new Vector2(16f, -204f), () => SelectRelativeVariation(-1), new Vector2(34f, 32f));
+            compactVariationDropdown = CreateDropdown(compactPanel.transform, new Vector2(58f, -204f), new Vector2(188f, 32f), HandleVariationModeDropdownChanged);
+            compactNextVariationButton = CreateButton(compactPanel.transform, "▶", new Vector2(254f, -204f), () => SelectRelativeVariation(1), new Vector2(34f, 32f));
+            compactStartButton = CreateButton(compactPanel.transform, "Start", new Vector2(16f, -246f), () => StartPlaybackRequested?.Invoke(), new Vector2(96f, 30f));
+            compactPauseButton = CreateButton(compactPanel.transform, "Pause", new Vector2(126f, -246f), () => PausePlaybackRequested?.Invoke(), new Vector2(96f, 30f));
 
             isDebugVisible = false;
             debugPanel.SetActive(isDebugVisible);
@@ -161,6 +170,62 @@ namespace DanceDemo
             ClearUiSelection();
         }
 
+        public void SetVariationModeOptions(IReadOnlyList<string> modeIds, string selectedModeId)
+        {
+            if (compactVariationDropdown == null)
+            {
+                return;
+            }
+
+            isUpdatingVariationDropdown = true;
+            compactVariationDropdown.ClearOptions();
+            compactVariationModeIds.Clear();
+
+            var options = new List<Dropdown.OptionData>();
+            var selectedIndex = 0;
+            var normalizedSelected = ChoreographyVariationModes.Normalize(selectedModeId);
+            if (modeIds != null)
+            {
+                for (var i = 0; i < modeIds.Count; i++)
+                {
+                    var modeId = ChoreographyVariationModes.Normalize(modeIds[i]);
+                    if (compactVariationModeIds.Contains(modeId))
+                    {
+                        continue;
+                    }
+
+                    compactVariationModeIds.Add(modeId);
+                    options.Add(new Dropdown.OptionData("Mode: " + ChoreographyVariationModes.GetDisplayName(modeId)));
+                    if (string.Equals(modeId, normalizedSelected, StringComparison.Ordinal))
+                    {
+                        selectedIndex = options.Count - 1;
+                    }
+                }
+            }
+
+            if (options.Count == 0)
+            {
+                options.Add(new Dropdown.OptionData("Mode: Balanced"));
+                compactVariationDropdown.interactable = false;
+                SetButtonState(compactPrevVariationButton, false);
+                SetButtonState(compactNextVariationButton, false);
+                compactVariationDropdown.options = options;
+                compactVariationDropdown.value = 0;
+                compactVariationDropdown.RefreshShownValue();
+                isUpdatingVariationDropdown = false;
+                return;
+            }
+
+            compactVariationDropdown.interactable = true;
+            SetButtonState(compactPrevVariationButton, compactVariationModeIds.Count > 1);
+            SetButtonState(compactNextVariationButton, compactVariationModeIds.Count > 1);
+            compactVariationDropdown.options = options;
+            compactVariationDropdown.value = Mathf.Clamp(selectedIndex, 0, options.Count - 1);
+            compactVariationDropdown.RefreshShownValue();
+            isUpdatingVariationDropdown = false;
+            ClearUiSelection();
+        }
+
         private void Update()
         {
             if (Input.GetKeyDown(KeyCode.Escape))
@@ -232,7 +297,7 @@ namespace DanceDemo
             rectTransform.anchorMax = new Vector2(1f, 0f);
             rectTransform.pivot = new Vector2(1f, 0f);
             rectTransform.anchoredPosition = new Vector2(-28f, 28f);
-            rectTransform.sizeDelta = new Vector2(420f, 246f);
+            rectTransform.sizeDelta = new Vector2(420f, 292f);
 
             var image = panelGo.GetComponent<Image>();
             image.color = new Color(0f, 0f, 0f, 0.46f);
@@ -255,6 +320,23 @@ namespace DanceDemo
             SongSelectionChanged?.Invoke(compactSongIds[index]);
         }
 
+        private void HandleVariationModeDropdownChanged(int index)
+        {
+            if (isUpdatingVariationDropdown)
+            {
+                return;
+            }
+
+            if (index < 0 || index >= compactVariationModeIds.Count)
+            {
+                return;
+            }
+
+            var modeId = compactVariationModeIds[index];
+            Debug.Log("UI choreography variation changed to: " + modeId);
+            VariationModeChanged?.Invoke(modeId);
+        }
+
         private void SelectRelativeSong(int delta)
         {
             if (compactSongDropdown == null || compactSongIds.Count <= 1)
@@ -274,6 +356,27 @@ namespace DanceDemo
 
             compactSongDropdown.value = nextIndex;
             compactSongDropdown.RefreshShownValue();
+        }
+
+        private void SelectRelativeVariation(int delta)
+        {
+            if (compactVariationDropdown == null || compactVariationModeIds.Count <= 1)
+            {
+                return;
+            }
+
+            var nextIndex = compactVariationDropdown.value + delta;
+            if (nextIndex < 0)
+            {
+                nextIndex = compactVariationModeIds.Count - 1;
+            }
+            else if (nextIndex >= compactVariationModeIds.Count)
+            {
+                nextIndex = 0;
+            }
+
+            compactVariationDropdown.value = nextIndex;
+            compactVariationDropdown.RefreshShownValue();
         }
 
         private static Dropdown CreateDropdown(Transform parent, Vector2 anchoredPosition, Vector2 size, Action<int> onValueChanged)
@@ -436,6 +539,21 @@ namespace DanceDemo
             if (compactSongDropdown != null)
             {
                 compactSongDropdown.interactable = !state.IsBusy && compactSongIds.Count > 0;
+            }
+
+            if (compactVariationDropdown != null)
+            {
+                compactVariationDropdown.interactable = !state.IsBusy && compactVariationModeIds.Count > 0;
+            }
+
+            if (compactPrevVariationButton != null)
+            {
+                SetButtonState(compactPrevVariationButton, !state.IsBusy && compactVariationModeIds.Count > 1);
+            }
+
+            if (compactNextVariationButton != null)
+            {
+                SetButtonState(compactNextVariationButton, !state.IsBusy && compactVariationModeIds.Count > 1);
             }
 
             if (compactPrevSongButton != null)

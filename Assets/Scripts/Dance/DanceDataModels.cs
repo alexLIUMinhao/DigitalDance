@@ -4,6 +4,46 @@ using UnityEngine;
 
 namespace DanceDemo
 {
+    public static class ChoreographyVariationModes
+    {
+        public const string Stable = "stable";
+        public const string Balanced = "balanced";
+        public const string Exploratory = "exploratory";
+
+        public static readonly string[] All = { Stable, Balanced, Exploratory };
+
+        public static string Normalize(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return Balanced;
+            }
+
+            switch (value.Trim().ToLowerInvariant())
+            {
+                case Stable:
+                    return Stable;
+                case Exploratory:
+                    return Exploratory;
+                default:
+                    return Balanced;
+            }
+        }
+
+        public static string GetDisplayName(string value)
+        {
+            switch (Normalize(value))
+            {
+                case Stable:
+                    return "Stable";
+                case Exploratory:
+                    return "Exploratory";
+                default:
+                    return "Balanced";
+            }
+        }
+    }
+
     [Serializable]
     public class SongAnalysisData
     {
@@ -486,6 +526,8 @@ namespace DanceDemo
         public int PerceivedBeatIndex;
         public int BeatGrouping;
         public string EnergyMode;
+        public string VariationMode;
+        public int VariationSeed;
     }
 
     public class DanceSelectionResult
@@ -553,6 +595,7 @@ namespace DanceDemo
         public int AvailableSongCount;
         public int BeatGrouping;
         public string EnergyMode;
+        public string VariationModeLabel;
         public string CompactCurrentClip;
         public string CompactNextClip;
         public string CompactReason;
@@ -572,6 +615,7 @@ namespace DanceDemo
                 "Rhythm: Group x{0} | Mode: {1}",
                 Mathf.Max(1, BeatGrouping),
                 string.IsNullOrEmpty(EnergyMode) ? "balanced" : EnergyMode);
+            yield return "Variation: " + (string.IsNullOrEmpty(VariationModeLabel) ? ChoreographyVariationModes.GetDisplayName(ChoreographyVariationModes.Balanced) : VariationModeLabel);
             yield return string.Format("Beat: {0} | Bar: {1}", BeatIndex, BarIndex);
             yield return "Segment: " + (string.IsNullOrEmpty(SegmentLabel) ? "n/a" : SegmentLabel);
             yield return string.Format("Speed: {0:0.000} -> {1:0.000}", CurrentSpeed, TargetSpeed);
@@ -652,6 +696,7 @@ namespace DanceDemo
             yield return "Why: " + (string.IsNullOrEmpty(CompactReason) ? "n/a" : CompactReason);
             yield return "Strong Beat: " + (string.IsNullOrEmpty(CompactStrongBeat) ? "no" : CompactStrongBeat);
             yield return "Segment: " + (string.IsNullOrEmpty(CompactSegment) ? "n/a" : CompactSegment);
+            yield return "Variation: " + (string.IsNullOrEmpty(VariationModeLabel) ? ChoreographyVariationModes.GetDisplayName(ChoreographyVariationModes.Balanced) : VariationModeLabel);
         }
     }
 
