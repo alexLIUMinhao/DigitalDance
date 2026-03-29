@@ -1,0 +1,1972 @@
+{
+  "libraryId": "motion_base_preview",
+  "defaultPhraseBeats": 8,
+  "clips": [
+    {
+      "clipId": "chinese_classical_01",
+      "displayName": "Chinese Classical Phrase 01",
+      "resourcePath": "MotionBasePreview/chinese_classical/chinese_classical_01",
+      "clipName": "chinese_classical_01",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "chinese_classical",
+        "water_sleeve",
+        "basic_step",
+        "low_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "verse"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 94.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.05,
+      "retimeProfile": "gentle",
+      "varietyGroup": "chinese_classical_basic_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "chinese_classical_02",
+      "displayName": "Chinese Classical Phrase 02",
+      "resourcePath": "MotionBasePreview/chinese_classical/chinese_classical_02",
+      "clipName": "chinese_classical_02",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "chinese_classical",
+        "fan_dance",
+        "basic_step",
+        "mid_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 102.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "chinese_classical_basic_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "chinese_classical_03",
+      "displayName": "Chinese Classical Phrase 03",
+      "resourcePath": "MotionBasePreview/chinese_classical/chinese_classical_03",
+      "clipName": "chinese_classical_03",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "chinese_classical",
+        "court_classical",
+        "travel_step",
+        "mid_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 108.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "chinese_classical_travel_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "chinese_classical_04",
+      "displayName": "Chinese Classical Phrase 04",
+      "resourcePath": "MotionBasePreview/chinese_classical/chinese_classical_04",
+      "clipName": "chinese_classical_04",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "chinese_classical",
+        "dunhuang_inspired",
+        "travel_step",
+        "mid_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 112.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "chinese_classical_travel_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "chinese_classical_05",
+      "displayName": "Chinese Classical Phrase 05",
+      "resourcePath": "MotionBasePreview/chinese_classical/chinese_classical_05",
+      "clipName": "chinese_classical_05",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "chinese_classical",
+        "water_sleeve",
+        "turn_phrase",
+        "mid_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 116.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "chinese_classical_turn_phrase",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "chinese_classical_06",
+      "displayName": "Chinese Classical Phrase 06",
+      "resourcePath": "MotionBasePreview/chinese_classical/chinese_classical_06",
+      "clipName": "chinese_classical_06",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "chinese_classical",
+        "fan_dance",
+        "turn_phrase",
+        "high_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 16,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 122.0,
+      "nativePhraseBeats": 16,
+      "speedMin": 0.94,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "chinese_classical_turn_phrase",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        8
+      ],
+      "sliceBeatsOptions": [
+        8,
+        16
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "chinese_classical_07",
+      "displayName": "Chinese Classical Phrase 07",
+      "resourcePath": "MotionBasePreview/chinese_classical/chinese_classical_07",
+      "clipName": "chinese_classical_07",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "chinese_classical",
+        "court_classical",
+        "arm_expression",
+        "low_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "verse",
+        "outro"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 90.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.05,
+      "retimeProfile": "gentle",
+      "varietyGroup": "chinese_classical_arm_expression",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "chinese_classical_08",
+      "displayName": "Chinese Classical Phrase 08",
+      "resourcePath": "MotionBasePreview/chinese_classical/chinese_classical_08",
+      "clipName": "chinese_classical_08",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "chinese_classical",
+        "dunhuang_inspired",
+        "arm_expression",
+        "mid_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 98.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "chinese_classical_arm_expression",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "chinese_classical_09",
+      "displayName": "Chinese Classical Phrase 09",
+      "resourcePath": "MotionBasePreview/chinese_classical/chinese_classical_09",
+      "clipName": "chinese_classical_09",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "chinese_classical",
+        "water_sleeve",
+        "pose_hold",
+        "low_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "outro"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 86.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.05,
+      "retimeProfile": "gentle",
+      "varietyGroup": "chinese_classical_pose_hold",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "chinese_classical_10",
+      "displayName": "Chinese Classical Phrase 10",
+      "resourcePath": "MotionBasePreview/chinese_classical/chinese_classical_10",
+      "clipName": "chinese_classical_10",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "chinese_classical",
+        "fan_dance",
+        "basic_step",
+        "mid_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 106.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "chinese_classical_basic_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "chinese_classical_11",
+      "displayName": "Chinese Classical Phrase 11",
+      "resourcePath": "MotionBasePreview/chinese_classical/chinese_classical_11",
+      "clipName": "chinese_classical_11",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "chinese_classical",
+        "court_classical",
+        "travel_step",
+        "high_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 120.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.94,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "chinese_classical_travel_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "chinese_classical_12",
+      "displayName": "Chinese Classical Phrase 12",
+      "resourcePath": "MotionBasePreview/chinese_classical/chinese_classical_12",
+      "clipName": "chinese_classical_12",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "chinese_classical",
+        "dunhuang_inspired",
+        "arm_expression",
+        "mid_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "outro"
+      ],
+      "phraseBeats": 16,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 96.0,
+      "nativePhraseBeats": 16,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "chinese_classical_arm_expression",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        8
+      ],
+      "sliceBeatsOptions": [
+        8,
+        16
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "chinese_classical_13",
+      "displayName": "Chinese Classical Phrase 13",
+      "resourcePath": "MotionBasePreview/chinese_classical/chinese_classical_13",
+      "clipName": "chinese_classical_13",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "chinese_classical",
+        "water_sleeve",
+        "accent_hit",
+        "high_energy",
+        "accent",
+        "curated_fbx"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 4,
+      "loopable": false,
+      "cooldownBeats": 4,
+      "nativeBpm": 124.0,
+      "nativePhraseBeats": 4,
+      "speedMin": 0.94,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "chinese_classical_accent_hit",
+      "role": "accent",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4
+      ],
+      "maxConsecutiveSelections": 1,
+      "groupCooldownBeats": 4,
+      "accentBias": 0.85
+    },
+    {
+      "clipId": "chinese_classical_14",
+      "displayName": "Chinese Classical Phrase 14",
+      "resourcePath": "MotionBasePreview/chinese_classical/chinese_classical_14",
+      "clipName": "chinese_classical_14",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "chinese_classical",
+        "fan_dance",
+        "accent_hit",
+        "high_energy",
+        "accent",
+        "generated_from_video"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus"
+      ],
+      "phraseBeats": 4,
+      "loopable": false,
+      "cooldownBeats": 4,
+      "nativeBpm": 130.0,
+      "nativePhraseBeats": 4,
+      "speedMin": 0.94,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "chinese_classical_accent_hit",
+      "role": "accent",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4
+      ],
+      "maxConsecutiveSelections": 1,
+      "groupCooldownBeats": 4,
+      "accentBias": 0.85
+    },
+    {
+      "clipId": "chinese_classical_15",
+      "displayName": "Chinese Classical Phrase 15",
+      "resourcePath": "MotionBasePreview/chinese_classical/chinese_classical_15",
+      "clipName": "chinese_classical_15",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "chinese_classical",
+        "court_classical",
+        "turn_phrase",
+        "mid_energy",
+        "bridge",
+        "curated_fbx"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 110.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "chinese_classical_turn_phrase",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 6,
+      "accentBias": 0.35
+    },
+    {
+      "clipId": "chinese_classical_16",
+      "displayName": "Chinese Classical Phrase 16",
+      "resourcePath": "MotionBasePreview/chinese_classical/chinese_classical_16",
+      "clipName": "chinese_classical_16",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "chinese_classical",
+        "dunhuang_inspired",
+        "pose_hold",
+        "low_energy",
+        "bridge",
+        "generated_from_video"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "outro",
+        "intro"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 88.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.05,
+      "retimeProfile": "gentle",
+      "varietyGroup": "chinese_classical_pose_hold",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 6,
+      "accentBias": 0.35
+    },
+    {
+      "clipId": "contemporary_01",
+      "displayName": "Contemporary Phrase 01",
+      "resourcePath": "MotionBasePreview/contemporary/contemporary_01",
+      "clipName": "contemporary_01",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "contemporary",
+        "lyrical",
+        "basic_step",
+        "low_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "verse"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 98.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.05,
+      "retimeProfile": "gentle",
+      "varietyGroup": "contemporary_basic_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "contemporary_02",
+      "displayName": "Contemporary Phrase 02",
+      "resourcePath": "MotionBasePreview/contemporary/contemporary_02",
+      "clipName": "contemporary_02",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "contemporary",
+        "modern_release",
+        "basic_step",
+        "mid_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 106.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "contemporary_basic_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "contemporary_03",
+      "displayName": "Contemporary Phrase 03",
+      "resourcePath": "MotionBasePreview/contemporary/contemporary_03",
+      "clipName": "contemporary_03",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "contemporary",
+        "urban_contemporary",
+        "travel_step",
+        "mid_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 112.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "contemporary_travel_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "contemporary_04",
+      "displayName": "Contemporary Phrase 04",
+      "resourcePath": "MotionBasePreview/contemporary/contemporary_04",
+      "clipName": "contemporary_04",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "contemporary",
+        "theatrical_modern",
+        "travel_step",
+        "mid_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 116.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "contemporary_travel_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "contemporary_05",
+      "displayName": "Contemporary Phrase 05",
+      "resourcePath": "MotionBasePreview/contemporary/contemporary_05",
+      "clipName": "contemporary_05",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "contemporary",
+        "lyrical",
+        "turn_phrase",
+        "mid_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 120.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "contemporary_turn_phrase",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "contemporary_06",
+      "displayName": "Contemporary Phrase 06",
+      "resourcePath": "MotionBasePreview/contemporary/contemporary_06",
+      "clipName": "contemporary_06",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "contemporary",
+        "modern_release",
+        "turn_phrase",
+        "high_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 16,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 126.0,
+      "nativePhraseBeats": 16,
+      "speedMin": 0.94,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "contemporary_turn_phrase",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        8
+      ],
+      "sliceBeatsOptions": [
+        8,
+        16
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "contemporary_07",
+      "displayName": "Contemporary Phrase 07",
+      "resourcePath": "MotionBasePreview/contemporary/contemporary_07",
+      "clipName": "contemporary_07",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "contemporary",
+        "urban_contemporary",
+        "arm_expression",
+        "low_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "verse",
+        "outro"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 94.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.05,
+      "retimeProfile": "gentle",
+      "varietyGroup": "contemporary_arm_expression",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "contemporary_08",
+      "displayName": "Contemporary Phrase 08",
+      "resourcePath": "MotionBasePreview/contemporary/contemporary_08",
+      "clipName": "contemporary_08",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "contemporary",
+        "theatrical_modern",
+        "arm_expression",
+        "mid_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 102.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "contemporary_arm_expression",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "contemporary_09",
+      "displayName": "Contemporary Phrase 09",
+      "resourcePath": "MotionBasePreview/contemporary/contemporary_09",
+      "clipName": "contemporary_09",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "contemporary",
+        "lyrical",
+        "pose_hold",
+        "low_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "outro"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 90.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.05,
+      "retimeProfile": "gentle",
+      "varietyGroup": "contemporary_pose_hold",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "contemporary_10",
+      "displayName": "Contemporary Phrase 10",
+      "resourcePath": "MotionBasePreview/contemporary/contemporary_10",
+      "clipName": "contemporary_10",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "contemporary",
+        "modern_release",
+        "basic_step",
+        "mid_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 110.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "contemporary_basic_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "contemporary_11",
+      "displayName": "Contemporary Phrase 11",
+      "resourcePath": "MotionBasePreview/contemporary/contemporary_11",
+      "clipName": "contemporary_11",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "contemporary",
+        "urban_contemporary",
+        "travel_step",
+        "high_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 124.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.94,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "contemporary_travel_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "contemporary_12",
+      "displayName": "Contemporary Phrase 12",
+      "resourcePath": "MotionBasePreview/contemporary/contemporary_12",
+      "clipName": "contemporary_12",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "contemporary",
+        "theatrical_modern",
+        "arm_expression",
+        "mid_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "outro"
+      ],
+      "phraseBeats": 16,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 100.0,
+      "nativePhraseBeats": 16,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "contemporary_arm_expression",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        8
+      ],
+      "sliceBeatsOptions": [
+        8,
+        16
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "contemporary_13",
+      "displayName": "Contemporary Phrase 13",
+      "resourcePath": "MotionBasePreview/contemporary/contemporary_13",
+      "clipName": "contemporary_13",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "contemporary",
+        "lyrical",
+        "accent_hit",
+        "high_energy",
+        "accent",
+        "curated_fbx"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 4,
+      "loopable": false,
+      "cooldownBeats": 4,
+      "nativeBpm": 128.0,
+      "nativePhraseBeats": 4,
+      "speedMin": 0.94,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "contemporary_accent_hit",
+      "role": "accent",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4
+      ],
+      "maxConsecutiveSelections": 1,
+      "groupCooldownBeats": 4,
+      "accentBias": 0.85
+    },
+    {
+      "clipId": "contemporary_14",
+      "displayName": "Contemporary Phrase 14",
+      "resourcePath": "MotionBasePreview/contemporary/contemporary_14",
+      "clipName": "contemporary_14",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "contemporary",
+        "modern_release",
+        "accent_hit",
+        "high_energy",
+        "accent",
+        "generated_from_video"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus"
+      ],
+      "phraseBeats": 4,
+      "loopable": false,
+      "cooldownBeats": 4,
+      "nativeBpm": 134.0,
+      "nativePhraseBeats": 4,
+      "speedMin": 0.94,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "contemporary_accent_hit",
+      "role": "accent",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4
+      ],
+      "maxConsecutiveSelections": 1,
+      "groupCooldownBeats": 4,
+      "accentBias": 0.85
+    },
+    {
+      "clipId": "contemporary_15",
+      "displayName": "Contemporary Phrase 15",
+      "resourcePath": "MotionBasePreview/contemporary/contemporary_15",
+      "clipName": "contemporary_15",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "contemporary",
+        "urban_contemporary",
+        "turn_phrase",
+        "mid_energy",
+        "bridge",
+        "curated_fbx"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 114.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "contemporary_turn_phrase",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 6,
+      "accentBias": 0.35
+    },
+    {
+      "clipId": "contemporary_16",
+      "displayName": "Contemporary Phrase 16",
+      "resourcePath": "MotionBasePreview/contemporary/contemporary_16",
+      "clipName": "contemporary_16",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "contemporary",
+        "theatrical_modern",
+        "pose_hold",
+        "low_energy",
+        "bridge",
+        "generated_from_video"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "outro",
+        "intro"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 92.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.05,
+      "retimeProfile": "gentle",
+      "varietyGroup": "contemporary_pose_hold",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 6,
+      "accentBias": 0.35
+    },
+    {
+      "clipId": "ethnic_folk_01",
+      "displayName": "Ethnic Folk Phrase 01",
+      "resourcePath": "MotionBasePreview/ethnic_folk/ethnic_folk_01",
+      "clipName": "ethnic_folk_01",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "ethnic_folk",
+        "mongolian",
+        "basic_step",
+        "low_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "verse"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 96.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.05,
+      "retimeProfile": "gentle",
+      "varietyGroup": "ethnic_folk_basic_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "ethnic_folk_02",
+      "displayName": "Ethnic Folk Phrase 02",
+      "resourcePath": "MotionBasePreview/ethnic_folk/ethnic_folk_02",
+      "clipName": "ethnic_folk_02",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "ethnic_folk",
+        "dai",
+        "basic_step",
+        "mid_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 104.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "ethnic_folk_basic_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "ethnic_folk_03",
+      "displayName": "Ethnic Folk Phrase 03",
+      "resourcePath": "MotionBasePreview/ethnic_folk/ethnic_folk_03",
+      "clipName": "ethnic_folk_03",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "ethnic_folk",
+        "tibetan",
+        "travel_step",
+        "mid_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 110.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "ethnic_folk_travel_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "ethnic_folk_04",
+      "displayName": "Ethnic Folk Phrase 04",
+      "resourcePath": "MotionBasePreview/ethnic_folk/ethnic_folk_04",
+      "clipName": "ethnic_folk_04",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "ethnic_folk",
+        "uygur",
+        "travel_step",
+        "mid_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 114.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "ethnic_folk_travel_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "ethnic_folk_05",
+      "displayName": "Ethnic Folk Phrase 05",
+      "resourcePath": "MotionBasePreview/ethnic_folk/ethnic_folk_05",
+      "clipName": "ethnic_folk_05",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "ethnic_folk",
+        "mongolian",
+        "turn_phrase",
+        "mid_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 118.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "ethnic_folk_turn_phrase",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "ethnic_folk_06",
+      "displayName": "Ethnic Folk Phrase 06",
+      "resourcePath": "MotionBasePreview/ethnic_folk/ethnic_folk_06",
+      "clipName": "ethnic_folk_06",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "ethnic_folk",
+        "dai",
+        "turn_phrase",
+        "high_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 16,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 124.0,
+      "nativePhraseBeats": 16,
+      "speedMin": 0.94,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "ethnic_folk_turn_phrase",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        8
+      ],
+      "sliceBeatsOptions": [
+        8,
+        16
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "ethnic_folk_07",
+      "displayName": "Ethnic Folk Phrase 07",
+      "resourcePath": "MotionBasePreview/ethnic_folk/ethnic_folk_07",
+      "clipName": "ethnic_folk_07",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "ethnic_folk",
+        "tibetan",
+        "arm_expression",
+        "low_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "verse",
+        "outro"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 92.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.05,
+      "retimeProfile": "gentle",
+      "varietyGroup": "ethnic_folk_arm_expression",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "ethnic_folk_08",
+      "displayName": "Ethnic Folk Phrase 08",
+      "resourcePath": "MotionBasePreview/ethnic_folk/ethnic_folk_08",
+      "clipName": "ethnic_folk_08",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "ethnic_folk",
+        "uygur",
+        "arm_expression",
+        "mid_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 100.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "ethnic_folk_arm_expression",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "ethnic_folk_09",
+      "displayName": "Ethnic Folk Phrase 09",
+      "resourcePath": "MotionBasePreview/ethnic_folk/ethnic_folk_09",
+      "clipName": "ethnic_folk_09",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "ethnic_folk",
+        "mongolian",
+        "pose_hold",
+        "low_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "outro"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 88.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.05,
+      "retimeProfile": "gentle",
+      "varietyGroup": "ethnic_folk_pose_hold",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "ethnic_folk_10",
+      "displayName": "Ethnic Folk Phrase 10",
+      "resourcePath": "MotionBasePreview/ethnic_folk/ethnic_folk_10",
+      "clipName": "ethnic_folk_10",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "ethnic_folk",
+        "dai",
+        "basic_step",
+        "mid_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 108.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "ethnic_folk_basic_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "ethnic_folk_11",
+      "displayName": "Ethnic Folk Phrase 11",
+      "resourcePath": "MotionBasePreview/ethnic_folk/ethnic_folk_11",
+      "clipName": "ethnic_folk_11",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "ethnic_folk",
+        "tibetan",
+        "travel_step",
+        "high_energy",
+        "style_locked",
+        "curated_fbx"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 122.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.94,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "ethnic_folk_travel_step",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "ethnic_folk_12",
+      "displayName": "Ethnic Folk Phrase 12",
+      "resourcePath": "MotionBasePreview/ethnic_folk/ethnic_folk_12",
+      "clipName": "ethnic_folk_12",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "ethnic_folk",
+        "uygur",
+        "arm_expression",
+        "mid_energy",
+        "style_locked",
+        "generated_from_video"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "outro"
+      ],
+      "phraseBeats": 16,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 98.0,
+      "nativePhraseBeats": 16,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "ethnic_folk_arm_expression",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        8
+      ],
+      "sliceBeatsOptions": [
+        8,
+        16
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 8,
+      "accentBias": 0.15
+    },
+    {
+      "clipId": "ethnic_folk_13",
+      "displayName": "Ethnic Folk Phrase 13",
+      "resourcePath": "MotionBasePreview/ethnic_folk/ethnic_folk_13",
+      "clipName": "ethnic_folk_13",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "ethnic_folk",
+        "mongolian",
+        "accent_hit",
+        "high_energy",
+        "accent",
+        "curated_fbx"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 4,
+      "loopable": false,
+      "cooldownBeats": 4,
+      "nativeBpm": 126.0,
+      "nativePhraseBeats": 4,
+      "speedMin": 0.94,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "ethnic_folk_accent_hit",
+      "role": "accent",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4
+      ],
+      "maxConsecutiveSelections": 1,
+      "groupCooldownBeats": 4,
+      "accentBias": 0.85
+    },
+    {
+      "clipId": "ethnic_folk_14",
+      "displayName": "Ethnic Folk Phrase 14",
+      "resourcePath": "MotionBasePreview/ethnic_folk/ethnic_folk_14",
+      "clipName": "ethnic_folk_14",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "ethnic_folk",
+        "dai",
+        "accent_hit",
+        "high_energy",
+        "accent",
+        "generated_from_video"
+      ],
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus"
+      ],
+      "phraseBeats": 4,
+      "loopable": false,
+      "cooldownBeats": 4,
+      "nativeBpm": 132.0,
+      "nativePhraseBeats": 4,
+      "speedMin": 0.94,
+      "speedMax": 1.18,
+      "retimeProfile": "punchy",
+      "varietyGroup": "ethnic_folk_accent_hit",
+      "role": "accent",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4
+      ],
+      "maxConsecutiveSelections": 1,
+      "groupCooldownBeats": 4,
+      "accentBias": 0.85
+    },
+    {
+      "clipId": "ethnic_folk_15",
+      "displayName": "Ethnic Folk Phrase 15",
+      "resourcePath": "MotionBasePreview/ethnic_folk/ethnic_folk_15",
+      "clipName": "ethnic_folk_15",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "ethnic_folk",
+        "tibetan",
+        "turn_phrase",
+        "mid_energy",
+        "bridge",
+        "curated_fbx"
+      ],
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus",
+        "instrumental"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 112.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.9,
+      "speedMax": 1.12,
+      "retimeProfile": "smooth",
+      "varietyGroup": "ethnic_folk_turn_phrase",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 6,
+      "accentBias": 0.35
+    },
+    {
+      "clipId": "ethnic_folk_16",
+      "displayName": "Ethnic Folk Phrase 16",
+      "resourcePath": "MotionBasePreview/ethnic_folk/ethnic_folk_16",
+      "clipName": "ethnic_folk_16",
+      "styleTags": [
+        "motion_base",
+        "mixamo_candidate",
+        "ethnic_folk",
+        "uygur",
+        "pose_hold",
+        "low_energy",
+        "bridge",
+        "generated_from_video"
+      ],
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "outro",
+        "intro"
+      ],
+      "phraseBeats": 8,
+      "loopable": true,
+      "cooldownBeats": 8,
+      "nativeBpm": 90.0,
+      "nativePhraseBeats": 8,
+      "speedMin": 0.88,
+      "speedMax": 1.05,
+      "retimeProfile": "gentle",
+      "varietyGroup": "ethnic_folk_pose_hold",
+      "role": "loop",
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "maxConsecutiveSelections": 2,
+      "groupCooldownBeats": 6,
+      "accentBias": 0.35
+    }
+  ],
+  "generatedAtUtc": "2026-03-29T12:21:21.125831+00:00"
+}

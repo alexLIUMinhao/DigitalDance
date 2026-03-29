@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "styleFamilies": [
+    "chinese_classical",
+    "ethnic_folk",
+    "contemporary"
+  ],
+  "metaActions": [
+    "basic_step",
+    "travel_step",
+    "turn_phrase",
+    "arm_expression",
+    "accent_hit",
+    "pose_hold"
+  ],
+  "transitionProfiles": [
+    "style_locked",
+    "bridge",
+    "accent"
+  ],
+  "sourceLanes": [
+    "curated_fbx",
+    "video_rokoko"
+  ],
+  "sourceAssetKinds": [
+    "fbx",
+    "video",
+    "bvh"
+  ],
+  "stageStates": [
+    "discovered",
+    "precheck_passed",
+    "extraction_pending",
+    "extracted",
+    "retarget_ready",
+    "sliced",
+    "review_ready",
+    "approved",
+    "hold",
+    "rejected"
+  ],
+  "sourceKinds": [
+    "curated_fbx",
+    "generated_from_video"
+  ],
+  "qualityTiers": [
+    "production",
+    "review_hold",
+    "rejected"
+  ],
+  "licenseTiers": [
+    "prototype_only",
+    "replace_before_ship",
+    "commercial_safe"
+  ],
+  "reviewStatuses": [
+    "approved",
+    "hold",
+    "rejected"
+  ],
+  "loopSeamRatings": [
+    "clean",
+    "accent_only",
+    "manual_fix_needed"
+  ],
+  "footStabilityRatings": [
+    "stable",
+    "monitor",
+    "unstable"
+  ],
+  "styleClarityRatings": [
+    "clear",
+    "mixed",
+    "unclear"
+  ],
+  "tempoToleranceRatings": [
+    "narrow",
+    "medium",
+    "wide"
+  ],
+  "candidateReviewStates": [
+    "pending",
+    "approved",
+    "hold",
+    "rejected"
+  ],
+  "videoQualityGates": {
+    "preferredResolution": [
+      1920,
+      1080
+    ],
+    "minimumResolution": [
+      1280,
+      720
+    ],
+    "minimumFps": 30.0,
+    "preferredFps": 60.0,
+    "minimumDurationSec": 5.0,
+    "maximumDurationSec": 15.0
+  },
+  "candidateReviewDefaults": {
+    "decisionStatus": "pending",
+    "loopSeam": "manual_fix_needed",
+    "footStability": "monitor",
+    "styleClarity": "mixed",
+    "tempoTolerance": "medium",
+    "qualityTier": "review_hold",
+    "issues": []
+  },
+  "runtimePreviewDefaults": {
+    "libraryId": "motion_base_preview",
+    "defaultPhraseBeats": 8,
+    "resourcePrefix": "MotionBasePreview",
+    "cooldownBeats": {
+      "loop": 8,
+      "accent": 4
+    },
+    "groupCooldownBeats": {
+      "style_locked": 8,
+      "bridge": 6,
+      "accent": 4
+    },
+    "maxConsecutiveSelections": {
+      "loop": 2,
+      "accent": 1
+    },
+    "retimeProfiles": {
+      "low_energy": "gentle",
+      "mid_energy": "smooth",
+      "high_energy": "punchy"
+    },
+    "speedRanges": {
+      "low_energy": [
+        0.88,
+        1.05
+      ],
+      "mid_energy": [
+        0.9,
+        1.12
+      ],
+      "high_energy": [
+        0.94,
+        1.18
+      ]
+    },
+    "accentBiasByRole": {
+      "loop": 0.15,
+      "accent": 0.85
+    },
+    "accentBiasByTransition": {
+      "style_locked": 0.15,
+      "bridge": 0.35,
+      "accent": 0.85
+    }
+  }
+}

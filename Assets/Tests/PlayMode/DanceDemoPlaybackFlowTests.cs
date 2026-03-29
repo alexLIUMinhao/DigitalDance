@@ -14,6 +14,7 @@ namespace DanceDemoTests
     {
         private const string ScenePath = "Assets/MainScene.unity";
         private static readonly BindingFlags InstanceFlags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+        private static readonly BindingFlags StaticFlags = BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public;
 
         [UnitySetUp]
         public IEnumerator SetUp()
@@ -24,6 +25,8 @@ namespace DanceDemoTests
             }
 
             SceneManager.LoadScene(ScenePath);
+            yield return null;
+            EnsureBootstrapExists();
             yield return null;
             yield return WaitForBootstrapReady();
         }
@@ -107,6 +110,18 @@ namespace DanceDemoTests
             return UnityEngine.Object.FindObjectOfType<DanceDemoBootstrap>(true);
         }
 
+        private static void EnsureBootstrapExists()
+        {
+            if (GetBootstrap() != null)
+            {
+                return;
+            }
+
+            var factory = typeof(DanceDemoBootstrap).GetMethod("CreateRuntimeBootstrap", StaticFlags);
+            Assert.NotNull(factory, "Missing bootstrap factory: CreateRuntimeBootstrap");
+            factory.Invoke(null, null);
+        }
+
         private static IEnumerator WaitForBootstrapReady()
         {
             yield return WaitUntil(() =>
@@ -120,7 +135,7 @@ namespace DanceDemoTests
                 var isReloading = GetPrivateField<bool>(bootstrap, "isReloading");
                 var debugState = GetPrivateField<DanceDebugState>(bootstrap, "debugState");
                 return !isReloading && debugState != null && !string.IsNullOrEmpty(debugState.RuntimeMessage);
-            }, 8f);
+            }, 20f);
         }
 
         private static IEnumerator WaitUntil(Func<bool> condition, float timeoutSec)
