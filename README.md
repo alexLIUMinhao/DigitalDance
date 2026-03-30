@@ -23,6 +23,7 @@ Unity 2022.3 LTS VRM dance demo. The project drives `willa.vrm` with a data-driv
 - 架构与功能逻辑：[`docs/功能逻辑说明.md`](docs/%E5%8A%9F%E8%83%BD%E9%80%BB%E8%BE%91%E8%AF%B4%E6%98%8E.md)
 - 系统结构图与英文架构说明：[`docs/system-architecture.md`](docs/system-architecture.md)
 - 非技术同学产品说明：[`docs/产品说明-非技术版.md`](docs/%E4%BA%A7%E5%93%81%E8%AF%B4%E6%98%8E-%E9%9D%9E%E6%8A%80%E6%9C%AF%E7%89%88.md)
+- 整体思路问答：[`docs/整体思路问答.md`](docs/%E6%95%B4%E4%BD%93%E6%80%9D%E8%B7%AF%E9%97%AE%E7%AD%94.md)
 
 ## 1. What Is In This Repo
 
@@ -155,6 +156,7 @@ Detailed architecture and flowcharts:
 - [docs/system-architecture.md](docs/system-architecture.md)
 - [docs/功能逻辑说明.md](docs/%E5%8A%9F%E8%83%BD%E9%80%BB%E8%BE%91%E8%AF%B4%E6%98%8E.md)
 - [docs/产品说明-非技术版.md](docs/%E4%BA%A7%E5%93%81%E8%AF%B4%E6%98%8E-%E9%9D%9E%E6%8A%80%E6%9C%AF%E7%89%88.md)
+- [docs/整体思路问答.md](docs/%E6%95%B4%E4%BD%93%E6%80%9D%E8%B7%AF%E9%97%AE%E7%AD%94.md)
 
 ## 6. Song Data Pipeline
 

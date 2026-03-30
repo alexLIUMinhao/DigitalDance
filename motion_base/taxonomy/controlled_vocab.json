@@ -20,7 +20,9 @@
   ],
   "sourceLanes": [
     "curated_fbx",
-    "video_rokoko"
+    "video_rokoko",
+    "dataset_smpl",
+    "dataset_json"
   ],
   "sourceAssetKinds": [
     "fbx",
@@ -41,7 +43,8 @@
   ],
   "sourceKinds": [
     "curated_fbx",
-    "generated_from_video"
+    "generated_from_video",
+    "dataset_motion"
   ],
   "qualityTiers": [
     "production",

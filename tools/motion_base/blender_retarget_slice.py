@@ -51,6 +51,8 @@ def export_slice(objects: list[bpy.types.Object], file_path: Path, frame_start: 
     for obj in objects:
         obj.select_set(True)
     bpy.context.view_layer.objects.active = objects[0] if objects else None
+    bpy.context.scene.frame_start = frame_start
+    bpy.context.scene.frame_end = frame_end
     bpy.ops.export_scene.fbx(
         filepath=str(file_path),
         use_selection=True,
@@ -60,8 +62,6 @@ def export_slice(objects: list[bpy.types.Object], file_path: Path, frame_start: 
         bake_anim_simplify_factor=0.0,
         bake_anim_step=1.0,
         bake_anim_force_startend_keying=True,
-        bake_anim_start=frame_start,
-        bake_anim_end=frame_end,
         add_leaf_bones=False,
     )
 

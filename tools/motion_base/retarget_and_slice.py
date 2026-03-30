@@ -74,9 +74,11 @@ def run_blender(blender_exe: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     ]
     result = subprocess.run(command, check=True, capture_output=True, text=True)
     stdout = result.stdout.strip().splitlines()
-    if not stdout:
-        raise RuntimeError("Blender helper did not return JSON output")
-    return json.loads(stdout[-1])
+    for line in reversed(stdout):
+        candidate = line.strip()
+        if candidate.startswith("{") and candidate.endswith("}"):
+            return json.loads(candidate)
+    raise RuntimeError("Blender helper did not return JSON output")
 
 
 def main() -> int:
@@ -102,9 +104,12 @@ def main() -> int:
         source_path = resolve_input_motion_path(job)
         if source_path is None:
             if job.get("sourceLane") == "video_rokoko":
-                job["stage"] = "extraction_pending"
-                job["updatedAtUtc"] = utc_now_iso()
-                updated += 1
+                source_review = dict(job.get("sourceReview", {}) or {})
+                decision_status = str(source_review.get("decisionStatus", "pending") or "pending")
+                if decision_status == "approved":
+                    job["stage"] = "extraction_pending"
+                    job["updatedAtUtc"] = utc_now_iso()
+                    updated += 1
             continue
         if not source_path.exists():
             job["stage"] = "hold"

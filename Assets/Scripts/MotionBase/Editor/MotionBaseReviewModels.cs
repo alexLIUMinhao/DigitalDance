@@ -37,6 +37,54 @@ namespace MotionBase.Editor
     }
 
     [Serializable]
+    public class MotionBaseSourceCatalogData
+    {
+        public int schemaVersion = 1;
+        public string generatedAtUtc;
+        public List<MotionBaseSourceCatalogEntry> sources = new List<MotionBaseSourceCatalogEntry>();
+    }
+
+    [Serializable]
+    public class MotionBaseSourceCatalogEntry
+    {
+        public string sourceId;
+        public string provider;
+        public string remoteAssetId;
+        public string sourcePageUrl;
+        public string downloadUrl;
+        public string creatorName;
+        public string licenseName;
+        public string query;
+        public string localVideoRelPath;
+        public string targetStyleFamily;
+        public string targetStyleSubstyle;
+        public string expectedMetaAction;
+        public string downloadedAtUtc;
+        public string notes;
+    }
+
+    [Serializable]
+    public class MotionBaseSourceProvenance
+    {
+        public string sourceId;
+        public string provider;
+        public string remoteAssetId;
+        public string sourcePageUrl;
+        public string downloadUrl;
+        public string creatorName;
+        public string licenseName;
+        public string query;
+    }
+
+    [Serializable]
+    public class MotionBaseSourceReview
+    {
+        public string decisionStatus = "pending";
+        public string reviewer = string.Empty;
+        public string notes = string.Empty;
+    }
+
+    [Serializable]
     public class MotionBaseReviewFeedData
     {
         public int schemaVersion = 1;
@@ -132,6 +180,8 @@ namespace MotionBase.Editor
         public string operatorNotes;
         public MotionBaseSourceFingerprint sourceFingerprint = new MotionBaseSourceFingerprint();
         public MotionBasePrecheckSummary precheckSummary = new MotionBasePrecheckSummary();
+        public MotionBaseSourceProvenance sourceProvenance = new MotionBaseSourceProvenance();
+        public MotionBaseSourceReview sourceReview = new MotionBaseSourceReview();
         public string discoveredAtUtc;
         public string updatedAtUtc;
     }
@@ -189,6 +239,7 @@ namespace MotionBase.Editor
         public const string ReviewCacheAssetPath = "Assets/MotionBaseReviewCache";
 
         public static string ProjectRoot => Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        public static string SourceCatalogPath => Path.Combine(ProjectRoot, "motion_base", "intake", "source_catalog.json");
         public static string ReviewFeedPath => Path.Combine(ProjectRoot, "motion_base", "review", "review_feed.json");
         public static string CandidateReviewPath => Path.Combine(ProjectRoot, "motion_base", "review", "candidate_review.json");
         public static string IntakeQueuePath => Path.Combine(ProjectRoot, "motion_base", "intake", "intake_queue.json");

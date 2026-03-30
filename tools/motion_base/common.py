@@ -25,6 +25,8 @@ EXAMPLE_ASSET_CONFIG_PATH = CONFIG_ROOT / "asset_roots.example.json"
 MOTION_INDEX_PATH = LIBRARY_ROOT / "motion_index.json"
 REVIEWS_PATH = LIBRARY_ROOT / "reviews.json"
 INTAKE_QUEUE_PATH = INTAKE_ROOT / "intake_queue.json"
+SOURCE_CATALOG_PATH = INTAKE_ROOT / "source_catalog.json"
+DATASET_CATALOG_PATH = INTAKE_ROOT / "dataset_catalog.json"
 CANDIDATE_REVIEW_PATH = REVIEW_ROOT / "candidate_review.json"
 REVIEW_FEED_PATH = REVIEW_ROOT / "review_feed.json"
 CANDIDATE_METRICS_PATH = VALIDATION_ROOT / "candidate_metrics.json"
@@ -103,6 +105,14 @@ def default_intake_queue() -> Dict[str, Any]:
     return {"schemaVersion": 1, "jobs": []}
 
 
+def default_source_catalog() -> Dict[str, Any]:
+    return {"schemaVersion": 1, "generatedAtUtc": utc_now_iso(), "sources": []}
+
+
+def default_dataset_catalog() -> Dict[str, Any]:
+    return {"schemaVersion": 1, "generatedAtUtc": utc_now_iso(), "entries": []}
+
+
 def default_candidate_review() -> Dict[str, Any]:
     return {"schemaVersion": 1, "entries": []}
 
@@ -123,6 +133,14 @@ def load_or_default(path: Path, factory: Callable[[], Dict[str, Any]]) -> Dict[s
 
 def load_intake_queue() -> Dict[str, Any]:
     return load_or_default(INTAKE_QUEUE_PATH, default_intake_queue)
+
+
+def load_source_catalog() -> Dict[str, Any]:
+    return load_or_default(SOURCE_CATALOG_PATH, default_source_catalog)
+
+
+def load_dataset_catalog() -> Dict[str, Any]:
+    return load_or_default(DATASET_CATALOG_PATH, default_dataset_catalog)
 
 
 def load_candidate_review() -> Dict[str, Any]:
@@ -183,6 +201,38 @@ def resolve_template_path(field: str) -> Path | None:
     return Path(value).expanduser()
 
 
+def resolve_external_assets_root() -> Path | None:
+    for root_name in ("rawFbx", "sourceVideo", "extractedMotion", "approvedFbx", "previewCache"):
+        root = resolve_asset_root(root_name)
+        if root is not None:
+            return root.parent
+    return None
+
+
+def resolve_dataset_storage_root(dataset_name: str = "", bucket: str = "") -> Path | None:
+    assets_root = resolve_external_assets_root()
+    if assets_root is None:
+        return None
+
+    root = assets_root / "datasets"
+    if dataset_name:
+        root = root / slugify(dataset_name)
+    if bucket:
+        root = root / bucket
+    return root
+
+
+def resolve_model_storage_root(model_family: str = "") -> Path | None:
+    assets_root = resolve_external_assets_root()
+    if assets_root is None:
+        return None
+
+    root = assets_root / "models"
+    if model_family:
+        root = root / slugify(model_family)
+    return root
+
+
 def asset_root_configured(root_name: str = "approvedFbx") -> bool:
     return resolve_asset_root(root_name) is not None
 
@@ -233,6 +283,14 @@ def candidate_sort_key(item: Dict[str, Any]) -> str:
     return str(item.get("candidateId", ""))
 
 
+def source_sort_key(item: Dict[str, Any]) -> str:
+    return str(item.get("sourceId", ""))
+
+
+def dataset_sort_key(item: Dict[str, Any]) -> str:
+    return f"{item.get('datasetName', '')}::{item.get('sequenceId', '')}"
+
+
 def motion_map(motion_index: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     return {record["motionId"]: record for record in motion_index.get("motions", [])}
 
@@ -251,6 +309,17 @@ def candidate_review_map(review_index: Dict[str, Any]) -> Dict[str, Dict[str, An
 
 def candidate_metrics_map(metrics_index: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     return {record["candidateId"]: record for record in metrics_index.get("metrics", [])}
+
+
+def source_catalog_map(source_catalog: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    return {record["sourceId"]: record for record in source_catalog.get("sources", [])}
+
+
+def dataset_catalog_map(dataset_catalog: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    return {
+        f"{record.get('datasetName', '')}::{record.get('sequenceId', '')}": record
+        for record in dataset_catalog.get("entries", [])
+    }
 
 
 def upsert_records(
@@ -333,7 +402,21 @@ def infer_role(meta_action: str, transition_profile: str) -> str:
 
 
 def infer_source_kind(source_lane: str) -> str:
-    return "generated_from_video" if source_lane == "video_rokoko" else "curated_fbx"
+    if source_lane == "video_rokoko":
+        return "generated_from_video"
+    if source_lane in {"dataset_smpl", "dataset_json"}:
+        return "dataset_motion"
+    return "curated_fbx"
+
+
+def make_source_id(provider: str, remote_asset_id: str, fallback_hint: str = "") -> str:
+    if remote_asset_id:
+        return f"{slugify(provider)}__{slugify(remote_asset_id)}"
+    return f"{slugify(provider)}__{slugify(fallback_hint)}"
+
+
+def make_dataset_entry_id(dataset_name: str, sequence_id: str) -> str:
+    return f"{slugify(dataset_name)}__{slugify(sequence_id)}"
 
 
 def make_job_id(source_lane: str, relative_path: str) -> str:

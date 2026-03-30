@@ -12,6 +12,12 @@ namespace MotionBase.Editor
 {
     public class MotionBaseReviewWindow : EditorWindow
     {
+        private enum StudioTab
+        {
+            SourceIntake,
+            CandidateReview,
+        }
+
         private enum CameraPreset
         {
             FullBody,
@@ -28,11 +34,13 @@ namespace MotionBase.Editor
         private readonly string[] qualityTierOptions = { "review_hold", "production", "rejected" };
         private readonly string[] licenseTierOptions = { "prototype_only", "replace_before_ship", "commercial_safe" };
 
+        private MotionBaseSourceCatalogData sourceCatalogData = new MotionBaseSourceCatalogData();
         private MotionBaseReviewFeedData reviewFeed = new MotionBaseReviewFeedData();
         private MotionBaseCandidateReviewData candidateReviewData = new MotionBaseCandidateReviewData();
         private MotionBaseIntakeQueueData intakeQueueData = new MotionBaseIntakeQueueData();
         private MotionBaseAssetRootsConfig assetRootsConfig = new MotionBaseAssetRootsConfig();
 
+        private readonly Dictionary<string, MotionBaseSourceCatalogEntry> sourceById = new Dictionary<string, MotionBaseSourceCatalogEntry>(StringComparer.Ordinal);
         private readonly Dictionary<string, MotionBaseCandidateReviewEntry> reviewByCandidateId = new Dictionary<string, MotionBaseCandidateReviewEntry>(StringComparer.Ordinal);
         private readonly Dictionary<string, MotionBaseIntakeJob> jobById = new Dictionary<string, MotionBaseIntakeJob>(StringComparer.Ordinal);
 
@@ -46,6 +54,9 @@ namespace MotionBase.Editor
         private VideoPlayer videoPlayer;
         private RenderTexture videoTexture;
 
+        private MotionBaseIntakeJob selectedSourceJob;
+        private MotionBaseSourceCatalogEntry selectedSourceCatalog;
+        private int selectedSourceIndex = -1;
         private MotionBaseReviewFeedEntry selectedFeedEntry;
         private MotionBaseCandidateReviewEntry selectedReviewEntry;
         private int selectedIndex = -1;
@@ -54,6 +65,8 @@ namespace MotionBase.Editor
         private AnimationClip importedClip;
         private string currentVideoAbsolutePath;
         private string issueDraft = string.Empty;
+        private Vector2 sourceQueueScroll;
+        private Vector2 sourceDetailsScroll;
         private Vector2 queueScroll;
         private Vector2 detailsScroll;
         private bool isPlaying;
@@ -61,11 +74,13 @@ namespace MotionBase.Editor
         private float previewTime;
         private float playbackSpeed = 1f;
         private CameraPreset cameraPreset = CameraPreset.FullBody;
+        private StudioTab activeTab = StudioTab.SourceIntake;
 
+        [MenuItem("Tools/Motion Base/Studio")]
         [MenuItem("Tools/Motion Base/Review Queue")]
         public static void Open()
         {
-            var window = GetWindow<MotionBaseReviewWindow>("Motion Base Review");
+            var window = GetWindow<MotionBaseReviewWindow>("Motion Base Studio");
             window.minSize = new Vector2(1280f, 760f);
             window.Show();
         }
@@ -177,13 +192,21 @@ namespace MotionBase.Editor
         private void LoadAllData()
         {
             assetRootsConfig = LoadJson<MotionBaseAssetRootsConfig>(MotionBaseReviewProjectPaths.AssetRootsPath) ?? new MotionBaseAssetRootsConfig();
+            sourceCatalogData = LoadJson<MotionBaseSourceCatalogData>(MotionBaseReviewProjectPaths.SourceCatalogPath) ?? new MotionBaseSourceCatalogData();
             reviewFeed = LoadJson<MotionBaseReviewFeedData>(MotionBaseReviewProjectPaths.ReviewFeedPath) ?? new MotionBaseReviewFeedData();
             candidateReviewData = LoadJson<MotionBaseCandidateReviewData>(MotionBaseReviewProjectPaths.CandidateReviewPath) ?? new MotionBaseCandidateReviewData();
             intakeQueueData = LoadJson<MotionBaseIntakeQueueData>(MotionBaseReviewProjectPaths.IntakeQueuePath) ?? new MotionBaseIntakeQueueData();
 
+            sourceCatalogData.sources ??= new List<MotionBaseSourceCatalogEntry>();
             reviewFeed.entries ??= new List<MotionBaseReviewFeedEntry>();
             candidateReviewData.entries ??= new List<MotionBaseCandidateReviewEntry>();
             intakeQueueData.jobs ??= new List<MotionBaseIntakeJob>();
+
+            sourceById.Clear();
+            foreach (var entry in sourceCatalogData.sources.Where(source => source != null && !string.IsNullOrEmpty(source.sourceId)))
+            {
+                sourceById[entry.sourceId] = entry;
+            }
 
             reviewByCandidateId.Clear();
             foreach (var entry in candidateReviewData.entries.Where(candidate => candidate != null && !string.IsNullOrEmpty(candidate.candidateId)))
@@ -200,7 +223,26 @@ namespace MotionBase.Editor
             {
                 job.artifactRelPaths ??= new MotionBaseArtifactRelPaths();
                 job.artifactRelPaths.candidateSlices ??= new List<MotionBaseCandidateSlice>();
+                job.precheckSummary ??= new MotionBasePrecheckSummary();
+                job.sourceProvenance ??= new MotionBaseSourceProvenance();
+                job.sourceReview ??= new MotionBaseSourceReview();
                 jobById[job.jobId] = job;
+            }
+
+            var sourceJobs = SourceJobs();
+            if (sourceJobs.Count == 0)
+            {
+                selectedSourceIndex = -1;
+                selectedSourceJob = null;
+                selectedSourceCatalog = null;
+            }
+            else
+            {
+                if (selectedSourceIndex < 0 || selectedSourceIndex >= sourceJobs.Count)
+                {
+                    selectedSourceIndex = 0;
+                }
+                SelectSourceEntry(selectedSourceIndex);
             }
 
             if (reviewFeed.entries.Count == 0)
@@ -209,15 +251,15 @@ namespace MotionBase.Editor
                 selectedFeedEntry = null;
                 selectedReviewEntry = null;
                 importedClip = null;
-                return;
             }
-
-            if (selectedIndex < 0 || selectedIndex >= reviewFeed.entries.Count)
+            else
             {
-                selectedIndex = 0;
+                if (selectedIndex < 0 || selectedIndex >= reviewFeed.entries.Count)
+                {
+                    selectedIndex = 0;
+                }
+                SelectEntry(selectedIndex);
             }
-
-            SelectEntry(selectedIndex);
         }
 
         private static T LoadJson<T>(string path) where T : class
@@ -240,6 +282,47 @@ namespace MotionBase.Editor
         {
             var json = JsonUtility.ToJson(payload, true);
             File.WriteAllText(path, json + Environment.NewLine);
+        }
+
+        private List<MotionBaseIntakeJob> SourceJobs()
+        {
+            return intakeQueueData.jobs
+                .Where(job => job != null && string.Equals(job.sourceAssetKind, "video", StringComparison.Ordinal))
+                .OrderBy(job => job.displayName ?? string.Empty, StringComparer.Ordinal)
+                .ToList();
+        }
+
+        private void SelectSourceEntry(int index)
+        {
+            var sourceJobs = SourceJobs();
+            if (index < 0 || index >= sourceJobs.Count)
+            {
+                return;
+            }
+
+            selectedSourceIndex = index;
+            selectedSourceJob = sourceJobs[index];
+            selectedSourceCatalog = ResolveSourceCatalogForJob(selectedSourceJob);
+            previewTime = 0f;
+            PrepareSourceVideo();
+        }
+
+        private MotionBaseSourceCatalogEntry ResolveSourceCatalogForJob(MotionBaseIntakeJob job)
+        {
+            if (job == null)
+            {
+                return null;
+            }
+
+            var sourceId = job.sourceProvenance != null ? job.sourceProvenance.sourceId : string.Empty;
+            if (!string.IsNullOrEmpty(sourceId) && sourceById.TryGetValue(sourceId, out var entry))
+            {
+                return entry;
+            }
+
+            return sourceCatalogData.sources.FirstOrDefault(source =>
+                source != null &&
+                string.Equals(source.localVideoRelPath, job.sourceAssetRelPath, StringComparison.Ordinal));
         }
 
         private void SelectEntry(int index)
@@ -391,6 +474,16 @@ namespace MotionBase.Editor
             EvaluatePreviewGraph();
         }
 
+        private string CurrentSourceVideoRelPath()
+        {
+            if (activeTab == StudioTab.SourceIntake)
+            {
+                return selectedSourceJob != null ? selectedSourceJob.sourceAssetRelPath : string.Empty;
+            }
+
+            return selectedReviewEntry != null ? selectedReviewEntry.sourceVideoRelPath : string.Empty;
+        }
+
         private void PrepareSourceVideo()
         {
             currentVideoAbsolutePath = string.Empty;
@@ -403,7 +496,8 @@ namespace MotionBase.Editor
             videoPlayer.clip = null;
             videoPlayer.source = VideoSource.Url;
 
-            if (selectedReviewEntry == null || string.IsNullOrEmpty(selectedReviewEntry.sourceVideoRelPath))
+            var sourceVideoRelPath = CurrentSourceVideoRelPath();
+            if (string.IsNullOrEmpty(sourceVideoRelPath))
             {
                 return;
             }
@@ -414,7 +508,7 @@ namespace MotionBase.Editor
                 return;
             }
 
-            currentVideoAbsolutePath = Path.Combine(videoRoot, selectedReviewEntry.sourceVideoRelPath.Replace("/", Path.DirectorySeparatorChar.ToString()));
+            currentVideoAbsolutePath = Path.Combine(videoRoot, sourceVideoRelPath.Replace("/", Path.DirectorySeparatorChar.ToString()));
             if (!File.Exists(currentVideoAbsolutePath))
             {
                 currentVideoAbsolutePath = string.Empty;
@@ -429,6 +523,14 @@ namespace MotionBase.Editor
 
         private float ResolvePreviewDuration()
         {
+            if (activeTab == StudioTab.SourceIntake)
+            {
+                if (videoPlayer != null && videoPlayer.isPrepared && videoPlayer.length > 0.001d)
+                {
+                    return (float)videoPlayer.length;
+                }
+            }
+
             if (importedClip != null && importedClip.length > 0.001f)
             {
                 return importedClip.length;
@@ -491,6 +593,13 @@ namespace MotionBase.Editor
         private void OnGUI()
         {
             DrawToolbar();
+            DrawTabStrip();
+
+            if (activeTab == StudioTab.SourceIntake)
+            {
+                DrawSourceIntakeTab();
+                return;
+            }
 
             if (reviewFeed.entries == null || reviewFeed.entries.Count == 0)
             {
@@ -513,28 +622,194 @@ namespace MotionBase.Editor
                 LoadAllData();
             }
 
-            if (GUILayout.Button("Save Review", EditorStyles.toolbarButton, GUILayout.Width(90f)))
+            var saveLabel = activeTab == StudioTab.SourceIntake ? "Save Source" : "Save Review";
+            if (GUILayout.Button(saveLabel, EditorStyles.toolbarButton, GUILayout.Width(96f)))
             {
-                SaveCurrentReview();
+                if (activeTab == StudioTab.SourceIntake)
+                {
+                    SaveCurrentSourceReview();
+                }
+                else
+                {
+                    SaveCurrentReview();
+                }
             }
 
             GUILayout.Space(8f);
-            if (GUILayout.Button("Approve", EditorStyles.toolbarButton, GUILayout.Width(72f)))
+            if (activeTab == StudioTab.SourceIntake)
             {
-                SetDecision("approved");
+                if (GUILayout.Button("Approve For Extraction", EditorStyles.toolbarButton, GUILayout.Width(148f)))
+                {
+                    SetSourceDecision("approved");
+                }
+                if (GUILayout.Button("Hold", EditorStyles.toolbarButton, GUILayout.Width(60f)))
+                {
+                    SetSourceDecision("hold");
+                }
+                if (GUILayout.Button("Reject", EditorStyles.toolbarButton, GUILayout.Width(68f)))
+                {
+                    SetSourceDecision("rejected");
+                }
             }
-            if (GUILayout.Button("Hold", EditorStyles.toolbarButton, GUILayout.Width(60f)))
+            else
             {
-                SetDecision("hold");
-            }
-            if (GUILayout.Button("Reject", EditorStyles.toolbarButton, GUILayout.Width(68f)))
-            {
-                SetDecision("rejected");
+                if (GUILayout.Button("Approve", EditorStyles.toolbarButton, GUILayout.Width(72f)))
+                {
+                    SetDecision("approved");
+                }
+                if (GUILayout.Button("Hold", EditorStyles.toolbarButton, GUILayout.Width(60f)))
+                {
+                    SetDecision("hold");
+                }
+                if (GUILayout.Button("Reject", EditorStyles.toolbarButton, GUILayout.Width(68f)))
+                {
+                    SetDecision("rejected");
+                }
             }
 
             GUILayout.FlexibleSpace();
-            GUILayout.Label($"Entries: {reviewFeed.entries.Count}", EditorStyles.miniLabel);
+            var entryCount = activeTab == StudioTab.SourceIntake ? SourceJobs().Count : reviewFeed.entries.Count;
+            GUILayout.Label($"Entries: {entryCount}", EditorStyles.miniLabel);
             EditorGUILayout.EndHorizontal();
+        }
+
+        private void DrawTabStrip()
+        {
+            EditorGUILayout.BeginHorizontal();
+            var nextTab = GUILayout.Toolbar((int)activeTab, new[] { "Source Intake", "Candidate Review" }, GUILayout.Height(24f));
+            if (nextTab != (int)activeTab)
+            {
+                activeTab = (StudioTab)nextTab;
+                previewTime = 0f;
+                PrepareSourceVideo();
+            }
+            EditorGUILayout.EndHorizontal();
+            GUILayout.Space(4f);
+        }
+
+        private void DrawSourceIntakeTab()
+        {
+            var sourceJobs = SourceJobs();
+            if (sourceJobs.Count == 0)
+            {
+                EditorGUILayout.HelpBox("No source-video jobs found. Run fetch_source_candidates.py, sync_intake_queue.py, and precheck_sources.py first.", MessageType.Info);
+                return;
+            }
+
+            EditorGUILayout.BeginHorizontal();
+            DrawSourceQueueColumn(sourceJobs);
+            DrawSourcePreviewColumn();
+            DrawSourceDetailsColumn();
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private void DrawSourceQueueColumn(List<MotionBaseIntakeJob> sourceJobs)
+        {
+            EditorGUILayout.BeginVertical(GUILayout.Width(300f));
+            GUILayout.Label("Source Intake", EditorStyles.boldLabel);
+            sourceQueueScroll = EditorGUILayout.BeginScrollView(sourceQueueScroll, GUILayout.ExpandHeight(true));
+            for (var index = 0; index < sourceJobs.Count; index++)
+            {
+                var job = sourceJobs[index];
+                var selected = index == selectedSourceIndex;
+                var decision = job.sourceReview != null ? job.sourceReview.decisionStatus : "pending";
+                var label = $"{job.displayName}\n{job.targetStyleFamily} / {job.expectedMetaAction} / {decision}";
+                var style = new GUIStyle(EditorStyles.miniButton)
+                {
+                    alignment = TextAnchor.MiddleLeft,
+                    wordWrap = true,
+                    fixedHeight = 48f,
+                };
+                if (GUILayout.Toggle(selected, label, style, GUILayout.ExpandWidth(true)))
+                {
+                    if (!selected)
+                    {
+                        SelectSourceEntry(index);
+                    }
+                }
+            }
+            EditorGUILayout.EndScrollView();
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawSourcePreviewColumn()
+        {
+            EditorGUILayout.BeginVertical(GUILayout.MinWidth(520f), GUILayout.ExpandWidth(true));
+            GUILayout.Label("Source Preview", EditorStyles.boldLabel);
+            DrawPlaybackControls();
+
+            var rect = GUILayoutUtility.GetRect(600f, 520f, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
+            DrawVideoPreview(rect);
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawSourceDetailsColumn()
+        {
+            EditorGUILayout.BeginVertical(GUILayout.Width(380f));
+            GUILayout.Label("Source Details", EditorStyles.boldLabel);
+            sourceDetailsScroll = EditorGUILayout.BeginScrollView(sourceDetailsScroll, GUILayout.ExpandHeight(true));
+
+            if (selectedSourceJob == null)
+            {
+                EditorGUILayout.HelpBox("No source-video job selected.", MessageType.Info);
+                EditorGUILayout.EndScrollView();
+                EditorGUILayout.EndVertical();
+                return;
+            }
+
+            selectedSourceJob.sourceReview ??= new MotionBaseSourceReview();
+            selectedSourceJob.sourceProvenance ??= new MotionBaseSourceProvenance();
+            selectedSourceCatalog = ResolveSourceCatalogForJob(selectedSourceJob);
+
+            EditorGUILayout.LabelField("Source Video", selectedSourceJob.sourceAssetRelPath ?? string.Empty, EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Stage", selectedSourceJob.stage ?? string.Empty);
+            EditorGUILayout.LabelField("Display Name", selectedSourceJob.displayName ?? string.Empty);
+
+            GUILayout.Space(8f);
+            GUILayout.Label("Provenance", EditorStyles.boldLabel);
+            DrawMetric("Provider", selectedSourceJob.sourceProvenance.provider ?? string.Empty);
+            DrawMetric("Remote Asset", selectedSourceJob.sourceProvenance.remoteAssetId ?? string.Empty);
+            DrawMetric("Creator", selectedSourceJob.sourceProvenance.creatorName ?? string.Empty);
+            DrawMetric("License", selectedSourceJob.sourceProvenance.licenseName ?? string.Empty);
+            DrawMetric("Query", selectedSourceJob.sourceProvenance.query ?? string.Empty);
+            DrawMetric("Downloaded", selectedSourceCatalog != null ? selectedSourceCatalog.downloadedAtUtc ?? string.Empty : string.Empty);
+
+            if (!string.IsNullOrEmpty(selectedSourceJob.sourceProvenance.sourcePageUrl))
+            {
+                EditorGUILayout.SelectableLabel(selectedSourceJob.sourceProvenance.sourcePageUrl, EditorStyles.textField, GUILayout.Height(36f));
+            }
+
+            GUILayout.Space(8f);
+            GUILayout.Label("Precheck", EditorStyles.boldLabel);
+            DrawMetric("Status", selectedSourceJob.precheckSummary.status ?? string.Empty);
+            DrawMetric("Resolution", $"{selectedSourceJob.precheckSummary.width} x {selectedSourceJob.precheckSummary.height}");
+            DrawMetric("FPS", $"{selectedSourceJob.precheckSummary.fps:0.0}");
+            DrawMetric("Duration", $"{selectedSourceJob.precheckSummary.durationSec:0.00}s");
+            if (selectedSourceJob.precheckSummary.warnings != null && selectedSourceJob.precheckSummary.warnings.Count > 0)
+            {
+                EditorGUILayout.HelpBox($"Warnings: {string.Join(", ", selectedSourceJob.precheckSummary.warnings)}", MessageType.Warning);
+            }
+            if (selectedSourceJob.precheckSummary.issues != null && selectedSourceJob.precheckSummary.issues.Count > 0)
+            {
+                EditorGUILayout.HelpBox($"Issues: {string.Join(", ", selectedSourceJob.precheckSummary.issues)}", MessageType.Error);
+            }
+
+            GUILayout.Space(8f);
+            GUILayout.Label("Source Review", EditorStyles.boldLabel);
+            selectedSourceJob.sourceReview.decisionStatus = PopupString("Decision", selectedSourceJob.sourceReview.decisionStatus, decisionOptions);
+            selectedSourceJob.sourceReview.reviewer = EditorGUILayout.TextField("Reviewer", selectedSourceJob.sourceReview.reviewer ?? string.Empty);
+            selectedSourceJob.sourceReview.notes = EditorGUILayout.TextField("Review Notes", selectedSourceJob.sourceReview.notes ?? string.Empty);
+
+            GUILayout.Space(8f);
+            GUILayout.Label("Metadata Override", EditorStyles.boldLabel);
+            selectedSourceJob.targetStyleFamily = EditorGUILayout.TextField("Style Family", selectedSourceJob.targetStyleFamily ?? string.Empty);
+            selectedSourceJob.targetStyleSubstyle = EditorGUILayout.TextField("Style Substyle", selectedSourceJob.targetStyleSubstyle ?? string.Empty);
+            selectedSourceJob.expectedMetaAction = EditorGUILayout.TextField("Meta Action", selectedSourceJob.expectedMetaAction ?? string.Empty);
+            selectedSourceJob.proposedMotionId = EditorGUILayout.TextField("Proposed Motion Id", selectedSourceJob.proposedMotionId ?? string.Empty);
+            selectedSourceJob.operatorNotes = EditorGUILayout.TextField("Operator Notes", selectedSourceJob.operatorNotes ?? string.Empty);
+
+            EditorGUILayout.EndScrollView();
+            EditorGUILayout.EndVertical();
         }
 
         private void DrawQueueColumn()
@@ -615,7 +890,10 @@ namespace MotionBase.Editor
                 _ => 1.0f,
             };
 
-            cameraPreset = (CameraPreset)EditorGUILayout.EnumPopup(cameraPreset, GUILayout.Width(120f));
+            if (activeTab == StudioTab.CandidateReview)
+            {
+                cameraPreset = (CameraPreset)EditorGUILayout.EnumPopup(cameraPreset, GUILayout.Width(120f));
+            }
             EditorGUILayout.EndHorizontal();
 
             var durationSec = ResolvePreviewDuration();
@@ -632,7 +910,10 @@ namespace MotionBase.Editor
             }
             else
             {
-                EditorGUI.HelpBox(rect, string.IsNullOrEmpty(currentVideoAbsolutePath) ? "No source video resolved for this candidate." : "Source video is loading or unavailable.", MessageType.Info);
+                var missingMessage = activeTab == StudioTab.SourceIntake
+                    ? "No source video resolved for this intake job."
+                    : "No source video resolved for this candidate.";
+                EditorGUI.HelpBox(rect, string.IsNullOrEmpty(currentVideoAbsolutePath) ? missingMessage : "Source video is loading or unavailable.", MessageType.Info);
             }
 
             GUI.Label(new Rect(rect.x + 8f, rect.y + 8f, rect.width - 16f, 20f), "Source Video", EditorStyles.boldLabel);
@@ -833,6 +1114,33 @@ namespace MotionBase.Editor
             SaveCurrentReview();
         }
 
+        private void SetSourceDecision(string decision)
+        {
+            if (selectedSourceJob == null)
+            {
+                return;
+            }
+
+            selectedSourceJob.sourceReview ??= new MotionBaseSourceReview();
+            selectedSourceJob.sourceReview.decisionStatus = decision;
+            SaveCurrentSourceReview();
+        }
+
+        private void SaveCurrentSourceReview()
+        {
+            if (selectedSourceJob == null)
+            {
+                return;
+            }
+
+            selectedSourceJob.sourceReview ??= new MotionBaseSourceReview();
+            selectedSourceJob.sourceProvenance ??= new MotionBaseSourceProvenance();
+            UpdateJobStageFromSourceReview(selectedSourceJob);
+            selectedSourceJob.updatedAtUtc = DateTime.UtcNow.ToString("O");
+            SaveJson(MotionBaseReviewProjectPaths.IntakeQueuePath, intakeQueueData);
+            AssetDatabase.Refresh();
+        }
+
         private void SaveCurrentReview()
         {
             if (selectedReviewEntry == null)
@@ -854,6 +1162,39 @@ namespace MotionBase.Editor
             UpdateJobStageFromReviews(selectedReviewEntry.jobId);
             SaveJson(MotionBaseReviewProjectPaths.IntakeQueuePath, intakeQueueData);
             AssetDatabase.Refresh();
+        }
+
+        private static void UpdateJobStageFromSourceReview(MotionBaseIntakeJob job)
+        {
+            if (job == null)
+            {
+                return;
+            }
+
+            var currentStage = job.stage ?? string.Empty;
+            if (currentStage == "extracted" || currentStage == "retarget_ready" || currentStage == "sliced" || currentStage == "review_ready" || currentStage == "approved")
+            {
+                return;
+            }
+
+            var decision = job.sourceReview != null ? job.sourceReview.decisionStatus : "pending";
+            switch (decision)
+            {
+                case "approved":
+                    job.stage = "extraction_pending";
+                    break;
+                case "hold":
+                    job.stage = "hold";
+                    break;
+                case "rejected":
+                    job.stage = "rejected";
+                    break;
+                default:
+                    job.stage = string.Equals(job.precheckSummary != null ? job.precheckSummary.status : string.Empty, "pass", StringComparison.Ordinal)
+                        ? "precheck_passed"
+                        : string.IsNullOrEmpty(currentStage) ? "discovered" : currentStage;
+                    break;
+            }
         }
 
         private void UpdateJobStageFromReviews(string jobId)

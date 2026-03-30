@@ -45,9 +45,11 @@ def inspect_candidate(blender_exe: str, candidate_path: Path) -> Dict[str, Any]:
     ]
     result = subprocess.run(command, check=True, capture_output=True, text=True)
     stdout = result.stdout.strip().splitlines()
-    if not stdout:
-        raise RuntimeError("Blender metrics helper did not return JSON output")
-    return json.loads(stdout[-1])
+    for line in reversed(stdout):
+        candidate = line.strip()
+        if candidate.startswith("{") and candidate.endswith("}"):
+            return json.loads(candidate)
+    raise RuntimeError("Blender metrics helper did not return JSON output")
 
 
 def candidate_passes(candidate: Dict[str, Any], metrics: Dict[str, Any]) -> tuple[bool, List[str]]:

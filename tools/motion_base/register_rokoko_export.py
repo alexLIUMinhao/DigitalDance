@@ -40,6 +40,11 @@ def main() -> int:
         print(f"ERROR: job not found: {args.job_id}")
         return 1
 
+    source_review = dict(job.get("sourceReview", {}) or {})
+    if job.get("sourceLane") == "video_rokoko" and str(source_review.get("decisionStatus", "pending") or "pending") != "approved":
+        print(f"ERROR: source review is not approved for {args.job_id}")
+        return 1
+
     destination_relative = Path("video_rokoko") / args.job_id / f"{job['proposedMotionId']}{args.input.suffix.lower()}"
     destination_path = extracted_root / destination_relative
 

@@ -18,7 +18,7 @@ If any item fails:
 
 ## Review Procedure
 
-1. Open `Tools > Motion Base > Review Queue` in Unity.
+1. Open `Tools > Motion Base > Studio` in Unity and switch to `Candidate Review`.
 2. Check the source video first and confirm the intended dance style and phrase intent.
 3. Watch the avatar preview at `1.0x` in the full-body camera.
 4. Loop the seam at least three times.

@@ -21,6 +21,9 @@ from common import (
     utc_now_iso,
 )
 
+FPS_EPSILON = 0.25
+DURATION_EPSILON_SEC = 0.25
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -62,13 +65,39 @@ def ffprobe_metadata(path: Path) -> Dict[str, Any]:
     }
 
 
+def imageio_ffmpeg_metadata(path: Path) -> Dict[str, Any]:
+    import imageio_ffmpeg
+
+    reader = imageio_ffmpeg.read_frames(str(path))
+    try:
+        meta = next(reader)
+    finally:
+        reader.close()
+
+    width, height = meta.get("source_size", meta.get("size", (0, 0)))
+    return {
+        "width": int(width or 0),
+        "height": int(height or 0),
+        "fps": float(meta.get("fps", 0.0) or 0.0),
+        "durationSec": float(meta.get("duration", 0.0) or 0.0),
+        "formatName": str(path.suffix.lower().lstrip(".")),
+    }
+
+
 def check_video(path: Path, gates: Dict[str, Any]) -> Dict[str, Any]:
     summary: Dict[str, Any] = {"path": str(path), "checkedAtUtc": utc_now_iso(), "status": "hold", "issues": [], "warnings": []}
-    if not command_exists("ffprobe"):
+    try:
+        if command_exists("ffprobe"):
+            metadata = ffprobe_metadata(path)
+        else:
+            metadata = imageio_ffmpeg_metadata(path)
+    except ImportError:
         summary["issues"].append("ffprobe_not_installed")
         return summary
+    except (subprocess.CalledProcessError, OSError, RuntimeError, StopIteration, ValueError) as exc:
+        summary["issues"].append(f"video_probe_failed:{type(exc).__name__}")
+        return summary
 
-    metadata = ffprobe_metadata(path)
     summary.update(metadata)
     min_width, min_height = gates["minimumResolution"]
     preferred_width, preferred_height = gates["preferredResolution"]
@@ -78,13 +107,17 @@ def check_video(path: Path, gates: Dict[str, Any]) -> Dict[str, Any]:
     elif metadata["width"] < preferred_width or metadata["height"] < preferred_height:
         summary["warnings"].append("resolution_below_preferred")
 
-    if metadata["fps"] < float(gates["minimumFps"]):
+    minimum_fps = float(gates["minimumFps"])
+    preferred_fps = float(gates["preferredFps"])
+    if metadata["fps"] + FPS_EPSILON < minimum_fps:
         summary["issues"].append("fps_below_minimum")
-    elif metadata["fps"] < float(gates["preferredFps"]):
+    elif metadata["fps"] + FPS_EPSILON < preferred_fps:
         summary["warnings"].append("fps_below_preferred")
 
     duration = metadata["durationSec"]
-    if duration < float(gates["minimumDurationSec"]) or duration > float(gates["maximumDurationSec"]):
+    minimum_duration = float(gates["minimumDurationSec"])
+    maximum_duration = float(gates["maximumDurationSec"])
+    if duration + DURATION_EPSILON_SEC < minimum_duration or duration - DURATION_EPSILON_SEC > maximum_duration:
         summary["issues"].append("duration_outside_target_range")
 
     summary["manualChecks"] = [
