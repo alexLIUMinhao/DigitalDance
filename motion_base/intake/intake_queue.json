@@ -1,0 +1,1775 @@
+{
+  "schemaVersion": 1,
+  "jobs": [
+    {
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_001_bvh",
+      "sourceLane": "dataset_json",
+      "sourceAssetKind": "bvh",
+      "sourceAssetRelPath": "datasets/phantomdance/contemporary/phantomdance/basic_step/phantomdance_001.bvh",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "phantomdance",
+      "expectedMetaAction": "basic_step",
+      "proposedMotionId": "contemporary_phantomdance_phantomdance_001",
+      "displayName": "Phantomdance 001",
+      "stage": "review_ready",
+      "artifactRelPaths": {
+        "candidateSlices": [
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_001_p04_o00_01",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_001_p04_o00_01.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 001 P04 O00 01",
+            "phraseBeats": 4,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 1,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_001_p04_o04_02",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_001_p04_o04_02.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 001 P04 O04 02",
+            "phraseBeats": 4,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 2,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_001_p08_o00_03",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_001_p08_o00_03.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 001 P08 O00 03",
+            "phraseBeats": 8,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 3,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_001_p08_o04_04",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_001_p08_o04_04.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 001 P08 O04 04",
+            "phraseBeats": 8,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 4,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_001_p16_o00_05",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_001_p16_o00_05.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 001 P16 O00 05",
+            "phraseBeats": 16,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 5,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_001_p16_o04_06",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_001_p16_o04_06.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 001 P16 O04 06",
+            "phraseBeats": 16,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 6,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          }
+        ],
+        "candidateMetricsRelPath": "motion_base/validation/candidate_metrics.json"
+      },
+      "reviewFeedRelPath": "",
+      "operatorNotes": "dataset=phantomdance\nsequence=001",
+      "sourceFingerprint": {
+        "sizeBytes": 2754587,
+        "modifiedAtUtc": "2026-03-29T23:59:40.586892+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "phantomdance__001",
+        "provider": "phantomdance",
+        "remoteAssetId": "001",
+        "sourcePageUrl": "https://github.com/libuyu/PhantomDanceDataset",
+        "downloadUrl": "",
+        "creatorName": "",
+        "licenseName": "PhantomDance research dataset",
+        "query": "phantomdance"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-30T00:01:58.459431+00:00",
+      "updatedAtUtc": "2026-03-30T00:16:26.282713+00:00"
+    },
+    {
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_002_bvh",
+      "sourceLane": "dataset_json",
+      "sourceAssetKind": "bvh",
+      "sourceAssetRelPath": "datasets/phantomdance/contemporary/phantomdance/basic_step/phantomdance_002.bvh",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "phantomdance",
+      "expectedMetaAction": "basic_step",
+      "proposedMotionId": "contemporary_phantomdance_phantomdance_002",
+      "displayName": "Phantomdance 002",
+      "stage": "review_ready",
+      "artifactRelPaths": {
+        "candidateSlices": [
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_002_p04_o00_01",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_002_p04_o00_01.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 002 P04 O00 01",
+            "phraseBeats": 4,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 1,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_002_p04_o04_02",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_002_p04_o04_02.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 002 P04 O04 02",
+            "phraseBeats": 4,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 2,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_002_p08_o00_03",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_002_p08_o00_03.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 002 P08 O00 03",
+            "phraseBeats": 8,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 3,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_002_p08_o04_04",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_002_p08_o04_04.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 002 P08 O04 04",
+            "phraseBeats": 8,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 4,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_002_p16_o00_05",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_002_p16_o00_05.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 002 P16 O00 05",
+            "phraseBeats": 16,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 5,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_002_p16_o04_06",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_002_p16_o04_06.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 002 P16 O04 06",
+            "phraseBeats": 16,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 6,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          }
+        ],
+        "candidateMetricsRelPath": "motion_base/validation/candidate_metrics.json"
+      },
+      "reviewFeedRelPath": "",
+      "operatorNotes": "dataset=phantomdance\nsequence=002",
+      "sourceFingerprint": {
+        "sizeBytes": 4761038,
+        "modifiedAtUtc": "2026-03-29T23:59:42.049324+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "phantomdance__002",
+        "provider": "phantomdance",
+        "remoteAssetId": "002",
+        "sourcePageUrl": "https://github.com/libuyu/PhantomDanceDataset",
+        "downloadUrl": "",
+        "creatorName": "",
+        "licenseName": "PhantomDance research dataset",
+        "query": "phantomdance"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-30T00:01:58.459471+00:00",
+      "updatedAtUtc": "2026-03-30T00:16:33.136958+00:00"
+    },
+    {
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_003_bvh",
+      "sourceLane": "dataset_json",
+      "sourceAssetKind": "bvh",
+      "sourceAssetRelPath": "datasets/phantomdance/contemporary/phantomdance/basic_step/phantomdance_003.bvh",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "phantomdance",
+      "expectedMetaAction": "basic_step",
+      "proposedMotionId": "contemporary_phantomdance_phantomdance_003",
+      "displayName": "Phantomdance 003",
+      "stage": "review_ready",
+      "artifactRelPaths": {
+        "candidateSlices": [
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_003_p04_o00_01",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_003_p04_o00_01.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 003 P04 O00 01",
+            "phraseBeats": 4,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 1,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_003_p04_o04_02",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_003_p04_o04_02.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 003 P04 O04 02",
+            "phraseBeats": 4,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 2,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_003_p08_o00_03",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_003_p08_o00_03.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 003 P08 O00 03",
+            "phraseBeats": 8,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 3,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_003_p08_o04_04",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_003_p08_o04_04.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 003 P08 O04 04",
+            "phraseBeats": 8,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 4,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_003_p16_o00_05",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_003_p16_o00_05.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 003 P16 O00 05",
+            "phraseBeats": 16,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 5,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_phantomdance_phantomdance_003_p16_o04_06",
+            "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_003_p16_o04_06.fbx",
+            "displayName": "Contemporary Phantomdance Phantomdance 003 P16 O04 06",
+            "phraseBeats": 16,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 6,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          }
+        ],
+        "candidateMetricsRelPath": "motion_base/validation/candidate_metrics.json"
+      },
+      "reviewFeedRelPath": "",
+      "operatorNotes": "dataset=phantomdance\nsequence=003",
+      "sourceFingerprint": {
+        "sizeBytes": 2348730,
+        "modifiedAtUtc": "2026-03-30T00:00:55.582598+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "phantomdance__003",
+        "provider": "phantomdance",
+        "remoteAssetId": "003",
+        "sourcePageUrl": "https://github.com/libuyu/PhantomDanceDataset",
+        "downloadUrl": "",
+        "creatorName": "",
+        "licenseName": "PhantomDance research dataset",
+        "query": "phantomdance"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-30T00:01:58.459513+00:00",
+      "updatedAtUtc": "2026-03-30T00:16:39.979031+00:00"
+    },
+    {
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch01_bvh",
+      "sourceLane": "dataset_smpl",
+      "sourceAssetKind": "bvh",
+      "sourceAssetRelPath": "datasets/aistpp/contemporary/break/basic_step/aistpp_gbr_sbm_call_d04_mbr0_ch01.bvh",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "break",
+      "expectedMetaAction": "basic_step",
+      "proposedMotionId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01",
+      "displayName": "Aistpp Gbr Sbm Call D04 Mbr0 Ch01",
+      "stage": "hold",
+      "artifactRelPaths": {
+        "candidateSlices": [
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p04_o00_01",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p04_o00_01.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch01 P04 O00 01",
+            "phraseBeats": 4,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 1,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p04_o04_02",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p04_o04_02.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch01 P04 O04 02",
+            "phraseBeats": 4,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 2,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p08_o00_03",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p08_o00_03.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch01 P08 O00 03",
+            "phraseBeats": 8,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 3,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p08_o04_04",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p08_o04_04.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch01 P08 O04 04",
+            "phraseBeats": 8,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 4,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p16_o00_05",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p16_o00_05.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch01 P16 O00 05",
+            "phraseBeats": 16,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 5,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p16_o04_06",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p16_o04_06.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch01 P16 O04 06",
+            "phraseBeats": 16,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 6,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          }
+        ],
+        "candidateMetricsRelPath": "motion_base/validation/candidate_metrics.json"
+      },
+      "reviewFeedRelPath": "",
+      "operatorNotes": "dataset=aistpp\nsequence=gBR_sBM_cAll_d04_mBR0_ch01",
+      "sourceFingerprint": {
+        "sizeBytes": 531247,
+        "modifiedAtUtc": "2026-03-30T00:00:54.789585+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "aistpp__gbr_sbm_call_d04_mbr0_ch01",
+        "provider": "aistpp",
+        "remoteAssetId": "gBR_sBM_cAll_d04_mBR0_ch01",
+        "sourcePageUrl": "https://google.github.io/aistplusplus_dataset/download.html",
+        "downloadUrl": "",
+        "creatorName": "",
+        "licenseName": "AIST++ Terms of Use",
+        "query": "aistpp"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-30T00:01:58.459105+00:00",
+      "updatedAtUtc": "2026-03-30T00:16:46.924722+00:00"
+    },
+    {
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch02_bvh",
+      "sourceLane": "dataset_smpl",
+      "sourceAssetKind": "bvh",
+      "sourceAssetRelPath": "datasets/aistpp/contemporary/break/basic_step/aistpp_gbr_sbm_call_d04_mbr0_ch02.bvh",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "break",
+      "expectedMetaAction": "basic_step",
+      "proposedMotionId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02",
+      "displayName": "Aistpp Gbr Sbm Call D04 Mbr0 Ch02",
+      "stage": "hold",
+      "artifactRelPaths": {
+        "candidateSlices": [
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p04_o00_01",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p04_o00_01.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch02 P04 O00 01",
+            "phraseBeats": 4,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 1,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p04_o04_02",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p04_o04_02.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch02 P04 O04 02",
+            "phraseBeats": 4,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 2,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p08_o00_03",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p08_o00_03.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch02 P08 O00 03",
+            "phraseBeats": 8,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 3,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p08_o04_04",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p08_o04_04.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch02 P08 O04 04",
+            "phraseBeats": 8,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 4,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p16_o00_05",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p16_o00_05.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch02 P16 O00 05",
+            "phraseBeats": 16,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 5,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p16_o04_06",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p16_o04_06.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch02 P16 O04 06",
+            "phraseBeats": 16,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 6,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          }
+        ],
+        "candidateMetricsRelPath": "motion_base/validation/candidate_metrics.json"
+      },
+      "reviewFeedRelPath": "",
+      "operatorNotes": "dataset=aistpp\nsequence=gBR_sBM_cAll_d04_mBR0_ch02",
+      "sourceFingerprint": {
+        "sizeBytes": 533408,
+        "modifiedAtUtc": "2026-03-30T00:00:54.814253+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "aistpp__gbr_sbm_call_d04_mbr0_ch02",
+        "provider": "aistpp",
+        "remoteAssetId": "gBR_sBM_cAll_d04_mBR0_ch02",
+        "sourcePageUrl": "https://google.github.io/aistplusplus_dataset/download.html",
+        "downloadUrl": "",
+        "creatorName": "",
+        "licenseName": "AIST++ Terms of Use",
+        "query": "aistpp"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-30T00:01:58.459156+00:00",
+      "updatedAtUtc": "2026-03-30T00:16:54.471964+00:00"
+    },
+    {
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch03_bvh",
+      "sourceLane": "dataset_smpl",
+      "sourceAssetKind": "bvh",
+      "sourceAssetRelPath": "datasets/aistpp/contemporary/break/basic_step/aistpp_gbr_sbm_call_d04_mbr0_ch03.bvh",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "break",
+      "expectedMetaAction": "basic_step",
+      "proposedMotionId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03",
+      "displayName": "Aistpp Gbr Sbm Call D04 Mbr0 Ch03",
+      "stage": "hold",
+      "artifactRelPaths": {
+        "candidateSlices": [
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p04_o00_01",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p04_o00_01.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch03 P04 O00 01",
+            "phraseBeats": 4,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 1,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p04_o04_02",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p04_o04_02.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch03 P04 O04 02",
+            "phraseBeats": 4,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 2,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p08_o00_03",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p08_o00_03.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch03 P08 O00 03",
+            "phraseBeats": 8,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 3,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p08_o04_04",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p08_o04_04.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch03 P08 O04 04",
+            "phraseBeats": 8,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 4,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p16_o00_05",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p16_o00_05.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch03 P16 O00 05",
+            "phraseBeats": 16,
+            "entryOffsetBeats": 0,
+            "sliceIndex": 5,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          },
+          {
+            "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p16_o04_06",
+            "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p16_o04_06.fbx",
+            "displayName": "Contemporary Break Aistpp Gbr Sbm Call D04 Mbr0 Ch03 P16 O04 06",
+            "phraseBeats": 16,
+            "entryOffsetBeats": 4,
+            "sliceIndex": 6,
+            "transitionProfile": "style_locked",
+            "energyBand": "mid_energy",
+            "role": "loop",
+            "nativeBpm": 120.0
+          }
+        ],
+        "candidateMetricsRelPath": "motion_base/validation/candidate_metrics.json"
+      },
+      "reviewFeedRelPath": "",
+      "operatorNotes": "dataset=aistpp\nsequence=gBR_sBM_cAll_d04_mBR0_ch03",
+      "sourceFingerprint": {
+        "sizeBytes": 532483,
+        "modifiedAtUtc": "2026-03-30T00:00:54.838096+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "aistpp__gbr_sbm_call_d04_mbr0_ch03",
+        "provider": "aistpp",
+        "remoteAssetId": "gBR_sBM_cAll_d04_mBR0_ch03",
+        "sourcePageUrl": "https://google.github.io/aistplusplus_dataset/download.html",
+        "downloadUrl": "",
+        "creatorName": "",
+        "licenseName": "AIST++ Terms of Use",
+        "query": "aistpp"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-30T00:01:58.459201+00:00",
+      "updatedAtUtc": "2026-03-30T00:17:02.948609+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_accent_hit_pixabay_21827_boy_jump_dance_man_person_dancing_play_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/accent_hit/pixabay_21827_boy_jump_dance_man_person_dancing_play.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "accent_hit",
+      "proposedMotionId": "contemporary_commercial_contemporary_pixabay_21827_boy_jump_dance_man_person_dancing_play",
+      "displayName": "Pixabay 21827 Boy Jump Dance Man Person Dancing Play",
+      "stage": "precheck_passed",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 3689017,
+        "modifiedAtUtc": "2026-03-29T14:36:58.686537+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pixabay__21827",
+        "provider": "pixabay",
+        "remoteAssetId": "21827",
+        "sourcePageUrl": "https://pixabay.com/videos/id-21827/",
+        "downloadUrl": "https://cdn.pixabay.com/video/2019/03/07/21827-336300898_large.mp4",
+        "creatorName": "AdeshSingh",
+        "licenseName": "Pixabay License",
+        "query": "modern dance solo"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:55:27.765770+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.461068+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_arm_expression_pexels_26576158_https_www_pexels_com_video_a_woman_standing_in_the_dark_with_her_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/arm_expression/pexels_26576158_https_www_pexels_com_video_a_woman_standing_in_the_dark_with_her.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "arm_expression",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_26576158_https_www_pexels_com_video_a_woman_standing_in_the_dark_with_her",
+      "displayName": "Pexels 26576158 Https Www Pexels Com Video A Woman Standing In The Dark With Her",
+      "stage": "precheck_passed",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 2052634,
+        "modifiedAtUtc": "2026-03-29T13:58:36.505958+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__26576158",
+        "provider": "pexels",
+        "remoteAssetId": "26576158",
+        "sourcePageUrl": "https://www.pexels.com/video/a-woman-standing-in-the-dark-with-her-hands-up-26576158/",
+        "downloadUrl": "https://videos.pexels.com/video-files/26576158/11963045_1920_1080_30fps.mp4",
+        "creatorName": "Anya  Juárez Tenorio",
+        "licenseName": "Pexels License",
+        "query": "contemporary dance solo"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T13:59:13.995276+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.459944+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_basic_step_pexels_26491568_https_www_pexels_com_video_a_dancer_in_a_pink_outfit_is_standing_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/basic_step/pexels_26491568_https_www_pexels_com_video_a_dancer_in_a_pink_outfit_is_standing.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "basic_step",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_26491568_https_www_pexels_com_video_a_dancer_in_a_pink_outfit_is_standing",
+      "displayName": "Pexels 26491568 Https Www Pexels Com Video A Dancer In A Pink Outfit Is Standing",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 65535021,
+        "modifiedAtUtc": "2026-03-29T13:58:21.588442+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__26491568",
+        "provider": "pexels",
+        "remoteAssetId": "26491568",
+        "sourcePageUrl": "https://www.pexels.com/video/a-dancer-in-a-pink-outfit-is-standing-on-a-black-stage-26491568/",
+        "downloadUrl": "https://videos.pexels.com/video-files/26491568/11954260_3840_2160_24fps.mp4",
+        "creatorName": "Israel Torres",
+        "licenseName": "Pexels License",
+        "query": "modern dance solo"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T13:59:13.995065+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.459771+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_basic_step_pexels_34803640_https_www_pexels_com_video_energetic_dance_performance_with_neon_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/basic_step/pexels_34803640_https_www_pexels_com_video_energetic_dance_performance_with_neon.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "basic_step",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_34803640_https_www_pexels_com_video_energetic_dance_performance_with_neon",
+      "displayName": "Pexels 34803640 Https Www Pexels Com Video Energetic Dance Performance With Neon",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 52565670,
+        "modifiedAtUtc": "2026-03-29T14:24:23.441630+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__34803640",
+        "provider": "pexels",
+        "remoteAssetId": "34803640",
+        "sourcePageUrl": "https://www.pexels.com/video/energetic-dance-performance-with-neon-lights-34803640/",
+        "downloadUrl": "https://videos.pexels.com/video-files/34803640/14756652_2160_3840_25fps.mp4",
+        "creatorName": "Niki Goncharuk",
+        "licenseName": "Pexels License",
+        "query": "modern dance solo"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:32:46.378705+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460116+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_basic_step_pexels_6939968_https_www_pexels_com_video_a_woman_dancing_gracefully_6939968_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/basic_step/pexels_6939968_https_www_pexels_com_video_a_woman_dancing_gracefully_6939968.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "basic_step",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_6939968_https_www_pexels_com_video_a_woman_dancing_gracefully_6939968",
+      "displayName": "Pexels 6939968 Https Www Pexels Com Video A Woman Dancing Gracefully 6939968",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 7689449,
+        "modifiedAtUtc": "2026-03-29T13:58:52.183698+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__6939968",
+        "provider": "pexels",
+        "remoteAssetId": "6939968",
+        "sourcePageUrl": "https://www.pexels.com/video/a-woman-dancing-gracefully-6939968/",
+        "downloadUrl": "https://videos.pexels.com/video-files/6939968/6939968-hd_1080_1920_30fps.mp4",
+        "creatorName": "Pavel Danilyuk",
+        "licenseName": "Pexels License",
+        "query": "dancer rehearsal full body"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T13:59:13.995525+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460320+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_basic_step_pexels_8097403_https_www_pexels_com_video_woman_dancing_ballet_8097403_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/basic_step/pexels_8097403_https_www_pexels_com_video_woman_dancing_ballet_8097403.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "basic_step",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_8097403_https_www_pexels_com_video_woman_dancing_ballet_8097403",
+      "displayName": "Pexels 8097403 Https Www Pexels Com Video Woman Dancing Ballet 8097403",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 11965444,
+        "modifiedAtUtc": "2026-03-29T14:27:45.206435+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__8097403",
+        "provider": "pexels",
+        "remoteAssetId": "8097403",
+        "sourcePageUrl": "https://www.pexels.com/video/woman-dancing-ballet-8097403/",
+        "downloadUrl": "https://videos.pexels.com/video-files/8097403/8097403-hd_1920_1080_30fps.mp4",
+        "creatorName": "RDNE Stock project",
+        "licenseName": "Pexels License",
+        "query": "modern dance solo"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:32:46.379212+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460439+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_basic_step_pexels_8462221_https_www_pexels_com_video_a_man_dancing_ballet_in_a_room_846222_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/basic_step/pexels_8462221_https_www_pexels_com_video_a_man_dancing_ballet_in_a_room_846222.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "basic_step",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_8462221_https_www_pexels_com_video_a_man_dancing_ballet_in_a_room_846222",
+      "displayName": "Pexels 8462221 Https Www Pexels Com Video A Man Dancing Ballet In A Room 846222",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 8402186,
+        "modifiedAtUtc": "2026-03-29T14:27:46.785161+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__8462221",
+        "provider": "pexels",
+        "remoteAssetId": "8462221",
+        "sourcePageUrl": "https://www.pexels.com/video/a-man-dancing-ballet-in-a-room-8462221/",
+        "downloadUrl": "https://videos.pexels.com/video-files/8462221/8462221-uhd_4096_2160_25fps.mp4",
+        "creatorName": "MART  PRODUCTION",
+        "licenseName": "Pexels License",
+        "query": "dancer rehearsal full body"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:32:46.379272+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460494+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_basic_step_pexels_8853871_https_www_pexels_com_video_a_shirtless_man_rehearsing_in_front_o_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/basic_step/pexels_8853871_https_www_pexels_com_video_a_shirtless_man_rehearsing_in_front_o.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "basic_step",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_8853871_https_www_pexels_com_video_a_shirtless_man_rehearsing_in_front_o",
+      "displayName": "Pexels 8853871 Https Www Pexels Com Video A Shirtless Man Rehearsing In Front O",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 8056909,
+        "modifiedAtUtc": "2026-03-29T13:58:53.630711+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__8853871",
+        "provider": "pexels",
+        "remoteAssetId": "8853871",
+        "sourcePageUrl": "https://www.pexels.com/video/a-shirtless-man-rehearsing-in-front-of-a-full-length-mirror-8853871/",
+        "downloadUrl": "https://videos.pexels.com/video-files/8853871/8853871-hd_1080_1920_24fps.mp4",
+        "creatorName": "Los Muertos Crew",
+        "licenseName": "Pexels License",
+        "query": "dancer rehearsal full body"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T13:59:13.995578+00:00",
+      "updatedAtUtc": "2026-03-29T14:55:31.813726+00:00",
+      "precheckSummary": {
+        "path": "/Users/alex/Desktop/motion-base-assets/sourceVideo/contemporary/commercial_contemporary/basic_step/pexels_8853871_https_www_pexels_com_video_a_shirtless_man_rehearsing_in_front_o.mp4",
+        "checkedAtUtc": "2026-03-29T14:55:31.799129+00:00",
+        "status": "hold",
+        "issues": [
+          "video_probe_failed:OSError"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_basic_step_pixabay_168502_robot_dance_fun_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/basic_step/pixabay_168502_robot_dance_fun.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "basic_step",
+      "proposedMotionId": "contemporary_commercial_contemporary_pixabay_168502_robot_dance_fun",
+      "displayName": "Pixabay 168502 Robot Dance Fun",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 15137884,
+        "modifiedAtUtc": "2026-03-29T14:36:56.270713+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pixabay__168502",
+        "provider": "pixabay",
+        "remoteAssetId": "168502",
+        "sourcePageUrl": "https://pixabay.com/videos/id-168502/",
+        "downloadUrl": "https://cdn.pixabay.com/video/2023/06/23/168502-839220724_large.mp4",
+        "creatorName": "AdisResic",
+        "licenseName": "Pixabay License",
+        "query": "modern dance solo"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:55:27.765684+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460971+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_pose_hold_pexels_6809984_https_www_pexels_com_video_woman_doing_dancer_s_pose_6809984_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/pose_hold/pexels_6809984_https_www_pexels_com_video_woman_doing_dancer_s_pose_6809984.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "pose_hold",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_6809984_https_www_pexels_com_video_woman_doing_dancer_s_pose_6809984",
+      "displayName": "Pexels 6809984 Https Www Pexels Com Video Woman Doing Dancer S Pose 6809984",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 68065355,
+        "modifiedAtUtc": "2026-03-29T13:58:45.608008+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__6809984",
+        "provider": "pexels",
+        "remoteAssetId": "6809984",
+        "sourcePageUrl": "https://www.pexels.com/video/woman-doing-dancer-s-pose-6809984/",
+        "downloadUrl": "https://videos.pexels.com/video-files/6809984/6809984-uhd_2160_4096_25fps.mp4",
+        "creatorName": "cottonbro studio",
+        "licenseName": "Pexels License",
+        "query": "dancer pose hold"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T13:59:13.995451+00:00",
+      "updatedAtUtc": "2026-03-29T14:55:32.006703+00:00",
+      "precheckSummary": {
+        "path": "/Users/alex/Desktop/motion-base-assets/sourceVideo/contemporary/commercial_contemporary/pose_hold/pexels_6809984_https_www_pexels_com_video_woman_doing_dancer_s_pose_6809984.mp4",
+        "checkedAtUtc": "2026-03-29T14:55:31.992411+00:00",
+        "status": "hold",
+        "issues": [
+          "video_probe_failed:OSError"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_pose_hold_pexels_7351639_https_www_pexels_com_video_woman_doing_yoga_pose_7351639_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/pose_hold/pexels_7351639_https_www_pexels_com_video_woman_doing_yoga_pose_7351639.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "pose_hold",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_7351639_https_www_pexels_com_video_woman_doing_yoga_pose_7351639",
+      "displayName": "Pexels 7351639 Https Www Pexels Com Video Woman Doing Yoga Pose 7351639",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 6847884,
+        "modifiedAtUtc": "2026-03-29T14:27:41.928348+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__7351639",
+        "provider": "pexels",
+        "remoteAssetId": "7351639",
+        "sourcePageUrl": "https://www.pexels.com/video/woman-doing-yoga-pose-7351639/",
+        "downloadUrl": "https://videos.pexels.com/video-files/7351639/7351639-hd_1920_1080_24fps.mp4",
+        "creatorName": "Vivaan Rupani",
+        "licenseName": "Pexels License",
+        "query": "dancer pose hold"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:32:46.379086+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460382+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_pose_hold_pexels_8853900_https_www_pexels_com_video_back_view_of_a_man_stretching_in_the_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/pose_hold/pexels_8853900_https_www_pexels_com_video_back_view_of_a_man_stretching_in_the_.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "pose_hold",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_8853900_https_www_pexels_com_video_back_view_of_a_man_stretching_in_the",
+      "displayName": "Pexels 8853900 Https Www Pexels Com Video Back View Of A Man Stretching In The",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 11700602,
+        "modifiedAtUtc": "2026-03-29T14:27:49.808453+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__8853900",
+        "provider": "pexels",
+        "remoteAssetId": "8853900",
+        "sourcePageUrl": "https://www.pexels.com/video/back-view-of-a-man-stretching-in-the-dark-8853900/",
+        "downloadUrl": "https://videos.pexels.com/video-files/8853900/8853900-hd_1080_1920_24fps.mp4",
+        "creatorName": "Los Muertos Crew",
+        "licenseName": "Pexels License",
+        "query": "dancer pose hold"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:32:46.379370+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460560+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_pose_hold_pexels_8854001_https_www_pexels_com_video_a_man_dancing_while_holding_on_railin_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/pose_hold/pexels_8854001_https_www_pexels_com_video_a_man_dancing_while_holding_on_railin.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "pose_hold",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_8854001_https_www_pexels_com_video_a_man_dancing_while_holding_on_railin",
+      "displayName": "Pexels 8854001 Https Www Pexels Com Video A Man Dancing While Holding On Railin",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 3414049,
+        "modifiedAtUtc": "2026-03-29T13:58:56.716518+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__8854001",
+        "provider": "pexels",
+        "remoteAssetId": "8854001",
+        "sourcePageUrl": "https://www.pexels.com/video/a-man-dancing-while-holding-on-railings-8854001/",
+        "downloadUrl": "https://videos.pexels.com/video-files/8854001/8854001-hd_1080_1920_24fps.mp4",
+        "creatorName": "Los Muertos Crew",
+        "licenseName": "Pexels License",
+        "query": "dancer pose hold"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T13:59:13.995632+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460616+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_pose_hold_pixabay_75328_dancer_dance_female_silhouette_dancing_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/pose_hold/pixabay_75328_dancer_dance_female_silhouette_dancing.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "pose_hold",
+      "proposedMotionId": "contemporary_commercial_contemporary_pixabay_75328_dancer_dance_female_silhouette_dancing",
+      "displayName": "Pixabay 75328 Dancer Dance Female Silhouette Dancing",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 2029148,
+        "modifiedAtUtc": "2026-03-29T14:37:01.542814+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pixabay__75328",
+        "provider": "pixabay",
+        "remoteAssetId": "75328",
+        "sourcePageUrl": "https://pixabay.com/videos/id-75328/",
+        "downloadUrl": "https://cdn.pixabay.com/video/2021/05/26/75328-555531889_large.mp4",
+        "creatorName": "patw64",
+        "licenseName": "Pixabay License",
+        "query": "dancer pose hold"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:55:27.765854+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.461157+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_travel_step_pexels_26491567_https_www_pexels_com_video_a_woman_standing_on_stage_in_front_of_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/travel_step/pexels_26491567_https_www_pexels_com_video_a_woman_standing_on_stage_in_front_of.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "travel_step",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_26491567_https_www_pexels_com_video_a_woman_standing_on_stage_in_front_of",
+      "displayName": "Pexels 26491567 Https Www Pexels Com Video A Woman Standing On Stage In Front Of",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 125418127,
+        "modifiedAtUtc": "2026-03-29T14:23:14.339725+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__26491567",
+        "provider": "pexels",
+        "remoteAssetId": "26491567",
+        "sourcePageUrl": "https://www.pexels.com/video/a-woman-standing-on-stage-in-front-of-a-black-light-26491567/",
+        "downloadUrl": "https://videos.pexels.com/video-files/26491567/11954334_3840_2160_24fps.mp4",
+        "creatorName": "Israel Torres",
+        "licenseName": "Pexels License",
+        "query": "dancer movement across stage"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:32:46.378273+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.459713+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_travel_step_pexels_26491574_https_www_pexels_com_video_a_dancer_in_pink_and_purple_is_perfor_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/travel_step/pexels_26491574_https_www_pexels_com_video_a_dancer_in_pink_and_purple_is_perfor.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "travel_step",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_26491574_https_www_pexels_com_video_a_dancer_in_pink_and_purple_is_perfor",
+      "displayName": "Pexels 26491574 Https Www Pexels Com Video A Dancer In Pink And Purple Is Perfor",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 94991475,
+        "modifiedAtUtc": "2026-03-29T13:58:25.431457+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__26491574",
+        "provider": "pexels",
+        "remoteAssetId": "26491574",
+        "sourcePageUrl": "https://www.pexels.com/video/a-dancer-in-pink-and-purple-is-performing-on-stage-26491574/",
+        "downloadUrl": "https://videos.pexels.com/video-files/26491574/11954386_3840_2160_24fps.mp4",
+        "creatorName": "Israel Torres",
+        "licenseName": "Pexels License",
+        "query": "dancer movement across stage"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T13:59:13.995142+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.459829+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_travel_step_pexels_26491668_https_www_pexels_com_video_a_woman_in_a_pink_outfit_is_dancing_o_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/travel_step/pexels_26491668_https_www_pexels_com_video_a_woman_in_a_pink_outfit_is_dancing_o.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "travel_step",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_26491668_https_www_pexels_com_video_a_woman_in_a_pink_outfit_is_dancing_o",
+      "displayName": "Pexels 26491668 Https Www Pexels Com Video A Woman In A Pink Outfit Is Dancing O",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 150343174,
+        "modifiedAtUtc": "2026-03-29T13:58:35.095911+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__26491668",
+        "provider": "pexels",
+        "remoteAssetId": "26491668",
+        "sourcePageUrl": "https://www.pexels.com/video/a-woman-in-a-pink-outfit-is-dancing-on-stage-26491668/",
+        "downloadUrl": "https://videos.pexels.com/video-files/26491668/11954254_3840_2160_24fps.mp4",
+        "creatorName": "Israel Torres",
+        "licenseName": "Pexels License",
+        "query": "dancer movement across stage"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T13:59:13.995211+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.459886+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_travel_step_pexels_26576179_https_www_pexels_com_video_a_woman_in_a_purple_suit_is_standing_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/travel_step/pexels_26576179_https_www_pexels_com_video_a_woman_in_a_purple_suit_is_standing_.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "travel_step",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_26576179_https_www_pexels_com_video_a_woman_in_a_purple_suit_is_standing",
+      "displayName": "Pexels 26576179 Https Www Pexels Com Video A Woman In A Purple Suit Is Standing",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 5126088,
+        "modifiedAtUtc": "2026-03-29T14:23:49.341454+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__26576179",
+        "provider": "pexels",
+        "remoteAssetId": "26576179",
+        "sourcePageUrl": "https://www.pexels.com/video/a-woman-in-a-purple-suit-is-standing-on-a-stage-26576179/",
+        "downloadUrl": "https://videos.pexels.com/video-files/26576179/11963100_1920_1080_30fps.mp4",
+        "creatorName": "Anya  Juárez Tenorio",
+        "licenseName": "Pexels License",
+        "query": "dancer movement across stage"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:32:46.378597+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460003+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_travel_step_pixabay_108612_dancer_dancing_woman_dancing_happy_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/travel_step/pixabay_108612_dancer_dancing_woman_dancing_happy.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "travel_step",
+      "proposedMotionId": "contemporary_commercial_contemporary_pixabay_108612_dancer_dancing_woman_dancing_happy",
+      "displayName": "Pixabay 108612 Dancer Dancing Woman Dancing Happy",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 3980331,
+        "modifiedAtUtc": "2026-03-29T14:36:52.396490+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pixabay__108612",
+        "provider": "pixabay",
+        "remoteAssetId": "108612",
+        "sourcePageUrl": "https://pixabay.com/videos/id-108612/",
+        "downloadUrl": "https://cdn.pixabay.com/video/2022/02/23/108612-680697681_large.mp4",
+        "creatorName": "patw64",
+        "licenseName": "Pixabay License",
+        "query": "dancer movement across stage"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:55:27.765442+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460719+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_travel_step_pixabay_11168_feather_wind_movement_grass_field_wave_meadow_summer_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/travel_step/pixabay_11168_feather_wind_movement_grass_field_wave_meadow_summer.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "travel_step",
+      "proposedMotionId": "contemporary_commercial_contemporary_pixabay_11168_feather_wind_movement_grass_field_wave_meadow_summer",
+      "displayName": "Pixabay 11168 Feather Wind Movement Grass Field Wave Meadow Summer",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 7929859,
+        "modifiedAtUtc": "2026-03-29T14:28:04.845738+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pixabay__11168",
+        "provider": "pixabay",
+        "remoteAssetId": "11168",
+        "sourcePageUrl": "https://pixabay.com/videos/id-11168/",
+        "downloadUrl": "https://cdn.pixabay.com/video/2017/08/05/11168-228530158_large.mp4",
+        "creatorName": "klimkin",
+        "licenseName": "Pixabay License",
+        "query": "dancer movement across stage"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:32:46.379580+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460773+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_travel_step_pixabay_12333_silhouette_dance_young_woman_sunset_sun_emotions_dancer_movement_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/travel_step/pixabay_12333_silhouette_dance_young_woman_sunset_sun_emotions_dancer_movement.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "travel_step",
+      "proposedMotionId": "contemporary_commercial_contemporary_pixabay_12333_silhouette_dance_young_woman_sunset_sun_emotions_dancer_movement",
+      "displayName": "Pixabay 12333 Silhouette Dance Young Woman Sunset Sun Emotions Dancer Movement",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 6597767,
+        "modifiedAtUtc": "2026-03-29T14:28:07.043348+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pixabay__12333",
+        "provider": "pixabay",
+        "remoteAssetId": "12333",
+        "sourcePageUrl": "https://pixabay.com/videos/id-12333/",
+        "downloadUrl": "https://cdn.pixabay.com/video/2017/10/05/12333-237438719_large.mp4",
+        "creatorName": "klimkin",
+        "licenseName": "Pixabay License",
+        "query": "dancer movement across stage"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:32:46.379646+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460830+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_travel_step_pixabay_1670_dance_music_to_dance_club_disco_dancer_event_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/travel_step/pixabay_1670_dance_music_to_dance_club_disco_dancer_event.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "travel_step",
+      "proposedMotionId": "contemporary_commercial_contemporary_pixabay_1670_dance_music_to_dance_club_disco_dancer_event",
+      "displayName": "Pixabay 1670 Dance Music To Dance Club Disco Dancer Event",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 7639487,
+        "modifiedAtUtc": "2026-03-29T14:28:19.773005+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pixabay__1670",
+        "provider": "pixabay",
+        "remoteAssetId": "1670",
+        "sourcePageUrl": "https://pixabay.com/videos/id-1670/",
+        "downloadUrl": "https://cdn.pixabay.com/video/2015/12/12/1670-148708866_large.mp4",
+        "creatorName": "Nova_27",
+        "licenseName": "Pixabay License",
+        "query": "dancer movement across stage"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:32:46.379781+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460928+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_travel_step_pixabay_75329_dancer_girl_dancing_movement_perfomer_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/travel_step/pixabay_75329_dancer_girl_dancing_movement_perfomer.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "travel_step",
+      "proposedMotionId": "contemporary_commercial_contemporary_pixabay_75329_dancer_girl_dancing_movement_perfomer",
+      "displayName": "Pixabay 75329 Dancer Girl Dancing Movement Perfomer",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 1703146,
+        "modifiedAtUtc": "2026-03-29T14:37:03.925484+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pixabay__75329",
+        "provider": "pixabay",
+        "remoteAssetId": "75329",
+        "sourcePageUrl": "https://pixabay.com/videos/id-75329/",
+        "downloadUrl": "https://cdn.pixabay.com/video/2021/05/26/75329-555531891_large.mp4",
+        "creatorName": "patw64",
+        "licenseName": "Pixabay License",
+        "query": "dancer movement across stage"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:55:27.765897+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.461205+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_travel_step_pixabay_75547_dancer_performance_dance_dancing_female_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/travel_step/pixabay_75547_dancer_performance_dance_dancing_female.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "travel_step",
+      "proposedMotionId": "contemporary_commercial_contemporary_pixabay_75547_dancer_performance_dance_dancing_female",
+      "displayName": "Pixabay 75547 Dancer Performance Dance Dancing Female",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 1522328,
+        "modifiedAtUtc": "2026-03-29T14:37:05.424159+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pixabay__75547",
+        "provider": "pixabay",
+        "remoteAssetId": "75547",
+        "sourcePageUrl": "https://pixabay.com/videos/id-75547/",
+        "downloadUrl": "https://cdn.pixabay.com/video/2021/05/28/75547-556034400_large.mp4",
+        "creatorName": "patw64",
+        "licenseName": "Pixabay License",
+        "query": "dancer movement across stage"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:55:27.765940+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.461254+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_turn_phrase_pexels_26607116_https_www_pexels_com_video_a_ballerina_in_a_tutu_is_dancing_on_s_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/turn_phrase/pexels_26607116_https_www_pexels_com_video_a_ballerina_in_a_tutu_is_dancing_on_s.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "turn_phrase",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_26607116_https_www_pexels_com_video_a_ballerina_in_a_tutu_is_dancing_on_s",
+      "displayName": "Pexels 26607116 Https Www Pexels Com Video A Ballerina In A Tutu Is Dancing On S",
+      "stage": "precheck_passed",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 3199912,
+        "modifiedAtUtc": "2026-03-29T13:58:39.401296+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__26607116",
+        "provider": "pexels",
+        "remoteAssetId": "26607116",
+        "sourcePageUrl": "https://www.pexels.com/video/a-ballerina-in-a-tutu-is-dancing-on-stage-26607116/",
+        "downloadUrl": "https://videos.pexels.com/video-files/26607116/11972144_1920_1080_30fps.mp4",
+        "creatorName": "Anya  Juárez Tenorio",
+        "licenseName": "Pexels License",
+        "query": "dancer spin solo"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T13:59:13.995336+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460059+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_turn_phrase_pexels_5897372_https_www_pexels_com_video_ballerina_dancing_and_spinning_589737_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/turn_phrase/pexels_5897372_https_www_pexels_com_video_ballerina_dancing_and_spinning_589737.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "turn_phrase",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_5897372_https_www_pexels_com_video_ballerina_dancing_and_spinning_589737",
+      "displayName": "Pexels 5897372 Https Www Pexels Com Video Ballerina Dancing And Spinning 589737",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 11841383,
+        "modifiedAtUtc": "2026-03-29T14:24:34.739148+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__5897372",
+        "provider": "pexels",
+        "remoteAssetId": "5897372",
+        "sourcePageUrl": "https://www.pexels.com/video/ballerina-dancing-and-spinning-5897372/",
+        "downloadUrl": "https://videos.pexels.com/video-files/5897372/5897372-uhd_3840_2160_30fps.mp4",
+        "creatorName": "Gustavo Fring",
+        "licenseName": "Pexels License",
+        "query": "dancer spin solo"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:32:46.378757+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460171+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_turn_phrase_pexels_5897386_https_www_pexels_com_video_ballerina_dancing_and_spinning_589738_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/turn_phrase/pexels_5897386_https_www_pexels_com_video_ballerina_dancing_and_spinning_589738.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "turn_phrase",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_5897386_https_www_pexels_com_video_ballerina_dancing_and_spinning_589738",
+      "displayName": "Pexels 5897386 Https Www Pexels Com Video Ballerina Dancing And Spinning 589738",
+      "stage": "precheck_passed",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 10796005,
+        "modifiedAtUtc": "2026-03-29T13:58:41.597453+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__5897386",
+        "provider": "pexels",
+        "remoteAssetId": "5897386",
+        "sourcePageUrl": "https://www.pexels.com/video/ballerina-dancing-and-spinning-5897386/",
+        "downloadUrl": "https://videos.pexels.com/video-files/5897386/5897386-uhd_3840_2160_30fps.mp4",
+        "creatorName": "Gustavo Fring",
+        "licenseName": "Pexels License",
+        "query": "dancer spin solo"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T13:59:13.995396+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460225+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_turn_phrase_pexels_8934383_https_www_pexels_com_video_a_woman_dancing_ballet_8934383_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/turn_phrase/pexels_8934383_https_www_pexels_com_video_a_woman_dancing_ballet_8934383.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "turn_phrase",
+      "proposedMotionId": "contemporary_commercial_contemporary_pexels_8934383_https_www_pexels_com_video_a_woman_dancing_ballet_8934383",
+      "displayName": "Pexels 8934383 Https Www Pexels Com Video A Woman Dancing Ballet 8934383",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 68592782,
+        "modifiedAtUtc": "2026-03-29T14:28:02.782714+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pexels__8934383",
+        "provider": "pexels",
+        "remoteAssetId": "8934383",
+        "sourcePageUrl": "https://www.pexels.com/video/a-woman-dancing-ballet-8934383/",
+        "downloadUrl": "https://videos.pexels.com/video-files/8934383/8934383-uhd_3840_2160_25fps.mp4",
+        "creatorName": "Anastasia  Shuraeva",
+        "licenseName": "Pexels License",
+        "query": "dancer spin solo"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:32:46.379524+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460670+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_turn_phrase_pixabay_135378_tunnel_vj_loop_mask_spin_spinning_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/turn_phrase/pixabay_135378_tunnel_vj_loop_mask_spin_spinning.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "turn_phrase",
+      "proposedMotionId": "contemporary_commercial_contemporary_pixabay_135378_tunnel_vj_loop_mask_spin_spinning",
+      "displayName": "Pixabay 135378 Tunnel Vj Loop Mask Spin Spinning",
+      "stage": "hold",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 7613615,
+        "modifiedAtUtc": "2026-03-29T14:28:11.114785+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pixabay__135378",
+        "provider": "pixabay",
+        "remoteAssetId": "135378",
+        "sourcePageUrl": "https://pixabay.com/videos/id-135378/",
+        "downloadUrl": "https://cdn.pixabay.com/video/2022/10/17/135378-761676435_large.mp4",
+        "creatorName": "Medigrade",
+        "licenseName": "Pixabay License",
+        "query": "dancer spin solo"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:32:46.379722+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.460879+00:00"
+    },
+    {
+      "jobId": "video_rokoko__contemporary_commercial_contemporary_turn_phrase_pixabay_176986_stars_sky_space_galaxy_spin_night_mp4",
+      "sourceLane": "video_rokoko",
+      "sourceAssetKind": "video",
+      "sourceAssetRelPath": "contemporary/commercial_contemporary/turn_phrase/pixabay_176986_stars_sky_space_galaxy_spin_night.mp4",
+      "targetStyleFamily": "contemporary",
+      "targetStyleSubstyle": "commercial_contemporary",
+      "expectedMetaAction": "turn_phrase",
+      "proposedMotionId": "contemporary_commercial_contemporary_pixabay_176986_stars_sky_space_galaxy_spin_night",
+      "displayName": "Pixabay 176986 Stars Sky Space Galaxy Spin Night",
+      "stage": "precheck_passed",
+      "artifactRelPaths": {},
+      "reviewFeedRelPath": "",
+      "operatorNotes": "",
+      "sourceFingerprint": {
+        "sizeBytes": 3302988,
+        "modifiedAtUtc": "2026-03-29T14:28:21.278308+00:00"
+      },
+      "sourceProvenance": {
+        "sourceId": "pixabay__176986",
+        "provider": "pixabay",
+        "remoteAssetId": "176986",
+        "sourcePageUrl": "https://pixabay.com/videos/id-176986/",
+        "downloadUrl": "https://cdn.pixabay.com/video/2023/08/20/176986-856259237_large.mp4",
+        "creatorName": "BlenderTimer",
+        "licenseName": "Pixabay License",
+        "query": "dancer spin solo"
+      },
+      "sourceReview": {
+        "decisionStatus": "pending",
+        "reviewer": "",
+        "notes": ""
+      },
+      "discoveredAtUtc": "2026-03-29T14:32:46.379837+00:00",
+      "updatedAtUtc": "2026-03-30T00:01:58.461019+00:00"
+    }
+  ]
+}

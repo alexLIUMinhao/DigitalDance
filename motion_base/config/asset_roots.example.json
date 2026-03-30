@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "roots": {
+    "rawFbx": "/absolute/path/to/raw_fbx",
+    "sourceVideo": "/absolute/path/to/source_videos",
+    "extractedMotion": "/absolute/path/to/extracted_motion",
+    "approvedFbx": "/absolute/path/to/approved_fbx",
+    "previewCache": "/absolute/path/to/preview_cache"
+  },
+  "providers": {
+    "rokoko": {
+      "watchFolder": "/absolute/path/to/rokoko_exports"
+    }
+  },
+  "templates": {
+    "mixamoSkeletonFbx": "/absolute/path/to/mixamo_reference_skeleton.fbx"
+  },
+  "notes": "Copy this file to asset_roots.local.json and update the roots before running intake or review tools."
+}

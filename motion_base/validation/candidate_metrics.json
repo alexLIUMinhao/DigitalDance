@@ -1,0 +1,706 @@
+{
+  "schemaVersion": 1,
+  "generatedAtUtc": "2026-03-30T00:17:02.948625+00:00",
+  "metrics": [
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_001_p04_o00_01",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_001_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_001_p04_o00_01.fbx",
+      "passed": true,
+      "issues": [],
+      "generatedAtUtc": "2026-03-30T00:16:20.440860+00:00",
+      "metricsSummary": {
+        "frameCount": 48,
+        "durationSec": 1.9583333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 0.2939760524832471,
+        "rootTranslationDeltaMeters": 0.2939760524832471,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_001_p04_o04_02",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_001_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_001_p04_o04_02.fbx",
+      "passed": true,
+      "issues": [],
+      "generatedAtUtc": "2026-03-30T00:16:21.591171+00:00",
+      "metricsSummary": {
+        "frameCount": 48,
+        "durationSec": 1.9583333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 0.1003939460484353,
+        "rootTranslationDeltaMeters": 0.1003939460484353,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_001_p08_o00_03",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_001_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_001_p08_o00_03.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:22.769459+00:00",
+      "metricsSummary": {
+        "frameCount": 96,
+        "durationSec": 3.9583333333333335,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 0.39497016398886714,
+        "rootTranslationDeltaMeters": 0.39497016398886714,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_001_p08_o04_04",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_001_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_001_p08_o04_04.fbx",
+      "passed": true,
+      "issues": [],
+      "generatedAtUtc": "2026-03-30T00:16:23.976686+00:00",
+      "metricsSummary": {
+        "frameCount": 96,
+        "durationSec": 3.9583333333333335,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 0.2802502618353641,
+        "rootTranslationDeltaMeters": 0.2802502618353641,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_001_p16_o00_05",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_001_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_001_p16_o00_05.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:25.133119+00:00",
+      "metricsSummary": {
+        "frameCount": 192,
+        "durationSec": 7.958333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 0.9757386783683489,
+        "rootTranslationDeltaMeters": 0.9757386783683489,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_001_p16_o04_06",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_001_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_001_p16_o04_06.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:26.282617+00:00",
+      "metricsSummary": {
+        "frameCount": 192,
+        "durationSec": 7.958333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 0.9442041714693848,
+        "rootTranslationDeltaMeters": 0.9442041714693848,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_002_p04_o00_01",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_002_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_002_p04_o00_01.fbx",
+      "passed": true,
+      "issues": [],
+      "generatedAtUtc": "2026-03-30T00:16:27.425769+00:00",
+      "metricsSummary": {
+        "frameCount": 48,
+        "durationSec": 1.9583333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 0.0023379766423903946,
+        "rootTranslationDeltaMeters": 0.0023379766423903946,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_002_p04_o04_02",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_002_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_002_p04_o04_02.fbx",
+      "passed": true,
+      "issues": [],
+      "generatedAtUtc": "2026-03-30T00:16:28.558922+00:00",
+      "metricsSummary": {
+        "frameCount": 48,
+        "durationSec": 1.9583333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 0.01278408067232891,
+        "rootTranslationDeltaMeters": 0.01278408067232891,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_002_p08_o00_03",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_002_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_002_p08_o00_03.fbx",
+      "passed": true,
+      "issues": [],
+      "generatedAtUtc": "2026-03-30T00:16:29.723295+00:00",
+      "metricsSummary": {
+        "frameCount": 96,
+        "durationSec": 3.9583333333333335,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 0.014633854639345464,
+        "rootTranslationDeltaMeters": 0.014633854639345464,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_002_p08_o04_04",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_002_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_002_p08_o04_04.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:30.857478+00:00",
+      "metricsSummary": {
+        "frameCount": 96,
+        "durationSec": 3.9583333333333335,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 0.8690429434289096,
+        "rootTranslationDeltaMeters": 0.8690429434289096,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_002_p16_o00_05",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_002_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_002_p16_o00_05.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:31.997617+00:00",
+      "metricsSummary": {
+        "frameCount": 192,
+        "durationSec": 7.958333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 0.7069269115844677,
+        "rootTranslationDeltaMeters": 0.7069269115844677,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_002_p16_o04_06",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_002_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_002_p16_o04_06.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:33.136886+00:00",
+      "metricsSummary": {
+        "frameCount": 192,
+        "durationSec": 7.958333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 0.667340056483228,
+        "rootTranslationDeltaMeters": 0.667340056483228,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_003_p04_o00_01",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_003_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_003_p04_o00_01.fbx",
+      "passed": true,
+      "issues": [],
+      "generatedAtUtc": "2026-03-30T00:16:34.270288+00:00",
+      "metricsSummary": {
+        "frameCount": 48,
+        "durationSec": 1.9583333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 0.006625583609890201,
+        "rootTranslationDeltaMeters": 0.006625583609890201,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_003_p04_o04_02",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_003_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_003_p04_o04_02.fbx",
+      "passed": true,
+      "issues": [],
+      "generatedAtUtc": "2026-03-30T00:16:35.404843+00:00",
+      "metricsSummary": {
+        "frameCount": 48,
+        "durationSec": 1.9583333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 0.3298271148350636,
+        "rootTranslationDeltaMeters": 0.3298271148350636,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_003_p08_o00_03",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_003_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_003_p08_o00_03.fbx",
+      "passed": true,
+      "issues": [],
+      "generatedAtUtc": "2026-03-30T00:16:36.540307+00:00",
+      "metricsSummary": {
+        "frameCount": 96,
+        "durationSec": 3.9583333333333335,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 0.3251600420614331,
+        "rootTranslationDeltaMeters": 0.3251600420614331,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_003_p08_o04_04",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_003_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_003_p08_o04_04.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:37.672823+00:00",
+      "metricsSummary": {
+        "frameCount": 96,
+        "durationSec": 3.9583333333333335,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 0.720337201732377,
+        "rootTranslationDeltaMeters": 0.720337201732377,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_003_p16_o00_05",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_003_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_003_p16_o00_05.fbx",
+      "passed": true,
+      "issues": [],
+      "generatedAtUtc": "2026-03-30T00:16:38.839493+00:00",
+      "metricsSummary": {
+        "frameCount": 192,
+        "durationSec": 7.958333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 0.25518723510324476,
+        "rootTranslationDeltaMeters": 0.25518723510324476,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_phantomdance_phantomdance_003_p16_o04_06",
+      "jobId": "dataset_json__datasets_phantomdance_contemporary_phantomdance_basic_step_phantomdance_003_bvh",
+      "candidateFbxRelPath": "contemporary/phantomdance/contemporary_phantomdance_phantomdance_003_p16_o04_06.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:39.978942+00:00",
+      "metricsSummary": {
+        "frameCount": 192,
+        "durationSec": 7.958333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 1.0074689048605352,
+        "rootTranslationDeltaMeters": 1.0074689048605352,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p04_o00_01",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch01_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p04_o00_01.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:41.109177+00:00",
+      "metricsSummary": {
+        "frameCount": 48,
+        "durationSec": 1.9583333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 24.12176136158599,
+        "rootTranslationDeltaMeters": 24.12176136158599,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p04_o04_02",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch01_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p04_o04_02.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:42.320821+00:00",
+      "metricsSummary": {
+        "frameCount": 48,
+        "durationSec": 1.9583333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 27.08138942687016,
+        "rootTranslationDeltaMeters": 27.08138942687016,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p08_o00_03",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch01_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p08_o00_03.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:43.474869+00:00",
+      "metricsSummary": {
+        "frameCount": 96,
+        "durationSec": 3.9583333333333335,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 37.39981109341062,
+        "rootTranslationDeltaMeters": 37.39981109341062,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p08_o04_04",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch01_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p08_o04_04.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:44.615176+00:00",
+      "metricsSummary": {
+        "frameCount": 96,
+        "durationSec": 3.9583333333333335,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 4.106623219594952,
+        "rootTranslationDeltaMeters": 4.106623219594952,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p16_o00_05",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch01_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p16_o00_05.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:45.778643+00:00",
+      "metricsSummary": {
+        "frameCount": 192,
+        "durationSec": 7.958333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 11.377009146229092,
+        "rootTranslationDeltaMeters": 11.377009146229092,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p16_o04_06",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch01_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch01_p16_o04_06.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:46.924643+00:00",
+      "metricsSummary": {
+        "frameCount": 192,
+        "durationSec": 7.958333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 15.442990550592555,
+        "rootTranslationDeltaMeters": 15.442990550592555,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p04_o00_01",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch02_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p04_o00_01.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:48.080068+00:00",
+      "metricsSummary": {
+        "frameCount": 48,
+        "durationSec": 1.9583333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 16.72052551717041,
+        "rootTranslationDeltaMeters": 16.72052551717041,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p04_o04_02",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch02_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p04_o04_02.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:49.229836+00:00",
+      "metricsSummary": {
+        "frameCount": 48,
+        "durationSec": 1.9583333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 17.705563198621995,
+        "rootTranslationDeltaMeters": 17.705563198621995,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p08_o00_03",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch02_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p08_o00_03.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:50.390798+00:00",
+      "metricsSummary": {
+        "frameCount": 96,
+        "durationSec": 3.9583333333333335,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 8.40576293129847,
+        "rootTranslationDeltaMeters": 8.40576293129847,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p08_o04_04",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch02_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p08_o04_04.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:51.665540+00:00",
+      "metricsSummary": {
+        "frameCount": 96,
+        "durationSec": 3.9583333333333335,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 11.287916955607932,
+        "rootTranslationDeltaMeters": 11.287916955607932,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p16_o00_05",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch02_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p16_o00_05.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:52.882676+00:00",
+      "metricsSummary": {
+        "frameCount": 192,
+        "durationSec": 7.958333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 17.056302618418737,
+        "rootTranslationDeltaMeters": 17.056302618418737,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p16_o04_06",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch02_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch02_p16_o04_06.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:54.471685+00:00",
+      "metricsSummary": {
+        "frameCount": 192,
+        "durationSec": 7.958333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 10.69542890754253,
+        "rootTranslationDeltaMeters": 10.69542890754253,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p04_o00_01",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch03_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p04_o00_01.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:56.417013+00:00",
+      "metricsSummary": {
+        "frameCount": 48,
+        "durationSec": 1.9583333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 20.291400972959817,
+        "rootTranslationDeltaMeters": 20.291400972959817,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p04_o04_02",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch03_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p04_o04_02.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:57.950050+00:00",
+      "metricsSummary": {
+        "frameCount": 48,
+        "durationSec": 1.9583333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 17.87421036690109,
+        "rootTranslationDeltaMeters": 17.87421036690109,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p08_o00_03",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch03_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p08_o00_03.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:16:59.179726+00:00",
+      "metricsSummary": {
+        "frameCount": 96,
+        "durationSec": 3.9583333333333335,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 5.440745448444981,
+        "rootTranslationDeltaMeters": 5.440745448444981,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p08_o04_04",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch03_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p08_o04_04.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:17:00.419498+00:00",
+      "metricsSummary": {
+        "frameCount": 96,
+        "durationSec": 3.9583333333333335,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 22.18609442758475,
+        "rootTranslationDeltaMeters": 22.18609442758475,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p16_o00_05",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch03_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p16_o00_05.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:17:01.660832+00:00",
+      "metricsSummary": {
+        "frameCount": 192,
+        "durationSec": 7.958333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 7.949814622745032,
+        "rootTranslationDeltaMeters": 7.949814622745032,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    },
+    {
+      "candidateId": "contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p16_o04_06",
+      "jobId": "dataset_smpl__datasets_aistpp_contemporary_break_basic_step_aistpp_gbr_sbm_call_d04_mbr0_ch03_bvh",
+      "candidateFbxRelPath": "contemporary/break/contemporary_break_aistpp_gbr_sbm_call_d04_mbr0_ch03_p16_o04_06.fbx",
+      "passed": false,
+      "issues": [
+        "loop_delta_too_high"
+      ],
+      "generatedAtUtc": "2026-03-30T00:17:02.948506+00:00",
+      "metricsSummary": {
+        "frameCount": 192,
+        "durationSec": 7.958333333333333,
+        "fps": 24.0,
+        "mixamoCompatibleGuess": true,
+        "loopDeltaScore": 12.54706080240938,
+        "rootTranslationDeltaMeters": 12.54706080240938,
+        "leftFootDeltaMeters": 0.0,
+        "rightFootDeltaMeters": 0.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,1444 @@
+{
+  "schemaVersion": 1,
+  "batchId": "motion_base_seed_v1",
+  "targetCount": 48,
+  "motions": [
+    {
+      "motionId": "chinese_classical_01",
+      "displayName": "Chinese Classical Phrase 01",
+      "approvedFbxRelPath": "chinese_classical/water_sleeve/chinese_classical_01.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/chinese_classical/water_sleeve/chinese_classical_01",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "chinese_classical",
+      "styleSubstyle": "water_sleeve",
+      "metaAction": "basic_step",
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "verse"
+      ],
+      "nativeBpm": 94.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "chinese_classical_basic_step",
+      "role": "loop",
+      "notes": "Seed motion record for chinese_classical / water_sleeve / basic_step."
+    },
+    {
+      "motionId": "chinese_classical_02",
+      "displayName": "Chinese Classical Phrase 02",
+      "approvedFbxRelPath": "chinese_classical/fan_dance/chinese_classical_02.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/chinese_classical/fan_dance/chinese_classical_02",
+      "licenseTier": "prototype_only",
+      "qualityTier": "production",
+      "styleFamily": "chinese_classical",
+      "styleSubstyle": "fan_dance",
+      "metaAction": "basic_step",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus"
+      ],
+      "nativeBpm": 102.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "chinese_classical_basic_step",
+      "role": "loop",
+      "notes": "Seed motion record for chinese_classical / fan_dance / basic_step."
+    },
+    {
+      "motionId": "chinese_classical_03",
+      "displayName": "Chinese Classical Phrase 03",
+      "approvedFbxRelPath": "chinese_classical/court_classical/chinese_classical_03.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/chinese_classical/court_classical/chinese_classical_03",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "chinese_classical",
+      "styleSubstyle": "court_classical",
+      "metaAction": "travel_step",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "instrumental"
+      ],
+      "nativeBpm": 108.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "chinese_classical_travel_step",
+      "role": "loop",
+      "notes": "Seed motion record for chinese_classical / court_classical / travel_step."
+    },
+    {
+      "motionId": "chinese_classical_04",
+      "displayName": "Chinese Classical Phrase 04",
+      "approvedFbxRelPath": "chinese_classical/dunhuang_inspired/chinese_classical_04.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/chinese_classical/dunhuang_inspired/chinese_classical_04",
+      "licenseTier": "commercial_safe",
+      "qualityTier": "production",
+      "styleFamily": "chinese_classical",
+      "styleSubstyle": "dunhuang_inspired",
+      "metaAction": "travel_step",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 112.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "chinese_classical_travel_step",
+      "role": "loop",
+      "notes": "Seed motion record for chinese_classical / dunhuang_inspired / travel_step."
+    },
+    {
+      "motionId": "chinese_classical_05",
+      "displayName": "Chinese Classical Phrase 05",
+      "approvedFbxRelPath": "chinese_classical/water_sleeve/chinese_classical_05.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/chinese_classical/water_sleeve/chinese_classical_05",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "chinese_classical",
+      "styleSubstyle": "water_sleeve",
+      "metaAction": "turn_phrase",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 116.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "chinese_classical_turn_phrase",
+      "role": "loop",
+      "notes": "Seed motion record for chinese_classical / water_sleeve / turn_phrase."
+    },
+    {
+      "motionId": "chinese_classical_06",
+      "displayName": "Chinese Classical Phrase 06",
+      "approvedFbxRelPath": "chinese_classical/fan_dance/chinese_classical_06.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/chinese_classical/fan_dance/chinese_classical_06",
+      "licenseTier": "prototype_only",
+      "qualityTier": "production",
+      "styleFamily": "chinese_classical",
+      "styleSubstyle": "fan_dance",
+      "metaAction": "turn_phrase",
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 122.0,
+      "phraseBeats": 16,
+      "entryOffsetsBeats": [
+        0,
+        8
+      ],
+      "sliceBeatsOptions": [
+        8,
+        16
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "chinese_classical_turn_phrase",
+      "role": "loop",
+      "notes": "Seed motion record for chinese_classical / fan_dance / turn_phrase."
+    },
+    {
+      "motionId": "chinese_classical_07",
+      "displayName": "Chinese Classical Phrase 07",
+      "approvedFbxRelPath": "chinese_classical/court_classical/chinese_classical_07.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/chinese_classical/court_classical/chinese_classical_07",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "chinese_classical",
+      "styleSubstyle": "court_classical",
+      "metaAction": "arm_expression",
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "verse",
+        "outro"
+      ],
+      "nativeBpm": 90.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "chinese_classical_arm_expression",
+      "role": "loop",
+      "notes": "Seed motion record for chinese_classical / court_classical / arm_expression."
+    },
+    {
+      "motionId": "chinese_classical_08",
+      "displayName": "Chinese Classical Phrase 08",
+      "approvedFbxRelPath": "chinese_classical/dunhuang_inspired/chinese_classical_08.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/chinese_classical/dunhuang_inspired/chinese_classical_08",
+      "licenseTier": "commercial_safe",
+      "qualityTier": "production",
+      "styleFamily": "chinese_classical",
+      "styleSubstyle": "dunhuang_inspired",
+      "metaAction": "arm_expression",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "instrumental"
+      ],
+      "nativeBpm": 98.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "chinese_classical_arm_expression",
+      "role": "loop",
+      "notes": "Seed motion record for chinese_classical / dunhuang_inspired / arm_expression."
+    },
+    {
+      "motionId": "chinese_classical_09",
+      "displayName": "Chinese Classical Phrase 09",
+      "approvedFbxRelPath": "chinese_classical/water_sleeve/chinese_classical_09.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/chinese_classical/water_sleeve/chinese_classical_09",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "chinese_classical",
+      "styleSubstyle": "water_sleeve",
+      "metaAction": "pose_hold",
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "outro"
+      ],
+      "nativeBpm": 86.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "chinese_classical_pose_hold",
+      "role": "loop",
+      "notes": "Seed motion record for chinese_classical / water_sleeve / pose_hold."
+    },
+    {
+      "motionId": "chinese_classical_10",
+      "displayName": "Chinese Classical Phrase 10",
+      "approvedFbxRelPath": "chinese_classical/fan_dance/chinese_classical_10.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/chinese_classical/fan_dance/chinese_classical_10",
+      "licenseTier": "prototype_only",
+      "qualityTier": "production",
+      "styleFamily": "chinese_classical",
+      "styleSubstyle": "fan_dance",
+      "metaAction": "basic_step",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus"
+      ],
+      "nativeBpm": 106.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "chinese_classical_basic_step",
+      "role": "loop",
+      "notes": "Seed motion record for chinese_classical / fan_dance / basic_step."
+    },
+    {
+      "motionId": "chinese_classical_11",
+      "displayName": "Chinese Classical Phrase 11",
+      "approvedFbxRelPath": "chinese_classical/court_classical/chinese_classical_11.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/chinese_classical/court_classical/chinese_classical_11",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "chinese_classical",
+      "styleSubstyle": "court_classical",
+      "metaAction": "travel_step",
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 120.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "chinese_classical_travel_step",
+      "role": "loop",
+      "notes": "Seed motion record for chinese_classical / court_classical / travel_step."
+    },
+    {
+      "motionId": "chinese_classical_12",
+      "displayName": "Chinese Classical Phrase 12",
+      "approvedFbxRelPath": "chinese_classical/dunhuang_inspired/chinese_classical_12.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/chinese_classical/dunhuang_inspired/chinese_classical_12",
+      "licenseTier": "commercial_safe",
+      "qualityTier": "production",
+      "styleFamily": "chinese_classical",
+      "styleSubstyle": "dunhuang_inspired",
+      "metaAction": "arm_expression",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "outro"
+      ],
+      "nativeBpm": 96.0,
+      "phraseBeats": 16,
+      "entryOffsetsBeats": [
+        0,
+        8
+      ],
+      "sliceBeatsOptions": [
+        8,
+        16
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "chinese_classical_arm_expression",
+      "role": "loop",
+      "notes": "Seed motion record for chinese_classical / dunhuang_inspired / arm_expression."
+    },
+    {
+      "motionId": "chinese_classical_13",
+      "displayName": "Chinese Classical Phrase 13",
+      "approvedFbxRelPath": "chinese_classical/water_sleeve/chinese_classical_13.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/chinese_classical/water_sleeve/chinese_classical_13",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "chinese_classical",
+      "styleSubstyle": "water_sleeve",
+      "metaAction": "accent_hit",
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 124.0,
+      "phraseBeats": 4,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4
+      ],
+      "transitionProfile": "accent",
+      "varietyGroup": "chinese_classical_accent_hit",
+      "role": "accent",
+      "notes": "Seed motion record for chinese_classical / water_sleeve / accent_hit."
+    },
+    {
+      "motionId": "chinese_classical_14",
+      "displayName": "Chinese Classical Phrase 14",
+      "approvedFbxRelPath": "chinese_classical/fan_dance/chinese_classical_14.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/chinese_classical/fan_dance/chinese_classical_14",
+      "licenseTier": "prototype_only",
+      "qualityTier": "production",
+      "styleFamily": "chinese_classical",
+      "styleSubstyle": "fan_dance",
+      "metaAction": "accent_hit",
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus"
+      ],
+      "nativeBpm": 130.0,
+      "phraseBeats": 4,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4
+      ],
+      "transitionProfile": "accent",
+      "varietyGroup": "chinese_classical_accent_hit",
+      "role": "accent",
+      "notes": "Seed motion record for chinese_classical / fan_dance / accent_hit."
+    },
+    {
+      "motionId": "chinese_classical_15",
+      "displayName": "Chinese Classical Phrase 15",
+      "approvedFbxRelPath": "chinese_classical/court_classical/chinese_classical_15.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/chinese_classical/court_classical/chinese_classical_15",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "chinese_classical",
+      "styleSubstyle": "court_classical",
+      "metaAction": "turn_phrase",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 110.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "transitionProfile": "bridge",
+      "varietyGroup": "chinese_classical_turn_phrase",
+      "role": "loop",
+      "notes": "Seed motion record for chinese_classical / court_classical / turn_phrase."
+    },
+    {
+      "motionId": "chinese_classical_16",
+      "displayName": "Chinese Classical Phrase 16",
+      "approvedFbxRelPath": "chinese_classical/dunhuang_inspired/chinese_classical_16.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/chinese_classical/dunhuang_inspired/chinese_classical_16",
+      "licenseTier": "commercial_safe",
+      "qualityTier": "production",
+      "styleFamily": "chinese_classical",
+      "styleSubstyle": "dunhuang_inspired",
+      "metaAction": "pose_hold",
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "outro",
+        "intro"
+      ],
+      "nativeBpm": 88.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "transitionProfile": "bridge",
+      "varietyGroup": "chinese_classical_pose_hold",
+      "role": "loop",
+      "notes": "Seed motion record for chinese_classical / dunhuang_inspired / pose_hold."
+    },
+    {
+      "motionId": "ethnic_folk_01",
+      "displayName": "Ethnic Folk Phrase 01",
+      "approvedFbxRelPath": "ethnic_folk/mongolian/ethnic_folk_01.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/ethnic_folk/mongolian/ethnic_folk_01",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "ethnic_folk",
+      "styleSubstyle": "mongolian",
+      "metaAction": "basic_step",
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "verse"
+      ],
+      "nativeBpm": 96.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "ethnic_folk_basic_step",
+      "role": "loop",
+      "notes": "Seed motion record for ethnic_folk / mongolian / basic_step."
+    },
+    {
+      "motionId": "ethnic_folk_02",
+      "displayName": "Ethnic Folk Phrase 02",
+      "approvedFbxRelPath": "ethnic_folk/dai/ethnic_folk_02.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/ethnic_folk/dai/ethnic_folk_02",
+      "licenseTier": "prototype_only",
+      "qualityTier": "production",
+      "styleFamily": "ethnic_folk",
+      "styleSubstyle": "dai",
+      "metaAction": "basic_step",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus"
+      ],
+      "nativeBpm": 104.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "ethnic_folk_basic_step",
+      "role": "loop",
+      "notes": "Seed motion record for ethnic_folk / dai / basic_step."
+    },
+    {
+      "motionId": "ethnic_folk_03",
+      "displayName": "Ethnic Folk Phrase 03",
+      "approvedFbxRelPath": "ethnic_folk/tibetan/ethnic_folk_03.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/ethnic_folk/tibetan/ethnic_folk_03",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "ethnic_folk",
+      "styleSubstyle": "tibetan",
+      "metaAction": "travel_step",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "instrumental"
+      ],
+      "nativeBpm": 110.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "ethnic_folk_travel_step",
+      "role": "loop",
+      "notes": "Seed motion record for ethnic_folk / tibetan / travel_step."
+    },
+    {
+      "motionId": "ethnic_folk_04",
+      "displayName": "Ethnic Folk Phrase 04",
+      "approvedFbxRelPath": "ethnic_folk/uygur/ethnic_folk_04.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/ethnic_folk/uygur/ethnic_folk_04",
+      "licenseTier": "commercial_safe",
+      "qualityTier": "production",
+      "styleFamily": "ethnic_folk",
+      "styleSubstyle": "uygur",
+      "metaAction": "travel_step",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 114.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "ethnic_folk_travel_step",
+      "role": "loop",
+      "notes": "Seed motion record for ethnic_folk / uygur / travel_step."
+    },
+    {
+      "motionId": "ethnic_folk_05",
+      "displayName": "Ethnic Folk Phrase 05",
+      "approvedFbxRelPath": "ethnic_folk/mongolian/ethnic_folk_05.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/ethnic_folk/mongolian/ethnic_folk_05",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "ethnic_folk",
+      "styleSubstyle": "mongolian",
+      "metaAction": "turn_phrase",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 118.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "ethnic_folk_turn_phrase",
+      "role": "loop",
+      "notes": "Seed motion record for ethnic_folk / mongolian / turn_phrase."
+    },
+    {
+      "motionId": "ethnic_folk_06",
+      "displayName": "Ethnic Folk Phrase 06",
+      "approvedFbxRelPath": "ethnic_folk/dai/ethnic_folk_06.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/ethnic_folk/dai/ethnic_folk_06",
+      "licenseTier": "prototype_only",
+      "qualityTier": "production",
+      "styleFamily": "ethnic_folk",
+      "styleSubstyle": "dai",
+      "metaAction": "turn_phrase",
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 124.0,
+      "phraseBeats": 16,
+      "entryOffsetsBeats": [
+        0,
+        8
+      ],
+      "sliceBeatsOptions": [
+        8,
+        16
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "ethnic_folk_turn_phrase",
+      "role": "loop",
+      "notes": "Seed motion record for ethnic_folk / dai / turn_phrase."
+    },
+    {
+      "motionId": "ethnic_folk_07",
+      "displayName": "Ethnic Folk Phrase 07",
+      "approvedFbxRelPath": "ethnic_folk/tibetan/ethnic_folk_07.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/ethnic_folk/tibetan/ethnic_folk_07",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "ethnic_folk",
+      "styleSubstyle": "tibetan",
+      "metaAction": "arm_expression",
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "verse",
+        "outro"
+      ],
+      "nativeBpm": 92.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "ethnic_folk_arm_expression",
+      "role": "loop",
+      "notes": "Seed motion record for ethnic_folk / tibetan / arm_expression."
+    },
+    {
+      "motionId": "ethnic_folk_08",
+      "displayName": "Ethnic Folk Phrase 08",
+      "approvedFbxRelPath": "ethnic_folk/uygur/ethnic_folk_08.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/ethnic_folk/uygur/ethnic_folk_08",
+      "licenseTier": "commercial_safe",
+      "qualityTier": "production",
+      "styleFamily": "ethnic_folk",
+      "styleSubstyle": "uygur",
+      "metaAction": "arm_expression",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "instrumental"
+      ],
+      "nativeBpm": 100.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "ethnic_folk_arm_expression",
+      "role": "loop",
+      "notes": "Seed motion record for ethnic_folk / uygur / arm_expression."
+    },
+    {
+      "motionId": "ethnic_folk_09",
+      "displayName": "Ethnic Folk Phrase 09",
+      "approvedFbxRelPath": "ethnic_folk/mongolian/ethnic_folk_09.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/ethnic_folk/mongolian/ethnic_folk_09",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "ethnic_folk",
+      "styleSubstyle": "mongolian",
+      "metaAction": "pose_hold",
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "outro"
+      ],
+      "nativeBpm": 88.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "ethnic_folk_pose_hold",
+      "role": "loop",
+      "notes": "Seed motion record for ethnic_folk / mongolian / pose_hold."
+    },
+    {
+      "motionId": "ethnic_folk_10",
+      "displayName": "Ethnic Folk Phrase 10",
+      "approvedFbxRelPath": "ethnic_folk/dai/ethnic_folk_10.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/ethnic_folk/dai/ethnic_folk_10",
+      "licenseTier": "prototype_only",
+      "qualityTier": "production",
+      "styleFamily": "ethnic_folk",
+      "styleSubstyle": "dai",
+      "metaAction": "basic_step",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus"
+      ],
+      "nativeBpm": 108.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "ethnic_folk_basic_step",
+      "role": "loop",
+      "notes": "Seed motion record for ethnic_folk / dai / basic_step."
+    },
+    {
+      "motionId": "ethnic_folk_11",
+      "displayName": "Ethnic Folk Phrase 11",
+      "approvedFbxRelPath": "ethnic_folk/tibetan/ethnic_folk_11.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/ethnic_folk/tibetan/ethnic_folk_11",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "ethnic_folk",
+      "styleSubstyle": "tibetan",
+      "metaAction": "travel_step",
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 122.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "ethnic_folk_travel_step",
+      "role": "loop",
+      "notes": "Seed motion record for ethnic_folk / tibetan / travel_step."
+    },
+    {
+      "motionId": "ethnic_folk_12",
+      "displayName": "Ethnic Folk Phrase 12",
+      "approvedFbxRelPath": "ethnic_folk/uygur/ethnic_folk_12.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/ethnic_folk/uygur/ethnic_folk_12",
+      "licenseTier": "commercial_safe",
+      "qualityTier": "production",
+      "styleFamily": "ethnic_folk",
+      "styleSubstyle": "uygur",
+      "metaAction": "arm_expression",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "outro"
+      ],
+      "nativeBpm": 98.0,
+      "phraseBeats": 16,
+      "entryOffsetsBeats": [
+        0,
+        8
+      ],
+      "sliceBeatsOptions": [
+        8,
+        16
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "ethnic_folk_arm_expression",
+      "role": "loop",
+      "notes": "Seed motion record for ethnic_folk / uygur / arm_expression."
+    },
+    {
+      "motionId": "ethnic_folk_13",
+      "displayName": "Ethnic Folk Phrase 13",
+      "approvedFbxRelPath": "ethnic_folk/mongolian/ethnic_folk_13.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/ethnic_folk/mongolian/ethnic_folk_13",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "ethnic_folk",
+      "styleSubstyle": "mongolian",
+      "metaAction": "accent_hit",
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 126.0,
+      "phraseBeats": 4,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4
+      ],
+      "transitionProfile": "accent",
+      "varietyGroup": "ethnic_folk_accent_hit",
+      "role": "accent",
+      "notes": "Seed motion record for ethnic_folk / mongolian / accent_hit."
+    },
+    {
+      "motionId": "ethnic_folk_14",
+      "displayName": "Ethnic Folk Phrase 14",
+      "approvedFbxRelPath": "ethnic_folk/dai/ethnic_folk_14.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/ethnic_folk/dai/ethnic_folk_14",
+      "licenseTier": "prototype_only",
+      "qualityTier": "production",
+      "styleFamily": "ethnic_folk",
+      "styleSubstyle": "dai",
+      "metaAction": "accent_hit",
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus"
+      ],
+      "nativeBpm": 132.0,
+      "phraseBeats": 4,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4
+      ],
+      "transitionProfile": "accent",
+      "varietyGroup": "ethnic_folk_accent_hit",
+      "role": "accent",
+      "notes": "Seed motion record for ethnic_folk / dai / accent_hit."
+    },
+    {
+      "motionId": "ethnic_folk_15",
+      "displayName": "Ethnic Folk Phrase 15",
+      "approvedFbxRelPath": "ethnic_folk/tibetan/ethnic_folk_15.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/ethnic_folk/tibetan/ethnic_folk_15",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "ethnic_folk",
+      "styleSubstyle": "tibetan",
+      "metaAction": "turn_phrase",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 112.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "transitionProfile": "bridge",
+      "varietyGroup": "ethnic_folk_turn_phrase",
+      "role": "loop",
+      "notes": "Seed motion record for ethnic_folk / tibetan / turn_phrase."
+    },
+    {
+      "motionId": "ethnic_folk_16",
+      "displayName": "Ethnic Folk Phrase 16",
+      "approvedFbxRelPath": "ethnic_folk/uygur/ethnic_folk_16.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/ethnic_folk/uygur/ethnic_folk_16",
+      "licenseTier": "commercial_safe",
+      "qualityTier": "production",
+      "styleFamily": "ethnic_folk",
+      "styleSubstyle": "uygur",
+      "metaAction": "pose_hold",
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "outro",
+        "intro"
+      ],
+      "nativeBpm": 90.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "transitionProfile": "bridge",
+      "varietyGroup": "ethnic_folk_pose_hold",
+      "role": "loop",
+      "notes": "Seed motion record for ethnic_folk / uygur / pose_hold."
+    },
+    {
+      "motionId": "contemporary_01",
+      "displayName": "Contemporary Phrase 01",
+      "approvedFbxRelPath": "contemporary/lyrical/contemporary_01.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/contemporary/lyrical/contemporary_01",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "contemporary",
+      "styleSubstyle": "lyrical",
+      "metaAction": "basic_step",
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "verse"
+      ],
+      "nativeBpm": 98.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "contemporary_basic_step",
+      "role": "loop",
+      "notes": "Seed motion record for contemporary / lyrical / basic_step."
+    },
+    {
+      "motionId": "contemporary_02",
+      "displayName": "Contemporary Phrase 02",
+      "approvedFbxRelPath": "contemporary/modern_release/contemporary_02.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/contemporary/modern_release/contemporary_02",
+      "licenseTier": "prototype_only",
+      "qualityTier": "production",
+      "styleFamily": "contemporary",
+      "styleSubstyle": "modern_release",
+      "metaAction": "basic_step",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus"
+      ],
+      "nativeBpm": 106.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "contemporary_basic_step",
+      "role": "loop",
+      "notes": "Seed motion record for contemporary / modern_release / basic_step."
+    },
+    {
+      "motionId": "contemporary_03",
+      "displayName": "Contemporary Phrase 03",
+      "approvedFbxRelPath": "contemporary/urban_contemporary/contemporary_03.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/contemporary/urban_contemporary/contemporary_03",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "contemporary",
+      "styleSubstyle": "urban_contemporary",
+      "metaAction": "travel_step",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "instrumental"
+      ],
+      "nativeBpm": 112.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "contemporary_travel_step",
+      "role": "loop",
+      "notes": "Seed motion record for contemporary / urban_contemporary / travel_step."
+    },
+    {
+      "motionId": "contemporary_04",
+      "displayName": "Contemporary Phrase 04",
+      "approvedFbxRelPath": "contemporary/theatrical_modern/contemporary_04.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/contemporary/theatrical_modern/contemporary_04",
+      "licenseTier": "commercial_safe",
+      "qualityTier": "production",
+      "styleFamily": "contemporary",
+      "styleSubstyle": "theatrical_modern",
+      "metaAction": "travel_step",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 116.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "contemporary_travel_step",
+      "role": "loop",
+      "notes": "Seed motion record for contemporary / theatrical_modern / travel_step."
+    },
+    {
+      "motionId": "contemporary_05",
+      "displayName": "Contemporary Phrase 05",
+      "approvedFbxRelPath": "contemporary/lyrical/contemporary_05.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/contemporary/lyrical/contemporary_05",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "contemporary",
+      "styleSubstyle": "lyrical",
+      "metaAction": "turn_phrase",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 120.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "contemporary_turn_phrase",
+      "role": "loop",
+      "notes": "Seed motion record for contemporary / lyrical / turn_phrase."
+    },
+    {
+      "motionId": "contemporary_06",
+      "displayName": "Contemporary Phrase 06",
+      "approvedFbxRelPath": "contemporary/modern_release/contemporary_06.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/contemporary/modern_release/contemporary_06",
+      "licenseTier": "prototype_only",
+      "qualityTier": "production",
+      "styleFamily": "contemporary",
+      "styleSubstyle": "modern_release",
+      "metaAction": "turn_phrase",
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 126.0,
+      "phraseBeats": 16,
+      "entryOffsetsBeats": [
+        0,
+        8
+      ],
+      "sliceBeatsOptions": [
+        8,
+        16
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "contemporary_turn_phrase",
+      "role": "loop",
+      "notes": "Seed motion record for contemporary / modern_release / turn_phrase."
+    },
+    {
+      "motionId": "contemporary_07",
+      "displayName": "Contemporary Phrase 07",
+      "approvedFbxRelPath": "contemporary/urban_contemporary/contemporary_07.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/contemporary/urban_contemporary/contemporary_07",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "contemporary",
+      "styleSubstyle": "urban_contemporary",
+      "metaAction": "arm_expression",
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "verse",
+        "outro"
+      ],
+      "nativeBpm": 94.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "contemporary_arm_expression",
+      "role": "loop",
+      "notes": "Seed motion record for contemporary / urban_contemporary / arm_expression."
+    },
+    {
+      "motionId": "contemporary_08",
+      "displayName": "Contemporary Phrase 08",
+      "approvedFbxRelPath": "contemporary/theatrical_modern/contemporary_08.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/contemporary/theatrical_modern/contemporary_08",
+      "licenseTier": "commercial_safe",
+      "qualityTier": "production",
+      "styleFamily": "contemporary",
+      "styleSubstyle": "theatrical_modern",
+      "metaAction": "arm_expression",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "instrumental"
+      ],
+      "nativeBpm": 102.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "contemporary_arm_expression",
+      "role": "loop",
+      "notes": "Seed motion record for contemporary / theatrical_modern / arm_expression."
+    },
+    {
+      "motionId": "contemporary_09",
+      "displayName": "Contemporary Phrase 09",
+      "approvedFbxRelPath": "contemporary/lyrical/contemporary_09.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/contemporary/lyrical/contemporary_09",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "contemporary",
+      "styleSubstyle": "lyrical",
+      "metaAction": "pose_hold",
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "intro",
+        "outro"
+      ],
+      "nativeBpm": 90.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "contemporary_pose_hold",
+      "role": "loop",
+      "notes": "Seed motion record for contemporary / lyrical / pose_hold."
+    },
+    {
+      "motionId": "contemporary_10",
+      "displayName": "Contemporary Phrase 10",
+      "approvedFbxRelPath": "contemporary/modern_release/contemporary_10.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/contemporary/modern_release/contemporary_10",
+      "licenseTier": "prototype_only",
+      "qualityTier": "production",
+      "styleFamily": "contemporary",
+      "styleSubstyle": "modern_release",
+      "metaAction": "basic_step",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus"
+      ],
+      "nativeBpm": 110.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "contemporary_basic_step",
+      "role": "loop",
+      "notes": "Seed motion record for contemporary / modern_release / basic_step."
+    },
+    {
+      "motionId": "contemporary_11",
+      "displayName": "Contemporary Phrase 11",
+      "approvedFbxRelPath": "contemporary/urban_contemporary/contemporary_11.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/contemporary/urban_contemporary/contemporary_11",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "contemporary",
+      "styleSubstyle": "urban_contemporary",
+      "metaAction": "travel_step",
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 124.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        8
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "contemporary_travel_step",
+      "role": "loop",
+      "notes": "Seed motion record for contemporary / urban_contemporary / travel_step."
+    },
+    {
+      "motionId": "contemporary_12",
+      "displayName": "Contemporary Phrase 12",
+      "approvedFbxRelPath": "contemporary/theatrical_modern/contemporary_12.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/contemporary/theatrical_modern/contemporary_12",
+      "licenseTier": "commercial_safe",
+      "qualityTier": "production",
+      "styleFamily": "contemporary",
+      "styleSubstyle": "theatrical_modern",
+      "metaAction": "arm_expression",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "outro"
+      ],
+      "nativeBpm": 100.0,
+      "phraseBeats": 16,
+      "entryOffsetsBeats": [
+        0,
+        8
+      ],
+      "sliceBeatsOptions": [
+        8,
+        16
+      ],
+      "transitionProfile": "style_locked",
+      "varietyGroup": "contemporary_arm_expression",
+      "role": "loop",
+      "notes": "Seed motion record for contemporary / theatrical_modern / arm_expression."
+    },
+    {
+      "motionId": "contemporary_13",
+      "displayName": "Contemporary Phrase 13",
+      "approvedFbxRelPath": "contemporary/lyrical/contemporary_13.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/contemporary/lyrical/contemporary_13",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "contemporary",
+      "styleSubstyle": "lyrical",
+      "metaAction": "accent_hit",
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 128.0,
+      "phraseBeats": 4,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4
+      ],
+      "transitionProfile": "accent",
+      "varietyGroup": "contemporary_accent_hit",
+      "role": "accent",
+      "notes": "Seed motion record for contemporary / lyrical / accent_hit."
+    },
+    {
+      "motionId": "contemporary_14",
+      "displayName": "Contemporary Phrase 14",
+      "approvedFbxRelPath": "contemporary/modern_release/contemporary_14.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/contemporary/modern_release/contemporary_14",
+      "licenseTier": "prototype_only",
+      "qualityTier": "production",
+      "styleFamily": "contemporary",
+      "styleSubstyle": "modern_release",
+      "metaAction": "accent_hit",
+      "energyBand": "high_energy",
+      "preferredSegments": [
+        "chorus"
+      ],
+      "nativeBpm": 134.0,
+      "phraseBeats": 4,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4
+      ],
+      "transitionProfile": "accent",
+      "varietyGroup": "contemporary_accent_hit",
+      "role": "accent",
+      "notes": "Seed motion record for contemporary / modern_release / accent_hit."
+    },
+    {
+      "motionId": "contemporary_15",
+      "displayName": "Contemporary Phrase 15",
+      "approvedFbxRelPath": "contemporary/urban_contemporary/contemporary_15.fbx",
+      "sourceKind": "curated_fbx",
+      "sourceRef": "source_sheet_v1/contemporary/urban_contemporary/contemporary_15",
+      "licenseTier": "replace_before_ship",
+      "qualityTier": "production",
+      "styleFamily": "contemporary",
+      "styleSubstyle": "urban_contemporary",
+      "metaAction": "turn_phrase",
+      "energyBand": "mid_energy",
+      "preferredSegments": [
+        "verse",
+        "chorus",
+        "instrumental"
+      ],
+      "nativeBpm": 114.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0,
+        4
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "transitionProfile": "bridge",
+      "varietyGroup": "contemporary_turn_phrase",
+      "role": "loop",
+      "notes": "Seed motion record for contemporary / urban_contemporary / turn_phrase."
+    },
+    {
+      "motionId": "contemporary_16",
+      "displayName": "Contemporary Phrase 16",
+      "approvedFbxRelPath": "contemporary/theatrical_modern/contemporary_16.fbx",
+      "sourceKind": "generated_from_video",
+      "sourceRef": "source_sheet_v1/contemporary/theatrical_modern/contemporary_16",
+      "licenseTier": "commercial_safe",
+      "qualityTier": "production",
+      "styleFamily": "contemporary",
+      "styleSubstyle": "theatrical_modern",
+      "metaAction": "pose_hold",
+      "energyBand": "low_energy",
+      "preferredSegments": [
+        "outro",
+        "intro"
+      ],
+      "nativeBpm": 92.0,
+      "phraseBeats": 8,
+      "entryOffsetsBeats": [
+        0
+      ],
+      "sliceBeatsOptions": [
+        4,
+        8
+      ],
+      "transitionProfile": "bridge",
+      "varietyGroup": "contemporary_pose_hold",
+      "role": "loop",
+      "notes": "Seed motion record for contemporary / theatrical_modern / pose_hold."
+    }
+  ]
+}

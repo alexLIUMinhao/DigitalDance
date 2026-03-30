@@ -7,7 +7,7 @@ __pycache__/
 *.pyc
 
 # Unity generated
-[Ll]ibrary/
+/[Ll]ibrary/
 [Tt]emp/
 [Oo]bj/
 [Ll]ogs/
@@ -42,3 +42,9 @@ unitytests*/
 
 # Unity cache / generated metadata
 sysinfo.txt
+
+# Motion base local config
+motion_base/config/asset_roots.local.json
+
+# Motion base local Unity review cache
+Assets/MotionBaseReviewCache/

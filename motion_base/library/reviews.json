@@ -1,0 +1,563 @@
+{
+  "schemaVersion": 1,
+  "reviews": [
+    {
+      "motionId": "chinese_classical_01",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "narrow",
+      "reviewer": "motion_qa_li",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "chinese_classical_02",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_chen",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "chinese_classical_03",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_wu",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "chinese_classical_04",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_li",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "chinese_classical_05",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "monitor",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_chen",
+      "issues": [
+        "check landing consistency during final integration"
+      ],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "chinese_classical_06",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "monitor",
+      "styleClarity": "clear",
+      "tempoTolerance": "wide",
+      "reviewer": "motion_qa_wu",
+      "issues": [
+        "check landing consistency during final integration"
+      ],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "chinese_classical_07",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "narrow",
+      "reviewer": "motion_qa_li",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "chinese_classical_08",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_chen",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "chinese_classical_09",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "narrow",
+      "reviewer": "motion_qa_wu",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "chinese_classical_10",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_li",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "chinese_classical_11",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "wide",
+      "reviewer": "motion_qa_chen",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "chinese_classical_12",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_wu",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "chinese_classical_13",
+      "reviewStatus": "approved",
+      "loopSeam": "accent_only",
+      "footStability": "monitor",
+      "styleClarity": "clear",
+      "tempoTolerance": "wide",
+      "reviewer": "motion_qa_li",
+      "issues": [
+        "check landing consistency during final integration"
+      ],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "chinese_classical_14",
+      "reviewStatus": "approved",
+      "loopSeam": "accent_only",
+      "footStability": "monitor",
+      "styleClarity": "clear",
+      "tempoTolerance": "wide",
+      "reviewer": "motion_qa_chen",
+      "issues": [
+        "check landing consistency during final integration"
+      ],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "chinese_classical_15",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "monitor",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_wu",
+      "issues": [
+        "check landing consistency during final integration"
+      ],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "chinese_classical_16",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "narrow",
+      "reviewer": "motion_qa_li",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "ethnic_folk_01",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "narrow",
+      "reviewer": "motion_qa_li",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "ethnic_folk_02",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_chen",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "ethnic_folk_03",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_wu",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "ethnic_folk_04",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_li",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "ethnic_folk_05",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "monitor",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_chen",
+      "issues": [
+        "check landing consistency during final integration"
+      ],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "ethnic_folk_06",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "monitor",
+      "styleClarity": "clear",
+      "tempoTolerance": "wide",
+      "reviewer": "motion_qa_wu",
+      "issues": [
+        "check landing consistency during final integration"
+      ],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "ethnic_folk_07",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "narrow",
+      "reviewer": "motion_qa_li",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "ethnic_folk_08",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_chen",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "ethnic_folk_09",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "narrow",
+      "reviewer": "motion_qa_wu",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "ethnic_folk_10",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_li",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "ethnic_folk_11",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "wide",
+      "reviewer": "motion_qa_chen",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "ethnic_folk_12",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_wu",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "ethnic_folk_13",
+      "reviewStatus": "approved",
+      "loopSeam": "accent_only",
+      "footStability": "monitor",
+      "styleClarity": "clear",
+      "tempoTolerance": "wide",
+      "reviewer": "motion_qa_li",
+      "issues": [
+        "check landing consistency during final integration"
+      ],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "ethnic_folk_14",
+      "reviewStatus": "approved",
+      "loopSeam": "accent_only",
+      "footStability": "monitor",
+      "styleClarity": "clear",
+      "tempoTolerance": "wide",
+      "reviewer": "motion_qa_chen",
+      "issues": [
+        "check landing consistency during final integration"
+      ],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "ethnic_folk_15",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "monitor",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_wu",
+      "issues": [
+        "check landing consistency during final integration"
+      ],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "ethnic_folk_16",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "narrow",
+      "reviewer": "motion_qa_li",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "contemporary_01",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "narrow",
+      "reviewer": "motion_qa_li",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "contemporary_02",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_chen",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "contemporary_03",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_wu",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "contemporary_04",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_li",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "contemporary_05",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "monitor",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_chen",
+      "issues": [
+        "check landing consistency during final integration"
+      ],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "contemporary_06",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "monitor",
+      "styleClarity": "clear",
+      "tempoTolerance": "wide",
+      "reviewer": "motion_qa_wu",
+      "issues": [
+        "check landing consistency during final integration"
+      ],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "contemporary_07",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "narrow",
+      "reviewer": "motion_qa_li",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "contemporary_08",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_chen",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "contemporary_09",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "narrow",
+      "reviewer": "motion_qa_wu",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "contemporary_10",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_li",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "contemporary_11",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "wide",
+      "reviewer": "motion_qa_chen",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "contemporary_12",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_wu",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "contemporary_13",
+      "reviewStatus": "approved",
+      "loopSeam": "accent_only",
+      "footStability": "monitor",
+      "styleClarity": "clear",
+      "tempoTolerance": "wide",
+      "reviewer": "motion_qa_li",
+      "issues": [
+        "check landing consistency during final integration"
+      ],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "contemporary_14",
+      "reviewStatus": "approved",
+      "loopSeam": "accent_only",
+      "footStability": "monitor",
+      "styleClarity": "clear",
+      "tempoTolerance": "wide",
+      "reviewer": "motion_qa_chen",
+      "issues": [
+        "check landing consistency during final integration"
+      ],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "contemporary_15",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "monitor",
+      "styleClarity": "clear",
+      "tempoTolerance": "medium",
+      "reviewer": "motion_qa_wu",
+      "issues": [
+        "check landing consistency during final integration"
+      ],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    },
+    {
+      "motionId": "contemporary_16",
+      "reviewStatus": "approved",
+      "loopSeam": "clean",
+      "footStability": "stable",
+      "styleClarity": "clear",
+      "tempoTolerance": "narrow",
+      "reviewer": "motion_qa_li",
+      "issues": [],
+      "reviewedAtUtc": "2026-03-29T00:00:00Z"
+    }
+  ]
+}
