@@ -1,0 +1,1457 @@
+# Development Log
+
+## Initial Project Setup
+- Timestamp: 2026-04-02T00:00:00+08:00
+- Git branch: main
+- Initial project goal:
+  Build an isolated `Python + Blender` workspace for a music-driven 3D dance system that is completely separated from the Unity codebase.
+- User requirements:
+  Create a new sibling project directory, keep Unity usable and untouched, treat `../music` and `../motion-base-assets` as read-only inputs, and establish stable JSON contracts for analysis, motion units, choreography planning, and retarget reporting.
+- Constraints:
+  Do not write into the Unity project, do not share source-code dependencies with Unity, keep outputs inside `music-motion-lab/outputs/`, and bootstrap the new project as an independent git repository with its own virtual environment.
+- Open questions:
+  Which datasets should be prioritized after the v1 coarse motion-unit bootstrap, and when Blender becomes available, what should the first preview driver look like?
+- Initial next-step plan:
+  1. Initialize the isolated project skeleton and stable contracts.
+  2. Implement the first pipeline CLIs for song analysis, motion library build, choreography planning, and preview diagnostics.
+  3. Run smoke tests against shared read-only inputs and verify Unity remains untouched.
+
+## Entry
+- Timestamp: 2026-04-02T18:54:13+0800
+- Git branch: main
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.gitignore`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/README.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/pyproject.toml`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/config/paths.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/contracts/`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md`
+- What was changed:
+  - Bootstrapped the isolated `music-motion-lab` repository, including project boundaries, read-only shared-root config, stable JSON contracts, examples, tests, and ignore rules.
+  - Implemented a first independent Python package and CLI with four commands:
+    - `analyze-song`
+    - `build-motion-library`
+    - `plan-choreography`
+    - `build-preview`
+  - Implemented a numpy/soundfile-based song analysis path to avoid the local `librosa/numba` environment issue and keep the v1 toolchain self-contained.
+  - Built the first coarse motion-unit library from shared dataset pose-driver and retarget diagnostics under `../motion-base-assets/previewCache`.
+  - Generated smoke-test outputs inside this project only:
+    - `outputs/song_event_maps/audio_song_event_map.json`
+    - `outputs/motion_libraries/motion_unit_library.json`
+    - `outputs/choreography_plans/audio_choreography_plan.json`
+    - `outputs/preview_jobs/audio_choreography_plan_preview_job.json`
+    - `outputs/retarget_reports/audio_choreography_plan_retarget_report.json`
+- Why it was changed:
+  - The new mainline needs an executable, isolated foundation before any higher-quality music understanding or Blender playback work can continue safely.
+- Whether the project goal changed:
+  - No. This implementation is the first execution of the new isolated-project goal.
+- Remaining work / next plan:
+  - Replace coarse frame-based motion slicing with better action-unit and transition-anchor labeling.
+  - Add manual override hooks for beat/downbeat/phrase correction.
+  - Implement a true Blender preview driver once Blender is available in the local environment.
+
+## Entry
+- Timestamp: 2026-04-02T19:05:38+0800
+- Git branch: main
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/README.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/config/song_overrides.template.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/contracts/song_event_map.schema.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/contracts/examples/song_event_map.example.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/cli.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/contracts.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/path_policy.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/music_analysis.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_music_analysis.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_path_policy.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/song_event_maps/audio_song_event_map.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/song_event_maps/audio_override_demo_song_event_map.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/choreography_plans/audio_choreography_plan.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/retarget_reports/audio_choreography_plan_retarget_report.json`
+- What was changed:
+  - Added manual override support to `analyze-song`, including CLI ingestion of override JSON and contract-level metadata describing whether the output is automatic or manually corrected.
+  - Reworked the music analysis pipeline so it can accept hand-authored beats/downbeats/accents/phrases/sections without depending on Unity-side tools.
+  - Added an override template config for future slow-song and ancient-style song correction work.
+  - Fixed path handling for CLI outputs so explicit `outputs/...` arguments write to the intended path.
+  - Added a new music-analysis test and expanded path-policy coverage.
+  - Re-ran the lab pipeline and confirmed:
+    - automatic path still produces `audio_song_event_map.json`
+    - override path produces `audio_override_demo_song_event_map.json`
+    - downstream choreography and retarget reporting still run successfully.
+- Why it was changed:
+  - The isolated lab needed a trustworthy human-in-the-loop timing correction path before we can safely improve choreography quality for songs where automatic rhythm inference is unreliable.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Upgrade motion-unit extraction from coarse slices to action-aware labeled units.
+  - Add better editing affordances for phrase and section review.
+  - Hook these contracts into a real Blender preview driver when Blender becomes available.
+
+## Entry
+- Timestamp: 2026-04-02T19:53:51+0800
+- Git branch: main
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/README.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/cli.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/motion_library.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/planner.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_motion_library_semantics.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/motion_libraries/motion_unit_library.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/motion_libraries/motion_unit_library_showcase.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/choreography_plans/audio_choreography_plan.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/retarget_reports/audio_choreography_plan_retarget_report.json`
+- What was changed:
+  - Replaced the old coarse time-slice motion-library builder with a pose-driven semantic labeling pass over shared dataset pose-driver positions.
+  - Units now carry automatic travel classification, facing-change classification, support/contact state, body-focus hints, richer anchor metadata, and compatibility lists derived from feature-space anchor matching.
+  - Added `motion_unit_library_showcase.json` as a stage-display artifact so the library can be reviewed without opening the full large JSON.
+  - Updated choreography scoring to use new unit semantics, especially section-specific travel targets and support-state preferences.
+  - Added a motion-library semantics test and re-ran the full isolated pipeline successfully.
+- Why it was changed:
+  - The library needed to become more choreography-ready and reviewable before the next phase of system work would be meaningful.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Move from statistical semantics toward better action-unit boundaries and richer expressive tags.
+  - Create review-bundle outputs that make song + unit selection easier to inspect together.
+  - Add Blender-backed preview execution once the backend is available.
+
+## Entry
+- Timestamp: 2026-04-02T20:03:43+0800
+- Git branch: main
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/README.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/contracts/README.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/contracts/review_bundle.schema.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/contracts/examples/review_bundle.example.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/cli.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/contracts.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/review_bundle.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_review_bundle.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/review_bundles/audio_review_bundle.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/review_bundles/audio_review_bundle.md`
+- What was changed:
+  - Added a new `ReviewBundle` contract plus `build-review-bundle` CLI support so the current lab state can be reviewed as one combined artifact.
+  - Implemented `review_bundle.py` to merge `song_event_map`, `motion_unit_library_showcase`, `choreography_plan`, and `retarget_report` into a JSON bundle with highlights and hotspot summaries.
+  - Added a readable Markdown renderer with highlights, action items, compact song/library/choreography summaries, and retarget hotspot callouts for phase-review use.
+  - Added test coverage for the new pipeline and generated real outputs:
+    - `outputs/review_bundles/audio_review_bundle.json`
+    - `outputs/review_bundles/audio_review_bundle.md`
+  - Re-ran the full test suite successfully (`9` tests passing).
+- Why it was changed:
+  - We need a stable phase-review artifact that makes current progress inspectable without opening several large intermediate files.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Use review bundles as the default artifact for evaluating songs and planner behavior.
+  - Keep improving action-unit boundary quality and expressive labeling beyond the current statistics-driven segmentation.
+  - Connect a real Blender backend so future review bundles can include executed preview and retarget outcomes.
+
+## Entry
+- Timestamp: 2026-04-02T21:22:24+0800
+- Git branch: main
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/README.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/config/paths.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/config.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/cli.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/preview.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/preview_jobs/audio_choreography_plan_preview_job.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/retarget_reports/audio_choreography_plan_retarget_report.json`
+- What was changed:
+  - Confirmed the local Blender installation path and stored it in `config/paths.json -> tooling.blenderPath`.
+  - Extended app config loading and the `build-preview` CLI so preview generation can use an explicit Blender executable path from config or `--blender-path`.
+  - Re-ran preview generation; the resulting preview job now reports Blender as available and the retarget report status moved from `backend_unavailable` to `warning`.
+  - Updated README usage so Blender launches remain reproducible even when the binary is not on shell `PATH`.
+- Why it was changed:
+  - The local machine has Blender installed, but the isolated preview flow could not see it, which blocked the user's attempt to launch and inspect results.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Implement a real Blender preview driver that executes the choreography plan instead of only emitting preview-job metadata.
+  - Open the current best visual artifacts for inspection while the execution driver is still missing.
+  - Keep shrinking the largest retarget hotspots, especially FineDance `168`.
+
+## Entry
+- Timestamp: 2026-04-02T21:34:55+0800
+- Git branch: main
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/README.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/cli.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/web_preview.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/blender_render_preview.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_config.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_web_preview.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/audio_choreography_plan_web_preview.html`
+- What was changed:
+  - Added `render-preview`, `launch-preview`, and `build-web-preview` CLI paths so preview jobs can be visualized either through Blender scene generation or a browser-based fallback.
+  - Implemented `tools/blender_render_preview.py` to build a minimal joints-and-bones preview scene from pose-driver slices.
+  - Confirmed that local Blender 4.4.2 background startup crashes before script execution on this machine, so background rendering remains blocked by environment stability rather than by missing project code.
+  - Implemented `web_preview.py` as a reliable fallback that emits a self-contained animated HTML skeleton viewer from the current choreography preview job.
+  - Generated and opened `outputs/renders/audio_choreography_plan_web_preview.html`, updated README usage, and added test coverage for config and web preview generation.
+- Why it was changed:
+  - We needed a way to inspect motion immediately even though Blender automation is unstable in the current local environment.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Debug Blender startup stability so the simple preview scene can be saved and rendered automatically.
+  - Expand the web preview into a richer choreography review tool with more step and hotspot context.
+  - Continue toward a full Blender preview driver that consumes the choreography plan end to end.
+
+## Entry
+- Timestamp: 2026-04-02T21:45:07+0800
+- Git branch: main
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/README.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/cli.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/web_preview.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/audio_choreography_plan_web_preview.html`
+- What was changed:
+  - Reworked `build-web-preview` so it can optionally consume the choreography plan, song event map, and local audio path rather than only the preview job.
+  - Upgraded the web preview pipeline to resample each step to music-aligned durations, preserve more motion detail, smooth clip boundaries, auto-fit the figure to the stage, and expose section-aware step cards.
+  - Added optional local audio sync support and regenerated `audio_choreography_plan_web_preview.html` against `audio.mp3` and `audio_song_event_map.json`.
+  - Updated README usage to document the timing-aware web preview flow.
+- Why it was changed:
+  - The first web preview was too small, too choppy, and not synchronized to the song, so it was not useful enough as a choreography review surface.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Further reduce cross-sequence discontinuities, especially around dataset switches.
+  - Add explicit beat and section overlays in the web viewer.
+  - Explore a richer character-style renderer once the timing and continuity layer is stable.
+
+## Entry
+- Timestamp: 2026-04-02T21:59:12+0800
+- Git branch: main
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/README.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/planner.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/web_preview.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/cli.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_pipeline_smoke.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/choreography_plans/audio_choreography_plan.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/preview_jobs/audio_choreography_plan_preview_job.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/retarget_reports/audio_choreography_plan_retarget_report.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/audio_choreography_plan_web_preview.html`
+- What was changed:
+  - Rebuilt the planner around stronger musical context scoring so phrase decisions now react to accent density, accent strength, downbeats, anchor mode, compatibility chaining, and same-sequence continuity.
+  - Expanded step metadata in `switch_reason` to expose the musical and transition context needed by the preview layer.
+  - Reworked the web preview playback model to use continuous time interpolation rather than discrete frame stepping, reducing visible jitter.
+  - Added a timeline view that visualizes sections, beat/downbeat ticks, accent peaks, step energy, and transition compatibility so the song-driven logic is inspectable in the viewer itself.
+  - Regenerated the choreography plan, preview job, retarget report, and web preview; added planner smoke tests for compatibility preference and accent-driven energy escalation.
+- Why it was changed:
+  - The previous version still looked choppy and did not make the song-structure-driven selection logic visible enough to be trustworthy.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Reduce remaining dataset-switch discontinuities in the selected sequence chain.
+  - Strengthen continuity preferences for multi-step runs when the music does not demand a switch.
+  - Build on this stabilized timing-aware view with a richer character renderer when ready.
+
+## Entry
+- Timestamp: 2026-04-02T22:18:03+0800
+- Git branch: main
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/README.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/cli.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/motion_library.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/web_preview.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_motion_library_semantics.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_web_preview.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/blender_render_preview.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/motion_libraries/motion_unit_library.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/motion_libraries/motion_unit_library_showcase.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/choreography_plans/audio_choreography_plan.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/preview_jobs/audio_choreography_plan_preview_job.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/retarget_reports/audio_choreography_plan_retarget_report.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/audio_choreography_plan_web_preview.html`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/review_bundles/audio_review_bundle.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/review_bundles/audio_review_bundle.md`
+- What was changed:
+  - Rebuilt `build-motion-library` around overlapping windows so every available source clip contributes many reusable base actions for sampling.
+  - Replaced tag-heuristic energy labeling with per-unit kinematic intensity scoring and quantile banding, and surfaced the resulting energy profile in the library showcase.
+  - Changed `build-web-preview` and the Blender helper to treat `max_steps=0` as “use all steps”, which fixes the earlier preview truncation problem.
+  - Upgraded the browser renderer into a mesh-like body pass with filled torso and limbs, regenerated the full plan preview, and refreshed the review bundle.
+- Why it was changed:
+  - The previous output was still too diagnostic-looking and too small in motion vocabulary to function as a believable choreography review surface.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Review the new full-length mesh-like preview with the user and identify the next biggest gap.
+  - If visual readability is good enough, keep improving planner continuity and section-aware sampling decisions.
+  - If readability is still insufficient, implement a true skinned-mesh renderer path rather than iterating only on the pseudo-mesh viewer.
+
+## Entry
+- Timestamp: 2026-04-03 09:12:14 CST
+- Git branch: main
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/config/paths.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/README.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/blender_build_mesh_preview.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/mesh_preview_jobs/audio_choreography_plan_mesh_preview.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/audio_choreography_plan_mesh_preview.blend`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/audio_choreography_plan_mesh_preview.log`
+- What was changed:
+  - Added a real Blender mesh-preview builder that can assemble a choreography plan into a `.blend` scene instead of only producing browser diagnostics.
+  - Investigated and fixed Blender GUI compatibility issues around startup timing, scene reset, and object-context access while bringing up the new preview path.
+  - Corrected the preview template configuration back to the known Mixamo reference FBX and documented the mesh-preview commands in `README.md`.
+  - Confirmed that the existing `previewCache/dataset_sequences` assets are already exported with skinned meshes, then changed the builder to prefer those direct-mesh FBXs instead of re-retargeting them.
+  - Regenerated the mesh-preview manifest for the current choreography plan and successfully saved the full-scene artifact `outputs/renders/audio_choreography_plan_mesh_preview.blend`.
+  - Re-ran the isolated test suite after the route change; all `16` tests passed.
+- Why it was changed:
+  - The user asked to do the real skinned-mesh renderer first. The earlier browser pseudo-mesh preview was still too diagnostic, and a second retarget pass inside Blender was the unstable part of the flow. Using the already-exported mesh sequences gives the lab a stable real-character preview without depending on Unity.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Use the new Blender `.blend` preview as the main visual review surface and gather feedback on timing, scale, and transition quality.
+  - Add optional video rendering / easier preview launching on top of the generated `.blend` workflow.
+  - Keep improving plan quality, especially music-section alignment and transition compatibility, now that the real-mesh view is available.
+
+## Entry
+- Timestamp: 2026-04-03 09:24:12 CST
+- Git branch: main
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/motion_library.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/planner.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/motion_libraries/motion_unit_library.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/motion_libraries/motion_unit_library_showcase.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/choreography_plans/audio_choreography_plan.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/preview_jobs/audio_choreography_plan_preview_job.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/mesh_preview_jobs/audio_choreography_plan_mesh_preview.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/audio_choreography_plan_mesh_preview.blend`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/audio_choreography_plan_mesh_preview.log`
+- What was changed:
+  - Attached retarget-consistency health signals to each motion unit so the lab now knows which source sequences are safer or riskier for avatar-mesh preview.
+  - Updated planner scoring to penalize high joint-error sequences and heavily demote `risky/avoid` retarget assets.
+  - Rebuilt the motion library and choreography plan; the new plan now selects the healthier AIST++ sequence `gJS_sBM_cAll_d03_mJS2_ch01` instead of the visibly problematic FineDance `161/164/168` preview assets.
+  - Rebuilt the preview job, mesh-preview manifest, and Blender `.blend`; the updated scene now imports the AIST++ direct-mesh FBX and no longer assembles from the previous FineDance pair.
+  - Verified the new build completed cleanly and kept the isolated test suite green (`16` passing tests).
+- Why it was changed:
+  - The user reported that the avatar motion still looked wrong. Investigation showed that the planner was choosing source sequences whose retarget preview assets were already known to fail consistency checks badly. The fix was to make retarget health visible to planning instead of only to diagnostics.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Get user feedback on the new AIST-based Blender scene and decide whether mapping quality is now acceptable enough to continue on planning quality.
+  - Add controlled diversity so the planner can use more than one healthy sequence without falling back to obviously bad mapping assets.
+  - If needed, split source-truth preview and avatar-retarget preview into separate modes so choreography review is never blocked by avatar-mapping defects.
+
+## 2026-04-03 22:53 CST
+- Git branch: HEAD
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/cli.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/README.md
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_161_164_168.html
+- What was changed:
+  - Added a new isolated `build-dataset-truth-preview` CLI command so the lab can generate source-truth validation pages from raw dataset assets.
+  - Implemented a FineDance truth-preview pipeline that resolves original `motion/*.npy`, matching `music_wav/*.wav`, and upstream official mesh preview mp4 clips for requested sequence IDs.
+  - Added fallback resolution for FineDance catalog entries whose `musicPath` is blank even though the raw wav files exist on disk.
+  - Generated a review HTML for FineDance `161/164/168` with locked video-audio playback, resolved asset links, frame counts, durations, and proof-clip limits.
+  - Added tests for document generation and real asset resolution; the isolated test suite now passes with `18` tests.
+- Why it was changed:
+  - We need a clean source-truth lane to confirm whether the original FineDance music-motion pairing is healthy before attributing problems to planner logic or avatar retarget.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Let the user inspect the new source-truth page and judge whether the raw FineDance pairs look aligned.
+  - If the source truth looks good, keep downstream debugging focused on mapping, retarget, and planning instead of dataset ingest.
+  - If needed next, expand the same truth-preview flow to additional FineDance IDs or add a direct launcher command.
+
+## 2026-04-03 23:08 CST
+- Git branch: HEAD
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/cli.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/README.md
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+- What was changed:
+  - Added full-dataset support to the truth-preview workflow with a new --all-sequences CLI option.
+  - Reworked the FineDance truth HTML into a searchable single-player browser view so all 203 sequences can live in one page without hundreds of simultaneous media elements.
+  - Added fallback display for entries that have raw motion and wav assets but no local official mesh preview mp4 yet; these entries now remain reviewable with explicit preview status.
+  - Generated the full FineDance truth page and confirmed the current local state: 203 total entries, 49 with preview mp4s, 154 still missing preview mp4s.
+  - Updated tests for the new viewer structure and kept the isolated suite green with 19 passing tests.
+- Why it was changed:
+  - The user wants every FineDance action shown in HTML, not just a few sample IDs, so source-truth review can happen from a single artifact.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Let the user inspect the full dataset truth page.
+  - If needed next, generate missing official mesh previews or add stronger filters by style and preview availability.
+  - Keep using this page as the raw-dataset truth lane while downstream mapping issues are debugged separately.
+
+## 2026-04-03 23:24 CST
+- Git branch: HEAD
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+- What was changed:
+  - Promoted raw source totals in the FineDance truth viewer by showing original motion frame count and original motion duration alongside the preview clip metrics.
+  - Added preview frame count and preview mp4 size to make the distinction between raw source length and preview artifact size obvious in the HTML.
+  - Regenerated the full FineDance truth page and kept the isolated test suite green with 19 passing tests.
+- Why it was changed:
+  - The user needs the original total frame counts and lengths for each FineDance motion, not just the clipped 12-second preview summary.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Let the user inspect the refreshed HTML with the new total-length fields.
+  - Keep the FineDance official preview batch running in the background so more sequences become directly playable.
+
+## 2026-04-03 23:33 CST
+- Git branch: HEAD
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+- What was changed:
+  - Added explicit sequence picking controls to the FineDance truth viewer: dropdown selection, previous/next navigation, and current filtered position display.
+  - Preserved the searchable sidebar while making clip selection work even when the sidebar list is long.
+  - Regenerated the all-sequences HTML and kept the isolated suite green with 19 passing tests.
+- Why it was changed:
+  - The user could not choose a clip reliably in the prior UI, so the truth viewer needed direct navigation controls.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Let the user confirm the refreshed selection controls solve the navigation issue.
+  - If needed next, enrich the dropdown labels with duration and preview availability.
+
+## 2026-04-03 23:36 CST
+- Git branch: HEAD
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+- What was changed:
+  - Added direct jump-by-ID input to the FineDance truth viewer.
+  - Enriched dropdown labels and sidebar cards with compact duration, motion frame count, and preview availability.
+  - Added auto-scroll so the selected sidebar card stays in view, then regenerated the all-sequences HTML with tests still passing.
+- Why it was changed:
+  - The user still found sequence picking awkward, so the viewer needed faster direct navigation and better identification labels.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Let the user test this improved selector.
+  - If needed next, add keyboard shortcuts and a preview-only filter.
+
+## 2026-04-03 23:41 CST
+- Git branch: HEAD
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+- What was changed:
+  - Replaced the prior jump-input and dropdown-driven picker with a simple numeric left-side selection grid (`001`, `002`, ...).
+  - Kept previous/next buttons and regenerated the all-sequences HTML with the simplified selector.
+  - Re-ran tests and kept the isolated suite green with 19 passing tests.
+- Why it was changed:
+  - The user wanted direct numeric selection on the left, and the more complex picker controls were still not comfortable enough.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Let the user try the numeric selector.
+  - If needed next, add a preview-only filter without changing the core left-side number layout.
+
+## 2026-04-03 23:47 CST
+- Git branch: HEAD
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+- What was changed:
+  - Added static pre-rendered numeric sequence buttons on the left sidebar as a robust fallback.
+  - Updated sequence list layout sizing so the left numeric grid stays visible and scrollable reliably.
+  - Regenerated the HTML and validated test suite remains green.
+- Why it was changed:
+  - The user reported left-side numbers were still missing; this change makes visibility independent of JavaScript timing/errors.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Let the user confirm the left numeric list now appears correctly.
+
+## 2026-04-03 23:52 CST
+- Git branch: HEAD
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+- What was changed:
+  - Replaced per-item click binding with delegated sidebar click handling.
+  - Added safer media reset and playback sequencing to prevent no-op clicks/play in stricter browser environments.
+  - Regenerated the all-sequences HTML and validated tests still pass.
+- Why it was changed:
+  - Left numeric list was visible but not actionable, and playback was not starting; this patch focuses on interaction reliability.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Let user verify sidebar clicks and playback response on refreshed page.
+
+## 2026-04-04 00:01 CST
+- Git branch: HEAD
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/merge_finedance_preview_audio.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_preview_audio_merge_report.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+- What was changed:
+  - Added `tools/merge_finedance_preview_audio.py` for batch muxing preview video + wav audio.
+  - Executed full merge with bundled ffmpeg and produced 203/203 `*_with_audio.mp4` files (report in outputs/reports).
+  - Updated truth preview pipeline to prefer `with_audio` assets and switched web playback logic to video-only (embedded audio), reducing click/play failures from dual-track sync.
+  - Rebuilt `dataset_truth_finedance_all.html` and kept tests green (19 passing).
+- Why it was changed:
+  - User requested merged mp4 outputs in upstream baseline folder and direct playable behavior in the truth HTML.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Have user verify playback behavior on refreshed page.
+
+## 2026-04-03 15:06 CST
+- Git branch: HEAD
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+- What was changed:
+  - Fixed a runtime bug in dataset truth HTML generation: payload JSON in the `datasetPayload` script is now emitted as raw JSON (with `</` escaped to `<\/`) instead of HTML-escaped entities.
+  - Added regression checks in `test_dataset_truth_preview.py` to verify payload parseability (`"dataset_name": "finedance"` present and `&quot;dataset_name&quot;` absent).
+  - Regenerated `outputs/renders/dataset_truth_finedance_all.html` from `--all-sequences` and re-ran the full test suite (`19` tests passing).
+- Why it was changed:
+  - User-facing symptom was “left list visible but click not working / right side not playing.” Root cause was `JSON.parse(document.getElementById('datasetPayload').textContent)` crashing because payload was entity-escaped.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - User verifies page interaction after refresh/open.
+  - If any browser still blocks local playback, provide a lightweight local HTTP launcher for this page.
+
+## Milestone M1 - 2026-04-03 15:09 CST
+- Milestone name:
+  FineDance Source-Truth Preview (Audio-Merged + Interactive Playback)
+- Files / artifacts baseline:
+  - /Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/upstream_baselines/finedance/*/finedance_*_official_mesh_preview_with_audio.mp4
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_preview_audio_merge_report.json
+- Milestone state:
+  - Audio-merged preview videos ready for all 203 FineDance entries.
+  - Dataset truth page supports left numeric selection and right-side playable preview.
+  - Runtime payload parsing bug already fixed and covered by tests.
+- Validation snapshot:
+  - Full suite: 19 tests passing.
+  - Truth payload entries: 203.
+  - with-audio preview files: 203.
+- Project goal changed:
+  No.
+- Next plan:
+  - Use this milestone as fixed validation baseline while推进骨架映射和动作连贯性修正。
+
+## 2026-04-03 15:38 CST
+- Git branch: HEAD (unborn)
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/cli.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_audio_features.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/README.md
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/dataset_truth_finedance_audio_features_all.json
+- What was changed:
+  - Added audio feature extraction pipeline for dataset truth entries: onset-informed beat list, strong-beat grading with downbeat bonus (L1-L4, rendered as same-hue depth), low-band drum hit peaks, and clip-window energy curve.
+  - Added cross-entry energy quantile classification (`low_energy`/`mid_energy`/`high_energy`) after computing all sequence energy scores.
+  - Added style fallback compatibility for FineDance labels (`name/style1/style2`) and surfaced style tags in payload.
+  - Enhanced `build_dataset_truth_preview_document` UI/JS:
+    - left playlist cards now include style and energy label;
+    - right panel timeline canvas renders beats / strong beats / drum hits / live playhead;
+    - timeline updates on play, pause, reset, scrub, and sequence switch.
+  - Added sidecar report builder and wired CLI output:
+    - `outputs/reports/dataset_truth_finedance_audio_features_all.json`.
+  - Added test coverage for the new behavior and feature helpers; full suite now passes (`24` tests).
+- Why it was changed:
+  - Implement M1-1 request: make audio feature semantics explainable and directly visible in dataset truth playback.
+- Whether the project goal changed:
+  - Yes. Milestone promoted to M1-1.
+- Remaining work / next plan:
+  - Collect user feedback on strong-beat readability and drum-hit usefulness.
+  - Optionally expose threshold overrides for style-specific tuning.
+
+## Milestone M1-1 - 2026-04-03 15:38 CST
+- Milestone name:
+  FineDance Truth Preview Audio-Feature Visualization
+- Milestone deliverables:
+  - Truth page embeds per-sequence style tags and audio features (BPM, energy, beats, strong beats, drum hits).
+  - Timeline visualization is synchronized with playback and reflects strong-beat depth encoding.
+  - Sidecar full-dataset report generated at `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/dataset_truth_finedance_audio_features_all.json`.
+- Validation snapshot:
+  - FineDance entries in page/report: 203 / 203.
+  - with-audio preview videos still present: 203.
+  - Test suite status: 24 passing.
+- Project goal changed:
+  Yes, from M1 baseline to M1-1 feature-complete baseline.
+- Next plan:
+  - Tune thresholds only if user review indicates false-positive/false-negative strong-beat emphasis.
+
+## 2026-04-03 16:03 CST
+- Git branch: HEAD (unborn)
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/merge_finedance_preview_audio.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_audio_features.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/README.md
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_preview_audio_merge_report.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/dataset_truth_finedance_audio_features_all.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+- What was changed:
+  - Refined M1-1 audio feature extraction:
+    - added beat-grid phase search for better beat placement;
+    - tightened strong-beat selection to upper tiers with downbeat weighting;
+    - replaced drum-hit free-peak detector with beat-aligned low-band+beat-score detector.
+  - Set truth preview clip target to 24s when merged preview audio/video exists and source lengths allow.
+  - Enhanced merge tool with `--target-seconds` (default 24.0), video freeze-pad + AAC mux, and re-generated all 203 `*_with_audio.mp4` outputs.
+  - Rebuilt all-sequence truth artifacts and sidecar report with updated logic.
+- Why it was changed:
+  - User feedback indicated current markers were not accurate enough and the preview length needed to move from 12s to 24s.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Gather user validation on marker trustworthiness.
+  - If needed, add tuneable per-style/per-song thresholds as manual overrides.
+
+## 2026-04-03 16:19 CST
+- Git branch: HEAD (unborn)
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/merge_finedance_preview_audio.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_preview_audio_merge_report.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/dataset_truth_finedance_audio_features_all.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+- What was changed:
+  - Removed truth-side forced `24s` override and returned to strict duration derivation from real preview/video summary.
+  - Changed `merge_finedance_preview_audio.py` default to strict-sync mode (`--target-seconds 0`): copy source video timeline and mux audio with `-shortest`.
+  - Identified six broken preview clips (2.8~4.1s) and repaired them by re-rendering official preview for `001/002/003/004/007/008`, then remuxing all sequences.
+  - Rebuilt all-sequence truth outputs and verified AV duration consistency across all 203 sequences.
+- Why it was changed:
+  - User observed AV mismatch; root causes were artificial freeze-extension and partially corrupted preview files from interrupted render runs.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Validate user-perceived sync in browser playback.
+  - If user still requires 24s, implement true 24s motion re-render batch (not synthetic extension).
+
+## 2026-04-03 17:13 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/merge_finedance_preview_audio.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/dataset_truth_finedance_audio_features_all.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_stage_001_007.html
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/dataset_truth_finedance_audio_features_001_002_003_004_005_006_007.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_stage_001_013.html
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/dataset_truth_finedance_audio_features_001_002_003_004_005_006_007_008_009_010_011_012_013.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_preview_audio_merge_report.json
+- What was changed:
+  - Added subset support to `merge_finedance_preview_audio.py` via repeatable `--sequence-id`, so completed 60s renders can be remuxed immediately without waiting for the whole 203 queue.
+  - Rebuilt the all-sequence truth page once with timeline duration axis labels enabled in the JS renderer.
+  - Remuxed completed 60s clips in strict sync mode (`target-seconds=0`) for `001-013` in two batches (`001-007`, `008-013`).
+  - Generated stage validation pages for immediate review:
+    - `dataset_truth_finedance_stage_001_007.html`
+    - `dataset_truth_finedance_stage_001_013.html`
+  - Opened the stage page locally for direct inspection.
+- Why it was changed:
+  - User requested moving preview length target from 24s to 60s and showing duration directly on timeline while keeping AV sync reliable.
+  - Full 203-sequence 60s render is long-running, so staged deliverables are needed to verify behavior continuously.
+- Whether the project goal changed:
+  - No. Goal remains M1-1 enhancement and stabilization on isolated `music-motion-lab` line.
+- Remaining work / next plan:
+  - Keep the 60s mesh render queue running to completion for all 203 sequences.
+  - Remux newly completed sequences in batches with strict sync.
+  - Rebuild `dataset_truth_finedance_all.html` after enough/all sequences finish so the full page reflects 60s durations globally.
+
+## 2026-04-03 17:19 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_stage_001_014.html
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/dataset_truth_finedance_audio_features_001_002_003_004_005_006_007_008_009_010_011_012_013_014.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_preview_audio_merge_report.json
+- What was changed:
+  - Continued staged validation while full 203-sequence 60s render is running.
+  - Remuxed sequence `014` with strict AV sync and built a new stage page covering `001-014`.
+  - Opened the stage page for immediate local inspection.
+- Why it was changed:
+  - Keep a continuously verifiable preview lane while long-running 60s batch conversion progresses.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Wait for more completed IDs from batch status.
+  - Continue remux in completed-ID batches.
+  - Rebuild full `dataset_truth_finedance_all.html` once enough/all 60s outputs are ready.
+
+## 2026-04-04 08:28 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_preview_audio_merge_report.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/dataset_truth_finedance_audio_features_all.json
+- What was changed:
+  - Re-merged all 203 FineDance preview videos with audio in strict sync mode (`target-seconds=0`) after the 60s render batch completed.
+  - Rebuilt full all-sequence truth artifacts (`dataset_truth_finedance_all.html` + audio feature sidecar report).
+  - Opened the refreshed full page for direct user validation.
+- Why it was changed:
+  - User requested full-lane 60s-ready launch and verification on the all-sequence viewer.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - If needed, provide a quick filter for non-60-second sequences (naturally shorter source clips).
+  - Keep M1-1 timeline/audio feature UI as baseline for further feature tuning.
+
+## 2026-04-07 13:30 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/dataset_truth_finedance_audio_features_all.json
+- What was changed:
+  - Renamed full truth page branding to Milestone M2 naming in HTML generation:
+    - browser title and H1 now use `Milestone M2 · <dataset> dataset truth viewer`.
+    - lede text updated to M2 baseline wording.
+    - summary bar now includes `milestone: M2` pill.
+  - Updated unit test assertions to reflect the new page naming.
+  - Rebuilt all-sequences truth outputs so the existing full page path reflects the new naming immediately.
+- Why it was changed:
+  - User confirmed this page should be marked as the second milestone and requested HTML naming updates.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - If needed, continue with M2 follow-up UI naming polish (Chinese labels or alternative milestone aliases).
+
+## 2026-04-07 13:58 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/audio_analysis.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/music_analysis.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_audio_features.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_001.html
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/dataset_truth_finedance_audio_features_001.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/dataset_truth_finedance_audio_features_all.json
+- What was changed:
+  - Added a shared audio-analysis helper module so beat/onset/low-band/Mel calculations are consistent between the standalone song analysis pipeline and the FineDance truth viewer.
+  - Extended `build-dataset-truth-preview` to emit compressed `audio_analysis_panel` payloads for every sequence: waveform min/max envelope (`512` bins), Mel spectrogram (`48 x 192`), onset curve (`256` points), low-band curve (`256` points), clipped sections, and clip bounds.
+  - Upgraded the M2 HTML viewer with a new synchronized Audio Analysis Panel under the existing timeline. The panel renders five stacked lanes and keeps beats, strong beats, drum hits, section bands, and playhead locked to the currently visible proof clip.
+  - Added regression coverage for the new helpers and page structure, then rebuilt single-sequence and full all-sequence viewer artifacts.
+- Why it was changed:
+  - This is the planned M2-1 milestone: make the truth viewer explainable enough that audio-event quality can be judged visually before touching planner or retarget logic again.
+- Whether the project goal changed:
+  - Yes. Active viewer milestone moved from M2 to M2-1.
+- Remaining work / next plan:
+  - Let the user judge whether the new panel makes beat quality and section alignment readable enough on difficult songs.
+  - If needed next, tune beat / strong-beat heuristics or expose optional per-style overrides using the new panel as the debugging surface.
+
+## 2026-04-07 14:05 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/dataset_truth_finedance_audio_features_all.json
+- What was changed:
+  - Adjusted the M2-1 viewer layout so the Audio Analysis Panel now appears directly below the video and before the playback controls / timeline.
+  - Added a regression check to preserve this DOM order.
+  - Rebuilt the full FineDance all-sequence output so the shipped page matches the new placement.
+- Why it was changed:
+  - User requested a cleaner review flow with the analysis panel immediately under the video.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Let the user validate the revised placement.
+  - If needed, continue with spacing and visual hierarchy polish inside the same M2-1 viewer.
+
+## 2026-04-07 15:02 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/audio_analysis.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_audio_features.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/dataset_truth_finedance_audio_features_001.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_001.html
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/dataset_truth_finedance_audio_features_all.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+- What was changed:
+  - Upgraded the event rail backend to emit elastic beat tracking with beat confidence, local spacing, and peak-shape descriptors so the rail is less dependent on one rigid BPM estimate.
+  - Replaced the old "stronger beat" interpretation with motion-accent scoring that blends onset strength, low-band support, local contrast, periodic structural prior, and section importance, then sparsifies the candidates into cleaner L1-L4 motion-response events.
+  - Added multi-band accent extraction for `low`, `low_mid`, and `high_attack`, and updated the page renderer so these accents appear as separate visual layers alongside beat confidence and section structure.
+  - Expanded regression coverage for the new audio payload fields, rebuilt `001` for spot checking, and rebuilt the full all-sequence M2-1 HTML/report outputs.
+- Why it was changed:
+  - This pass implements the user's requested event-rail refinement priorities: steadier beat foundations, action-oriented accent scoring, broader accent semantics, and cleaner event density for downstream choreography work.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Use the updated panel to judge slow-song / 古风 behavior and see whether beat drift is materially improved.
+  - If needed next, tune per-band sparsification thresholds or add phrase/transition markers that are even more choreography-oriented.
+
+## 2026-04-07 15:39 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/pipelines/dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_audio_features.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_dataset_truth_preview.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_060_033.html
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/dataset_truth_finedance_audio_features_060_033.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/dataset_truth_finedance_all.html
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/dataset_truth_finedance_audio_features_all.json
+- What was changed:
+  - Added M2-2 `analysis_priority` classification so every FineDance sequence is explicitly labeled as `rhythmic_first` or `fallback`, with seed and reason tags exported to both the report and the HTML payload.
+  - Upgraded beat tracking to support two fixed profiles: the existing fallback elastic grid and a rhythmic-first profile with local tempo segments, tighter snap windows, stronger spacing regularity, and profile-aware metadata.
+  - Refined rhythmic-first motion accents and multi-band accents with stronger periodic / spacing weighting, high-confidence beat alignment, and per-band top-k density limits inside 2-second windows.
+  - Updated the viewer UI to show priority badges, quick filters, M2-2 summary counts, and metadata for priority tier, reason tags, beat profile, and local tempo segments.
+  - Rebuilt sample and full outputs and expanded regression tests around the new payload / viewer contract.
+- Why it was changed:
+  - This implements the M2-2 shift: first make the event rail dependable on rhythmically strong material, while keeping the full dataset visible but clearly downgraded where the current algorithm is not yet trusted.
+- Whether the project goal changed:
+  - Yes. Active viewer work advanced from M2-1 to M2-2.
+- Remaining work / next plan:
+  - Validate the rhythmic-first subset visually in the rebuilt viewer and decide whether the new profile is strong enough to serve as the benchmark baseline.
+  - If not, keep tuning rhythmic-first thresholds before starting any dedicated slow-song / 古风 follow-up track.
+
+## 2026-04-07 19:10 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/export_smplx_pose_json_to_bvh.py
+  - /Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_source.bvh
+- What was changed:
+  - Added a standalone `export_smplx_pose_json_to_bvh.py` utility that writes a simplified BVH hierarchy from a SMPL-X pose json.
+  - The exporter matches the current on-disk pose-json format (`boneOrder + poses`), builds fixed source-joint offsets from the first frame, estimates per-joint local rotations from the joint positions, and writes a standard `HIERARCHY + MOTION` BVH.
+  - Verified the script by exporting `finedance_168_official_smplx_poses.json` to `finedance_168_source.bvh`.
+- Why it was changed:
+  - This directly fulfills the user's request for a tool that turns the FineDance SMPL-X pose source into a BVH for inspection and downstream conversion.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Check whether the generated BVH imports cleanly where the user wants to view it.
+  - If needed next, add direct support for raw SMPL-X parameter json files (`transl/global_orient/body_pose`) in the same exporter.
+
+## 2026-04-08 13:56 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/export_smplx_pose_json_to_bvh.py
+  - /Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_source.bvh
+- What was changed:
+  - Fixed the source-BVH exporter so it writes canonical axis-aligned rest offsets instead of copying pose-shaped first-frame bone directions into the hierarchy.
+  - Added first-frame calibration for the local rotation channels, which removes the previous double-application of the initial pose and makes frame 0 effectively the neutralized reference frame.
+  - Re-generated `finedance_168_source.bvh` and verified that the first motion frame now contains near-zero joint rotations.
+- Why it was changed:
+  - The user reported that the imported skeleton looked curled together, which traced back to rest-pose construction leaking source-pose shape into both the BVH hierarchy and the animation channels.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Validate the regenerated BVH visually in Blender.
+  - If the visible pose is still wrong, next debug the import coordinate system and rotation-order assumptions.
+
+## 2026-04-08 17:25 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/export_smplx_pose_json_to_bvh.py
+  - /Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_source.bvh
+- What was changed:
+  - Updated the BVH exporter so FineDance `official_smplx_poses.json` inputs prefer the original `motion/*.npy` local rotations referenced by `inputPath`, instead of reconstructing animation only from sampled joint positions.
+  - Reused the existing calibrated FineDance `bridge_truth_v1` offsets when writing BVH, which keeps the exported source skeleton consistent with the project’s official-vs-bridge comparison baseline.
+  - Regenerated `finedance_168_source.bvh` from the raw-rotation path and confirmed the overlapping 22-joint forward-kinematics error against `official_smplx_poses.json` is effectively zero-scale.
+- Why it was changed:
+  - The previous position-derived BVH could not match the official mesh preview closely enough because it lacked the original local rotation and twist data.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Perform a Blender-side visual check against the official mesh preview.
+  - If the motion still looks wrong in the viewer, debug import axes / rotation order instead of the source export.
+
+## 2026-04-08 17:48 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/export_smplx_pose_json_to_bvh.py
+  - /Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_source.bvh
+- What was changed:
+  - Added effective-frame-time handling to the BVH exporter so sampled pose-json inputs preserve their real playback rate instead of defaulting to 30 fps.
+  - Rewrote `finedance_168_source.bvh` with `Frame Time: 0.06666667`, matching the `frameIndices` stride of the official FineDance pose dump.
+  - Confirmed that the exporter’s raw-motion path still uses the original FineDance local rotations plus the calibrated FineDance truth offsets.
+- Why it was changed:
+  - The motion could still look inconsistent with the official mesh preview because the BVH was previously exported at twice the intended playback speed.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Re-check the regenerated BVH visually.
+  - If mismatch persists, continue with importer-axis or Blender crash investigation.
+
+## 2026-04-08 18:07 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/export_smplx_pose_json_to_bvh.py
+  - /Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_source.bvh
+- What was changed:
+  - Added an exporter mode for matching the upstream official mesh preview window directly from the raw FineDance motion.
+  - Used the upstream summary to align sequence 168 with the actual official preview settings: 60 seconds, 30 fps, 1800 sampled frames.
+  - Rewrote `finedance_168_source.bvh` so it now matches the official mesh preview time span instead of the smaller layer-compare pose dump.
+- Why it was changed:
+  - The user was comparing against `finedance_168_official_mesh_preview.mp4`, but the BVH had still been generated from the shorter layer-compare sample set.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Re-check visible motion against the official mesh preview.
+  - If it still looks wrong, continue with importer/viewer convention debugging.
+
+## 2026-04-08 18:18 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/export_smplx_pose_json_to_bvh.py
+  - /Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_source.bvh
+- What was changed:
+  - Added BVH offset-profile control so the exporter can distinguish between compare-space truth offsets and raw viewer-facing bridge offsets.
+  - Rewrote `finedance_168_source.bvh` using `raw_bridge` offsets plus the official mesh preview time window.
+  - Verified the target BVH now carries the legacy/raw bridge rest skeleton (`left_hip = 0.09, -0.09, 0.0`) while preserving `Frames: 1800` and `Frame Time: 0.03333333`.
+- Why it was changed:
+  - The compare-space truth offsets were likely contributing to the remaining visible pose mismatch in BVH viewers even after timing was fixed.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Re-check visible motion.
+  - If it still looks wrong, continue on viewer/import-axis debugging.
+
+## 2026-04-09 10:50 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/source_bvh_validation.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/export_official_mesh_joints.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/validate_source_bvh_against_official_mesh.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_source_bvh_validation.py
+  - /Users/alex/Desktop/codex project/3d-digital/3d-digital-human/tools/motion_base/blender_dump_layer_poses.py
+  - /Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/upstream_baselines/finedance/168/finedance_168_official_mesh_joints.json
+  - /Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_source_fk_joints.json
+  - /Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_source_validation_report.json
+- What was changed:
+  - Added a reusable validation helper module for mesh-preview sampling, BVH forward-kinematics extraction, preview-space coordinate generation, and report diagnosis.
+  - Added `export_official_mesh_joints.py` to export the 60-second / 30 fps / 1800-frame official mesh-preview joint truth JSON for FineDance sequence 168.
+  - Added `validate_source_bvh_against_official_mesh.py` to compare the official joint truth against the current `finedance_168_source.bvh` in two modes: direct FK and Blender import roundtrip.
+  - Updated `blender_dump_layer_poses.py` so it can accept a JSON payload file path, making the Blender roundtrip invocation stable for large frame-index payloads.
+  - Extended the validation outputs so the FK JSON now also includes `previewSpacePoses`, and the report remaps per-joint errors to readable bone names instead of raw indices.
+  - Ran the new validation chain for `finedance_168_source.bvh`, producing the official truth JSON, FK joint dump, and validation report under the expected `previewCache` directories.
+  - Verified the new tests and py_compile checks pass.
+- Why it was changed:
+  - We needed a falsifiable validation chain tied directly to the same 60-second official mesh preview the user is comparing against, rather than continuing to guess from visual mismatch alone.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Use the new report to isolate whether the remaining mismatch is dominated by rest offsets, local rotation mapping, or distal limb chains.
+  - Decide whether BVH is still the right source-review format or whether we should switch to a richer interchange format while Blender import remains unstable on this file.
+
+## 2026-04-09 13:19 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/source_bvh_validation.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/validate_source_bvh_against_official_mesh.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/build_source_bvh_validation_viewer.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_source_bvh_validation.py
+  - /Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_source_validation_report.json
+  - /Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_source_validation_viewer.html
+- What was changed:
+  - Added bone-vector diagnostics so the validation report can now show per-bone direction-angle mismatch and length mismatch, not just endpoint errors.
+  - Extended the source-BVH validator to emit those structural diagnostics into the main `finedance_168_source_validation_report.json`.
+  - Added `build_source_bvh_validation_viewer.py`, which builds a self-contained HTML page with the official mesh preview video, official joint-truth skeleton, source-FK skeleton, current-frame error list, and top mismatched bones.
+  - Rebuilt the 168 validation report and the new HTML viewer.
+  - Added tests for the new diagnostics and re-ran py_compile + unittest successfully.
+- Why it was changed:
+  - We needed a more interpretable debugging surface so the next correction step can target the actual bad chains instead of continuing to adjust BVH export globally.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Use the new direction-mismatch rankings to trace the bad local rotation mapping in the right leg and arm chains first.
+  - Consider an overlay mode or a richer interchange format if BVH remains too lossy for source-truth review.
+
+## 2026-04-09 13:36 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/source_bvh_validation.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/export_smplx_pose_json_to_bvh.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/validate_source_bvh_against_official_mesh.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_source_bvh_validation.py
+  - /Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_source.bvh
+  - /Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_source_validation_report.json
+  - /Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_source_validation_viewer.html
+- What was changed:
+  - Verified that the big remaining mismatch lived in the BVH layer, not in the FineDance raw local quaternions or the official joint truth.
+  - Added explicit BVH-basis conversion to the validation path.
+  - Fixed the source-BVH exporter so it now converts root positions, offsets, and local rotations into BVH basis before writing.
+  - Replaced the previous bridge BVH writer call with a local writer that emits motion channels in hierarchy order; this fixed a real channel-order bug that had been scrambling branch rotations.
+  - Rebuilt `finedance_168_source.bvh` with `bridge_truth` offsets and re-ran the validation/viewer pipeline.
+  - Confirmed the direct-FK comparison now matches the official mesh joints to floating-point tolerance.
+- Why it was changed:
+  - The immediate goal was to make `finedance_168_source.bvh` numerically align with the same official mesh preview the user is checking.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Re-check the regenerated viewer and BVH visually.
+  - If any visible mismatch remains, investigate Blender/importer runtime behavior rather than the source BVH content itself.
+
+## 2026-04-09 13:45 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/blender_smoke_import_bvh.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/milestone_m3_source_bvh_alignment.md
+- What was changed:
+  - Added a minimal Blender smoke-import script for BVH runtime testing.
+  - Added an M3 milestone markdown note capturing the source-BVH alignment result and key validation metrics.
+  - Ran both an empty headless Blender smoke and a minimal BVH-import smoke; both crashed before output, which isolates the remaining issue to the local Blender 4.4.2 headless runtime rather than the fixed source BVH content.
+- Why it was changed:
+  - After fixing source BVH content, we needed to separate remaining runtime problems from exporter/content problems as cleanly as possible.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Prefer GUI-mode Blender import or a different Blender runtime for any further import-side verification.
+  - Keep M3 as the confirmed source-truth baseline.
+
+## 2026-04-09 14:00 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/blender_import_bvh_willa_aligned.py
+- What was changed:
+  - Added a Blender GUI helper that imports a BVH, rotates the imported armature into Willa's Blender world convention, and can emit a small JSON summary for manual verification.
+  - Captured the orientation bridge explicitly as a global `+90 deg` X rotation so the source BVH convention (`trunk +Y`, `facing +Z`) lands in the user-confirmed Willa convention (`trunk +Z`, `facing -Y`).
+  - Verified the helper script compiles cleanly with `py_compile`.
+- Why it was changed:
+  - After the source BVH motion was proven numerically correct, the remaining mismatch reported by the user was Blender-side world orientation only.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Test the helper in Blender GUI with `finedance_168_source.bvh`.
+  - If it works well, consider exporting a dedicated Blender/Willa-aligned BVH variant to remove this extra import step.
+
+## 2026-04-09 14:08 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/blender_import_bvh_willa_aligned.py
+  - /Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_blender_import_willa_aligned.json
+- What was changed:
+  - Extended the Willa-aligned Blender GUI helper to enable Blender's BVH import add-on explicitly, emit structured success/error JSON, and defer import work with a Blender timer so startup timing is no longer a black box.
+  - Captured a concrete Blender importer startup-context failure (`object.mode_set.poll() Context missing active object`) while testing GUI automation against `finedance_168_source.bvh`.
+- Why it was changed:
+  - The remaining mismatch after fixing source motion is a fixed world-orientation bridge, but the automated GUI import path still needed better observability to separate import timing issues from the simple +90 degree X alignment itself.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Use the known-correct orientation bridge directly in Blender: import `finedance_168_source.bvh`, then apply a global X rotation of +90 degrees to match Willa.
+  - If we need a one-click path later, either finish the deferred GUI automation or generate a dedicated Blender/Willa-aligned BVH variant.
+
+## 2026-04-09 14:14 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/bake_bvh_willa_aligned.py
+  - /Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_source_willa_aligned.bvh
+- What was changed:
+  - Added a reusable BVH post-process tool that bakes the known Willa/Blender world-orientation bridge directly into an existing BVH.
+  - Generated `finedance_168_source_willa_aligned.bvh` from the validated `finedance_168_source.bvh` by applying a global `+90 deg` X rotation to hierarchy offsets, root translations, and local joint rotations.
+  - Ran a direct validation showing the new file matches the original BVH under that same world rotation to floating-point tolerance.
+- Why it was changed:
+  - The remaining mismatch for `168` was no longer motion content; it was only Blender/Willa world orientation, so baking that fixed rotation into a dedicated BVH variant is the cleanest handoff.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Import `finedance_168_source_willa_aligned.bvh` in Blender and confirm it now lands in Willa's expected convention without extra object rotation.
+  - If confirmed, reuse the same tool for more sequences or integrate it into the export pipeline.
+
+## 2026-04-09 15:49 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/config/willa_retarget_profile.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/willa_retarget.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/cli.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/blender_retarget_willa.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_willa_retarget.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/finedance_168_willa_retarget.blend
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_report.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_source_pose.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_target_pose.json
+- What was changed:
+  - Added a dedicated `Willa` retarget profile and runtime resolver that translate VRM humanoid names into the actual `J_Bip_*` rig bones used in `willa.blend`.
+  - Added a Blender retarget helper that imports `finedance_168_source_willa_aligned.bvh`, retargets its 22-joint source chain onto `Willa`, bakes the result, keeps the armature at the origin, and explicitly locks the `Root` bone for stationary/root-locked playback.
+  - Added trace/report generation so Blender execution now writes a saved `.blend`, source/target pose dumps, and a structured validation report.
+  - Updated `launch-willa-retarget` to use the working macOS app-bundle launch path so the retarget can be reproduced from the lab CLI.
+  - Generated the first successful executed `Willa` retarget artifacts for `FineDance 168` with `frameRange = 1..1800`, `motionRootHasAnimation = true`, and `rootLocked = true`.
+- Why it was changed:
+  - The lab had already solved source-motion truth for `168`; the next mainline requirement was to make the actual `Willa` character move correctly in Blender, not just validate source BVH numerically.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Reduce the remaining warning-level pelvis/spine/foot basis mismatch in the executed `Willa` retarget.
+  - Review the new `.blend` visually in Blender against the report metrics and decide the next per-bone correction pass.
+  - After `168` is visually acceptable, extend the same path to additional FineDance sequences.
+
+## 2026-04-09 17:06 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/config/willa_retarget_profile.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/willa_retarget.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/blender_retarget_willa.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_willa_retarget.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/finedance_168_willa_retarget.blend
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_report.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_trace.log
+- What was changed:
+  - Removed the automatic reuse of the old full-body FineDance basis-correction set from the new Blender retarget flow.
+  - Added `rotationDisabledSourceJoints = ["head"]` so the `Willa` head no longer copies the source head rotation directly and instead stays in Willa's own neutral head orientation while the body and neck continue animating.
+  - Re-generated the `FineDance 168` Blender retarget outputs with this narrower head-only fix.
+- Why it was changed:
+  - The current executed retarget already had correct limb/body motion, and the remaining visible problem was the sideways head. A head-only correction is the safest way to improve that without regressing the rest of the rig.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Let the user visually confirm whether the new head-neutral strategy fixes the sideways head.
+  - If not, add a head-only fixed local rotation offset next.
+  - Then continue reducing pelvis/spine/foot warning metrics.
+
+## 2026-04-09 17:29 CST
+- Git branch: main
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.dev/development-log.md
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/config/willa_retarget_profile.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/blender_retarget_willa.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_willa_retarget.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/finedance_168_willa_retarget.blend
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_report.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_trace.log
+- What was changed:
+  - Expanded the head-neutral fallback to disable both `neck` and `head` source rotation retargeting.
+  - Re-generated the `FineDance 168` `Willa` Blender retarget outputs and confirmed via trace that both `J_Bip_C_Neck` and `J_Bip_C_Head` rotation animation were cleared while the motion root and frame range stayed intact.
+  - Added `rotationDisabledSourceJoints` to the report payload for easier review.
+- Why it was changed:
+  - The user still saw the head sideways after the head-only change, which points to the neck chain as the more likely source of the visible orientation error.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Have the user visually review this `neck + head` neutral version.
+  - If it is still wrong, switch to explicit fixed local offsets for `neck/head` instead of more neutralization.
+
+
+## 2026-04-09 10:06:10Z
+- Git branch: `main`
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/willa_retarget.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/config/willa_retarget_profile.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_willa_retarget.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/finedance_168_willa_retarget.blend`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_report.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_trace.log`
+- What changed:
+  - Switched Willa retarget basis loading to prefer reference `basisCorrectionMatrix` instead of directly reusing `sourceToTargetBasis` during Blender post-bake correction.
+  - Tested `constraint_world_pelvis_torso_local` for torso chain so chest/spine stop flipping in world-space transfer.
+  - Finalized a safer interim profile for FineDance 168: keep torso retarget active, disable `neck/head` source rotation transfer, and restrict reference basis corrections to `spine1/spine2/spine3`.
+  - Regenerated `finedance_168_willa_retarget.blend` and report with the safe neck/head-neutral setup.
+- Why it was changed:
+  - User reported chest and head were facing backwards in Blender even though limb motion was correct.
+  - Numerical checks showed torso improved under torso-local transfer, while the remaining large error was concentrated in `neck/head`; neutralizing those two joints produces a safer inspectable result.
+- Whether the project goal changed:
+  - No. Main goal remains getting `finedance_168_source_willa_aligned.bvh` to drive Willa correctly in Blender as the M4 path back to the music-driven character pipeline.
+- Remaining work / next plan:
+  - Verify the new Blender scene visually with the user.
+  - If chest is now correct but head is still too stiff, add a dedicated `neck/head` local basis offset path instead of full neutralization so head motion can return without flipping.
+
+## 2026-04-09 10:57:38Z
+- Git branch: `main`
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/bvh.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/willa_canonicalization.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/willa_retarget.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/cli.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/config/willa_retarget_profile.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/blender_retarget_willa_rest_pose.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_willa_retarget.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_willa_canonicalization.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_source_willa_canonical.bvh`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_source_willa_canonicalization_report.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/finedance_168_willa_retarget.blend`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_report.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_trace.log`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_source_pose.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_target_pose.json`
+- What changed:
+  - Introduced a Blender-safe BVH runtime layer with a `scipy` fallback so canonical BVH parsing and local-rotation reconstruction can run inside Blender's bundled Python.
+  - Added the new `willa_canonicalization` stage and generated `finedance_168_source_willa_canonical.bvh` with a static ground root, canonical pelvis child, preserved `1800` frames / `30fps`, and normalized first-frame orientation.
+  - Rewired the Willa profile and CLI around canonical BVH inputs and the new `blender_retarget_willa_rest_pose.py` execution path.
+  - Implemented a rest-pose-first Blender retarget helper that transfers parent-local quaternions using per-bone rest-basis deltas, writes target animation directly, emits source/target pose dumps, and runs a v1 penetration reduction pass.
+  - Added canonicalization tests and updated the Willa profile tests; all local Python tests passed (`9` tests).
+  - Completed a full Blender run for `FineDance 168`, producing the new retarget `.blend`, canonicalization report, retarget report, trace, and pose dumps.
+- Why it was changed:
+  - The old post-bake patch line was not solving the real mismatch between source BVH rest pose, root semantics, and Willa's local rotation space.
+  - The new path makes the pipeline inspectable at the exact levels the user requested: source normalization, local rotation alignment, and penetration reduction.
+- Whether the project goal changed:
+  - No.
+  - Delivery direction changed: `rest-pose-first` is now the active M4 path, while the previous post-bake correction route is only retained for comparison.
+- Remaining work / next plan:
+  - Remove `Root` keyframe insertion so `rootLocked` becomes truly `true` in the saved target action.
+  - Investigate the remaining large basis mismatches concentrated in `left/right collar`, `shoulder`, `wrist`, and `foot`; these joints are currently keeping `local_rotation_alignment` in warning status.
+  - Re-run the retarget after basis correction and then visually verify chest/head orientation and penetration improvements inside Blender.
+
+## 2026-04-09 14:08:47Z
+- Git branch: `main`
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/config/willa_retarget_profile.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/willa_retarget.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/blender_retarget_willa_rest_pose.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_willa_retarget.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/finedance_168_willa_retarget.blend`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_report.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_trace.log`
+- What changed:
+  - Tested `sourceToTargetBasis` overrides as true basis-map replacements and confirmed they made the overall alignment worse in the current `rest-pose-first` pipeline.
+  - Tested an elbow-free correction subset, then restored the numerically best variant.
+  - Fixed the target root locking path so the saved action no longer animates `Root`; the restored best run reports `rootLocked = true`.
+  - Re-generated the current best Willa retarget artifacts using the `basis_corrections:count=10` configuration.
+- Why it was changed:
+  - The new pipeline needed an A/B loop to identify which reference transforms actually help and which ones over-correct the Willa rig.
+  - Restoring the best-known variant gives us a clean baseline for the next visual review and the next calibration pass.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Ask the user to visually inspect the current best `.blend` for chest/head orientation and visible penetration.
+  - Use that review to decide whether the next pass should target torso/head basis or arm-hand collision cleanup first.
+
+## 2026-04-10 01:04:50Z
+- Git branch: `main`
+- Files changed:
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/willa_retarget.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/cli.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/blender_retarget_willa.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/config/willa_retarget_profile.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_willa_retarget.py
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/finedance_168_willa_retarget_constraint_bake_r001.blend
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_report_constraint_bake_r001.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/finedance_168_willa_retarget_constraint_bake_nobasis_r001.blend
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_report_constraint_bake_nobasis_r001.json
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/finedance_168_willa_retarget_constraint_bake_fullbody_r001.blend
+  - /Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_report_constraint_bake_fullbody_r001.json
+- What changed:
+  - Confirmed the new M4 main line with the user: use canonical BVH plus Blender source-armature `constraint/bake`, and preserve every result under a unique saved name.
+  - Added strategy normalization and versioned artifact naming in the lab runtime so repeated Willa retarget attempts stop overwriting one another.
+  - Updated the Blender constraint/bake helper to support basis-mode overrides, optional basis-correction skipping, report tagging, and automatic quit-after-run for GUI automation.
+  - Generated three preserved `FineDance 168` constraint/bake variants and their pose-dump/report bundles:
+    - `constraint_bake_r001`
+    - `constraint_bake_nobasis_r001`
+    - `constraint_bake_fullbody_r001`
+  - Benchmarked the three variants from their reports; the partial-basis run is currently the best overall compromise, the no-basis run is faster but flips the arm chains badly, and the full-body-basis run improves some local-basis numbers while destabilizing pelvis/hip direction.
+- Why it was changed:
+  - The previous active rest-pose-first branch was still visually unacceptable, so the lab needed a more stable retarget execution line before further fine tuning.
+  - Versioned outputs are now required because this stage depends on comparing multiple Blender results side-by-side instead of replacing the previous candidate each time.
+- Whether the project goal changed:
+  - The end goal did not change.
+  - The active implementation path changed with user approval: `constraint/bake` is now the main M4 line and the rest-pose-first branch is only a fallback experiment.
+- Remaining work / next plan:
+  - Ask the user to inspect `constraint_bake_r001`, which is the best current preserved candidate.
+  - Based on that visual review, decide whether the next automatic pass should target neck/head + left-arm cleanup or pelvis/hip cleanup.
+  - Keep all future variants under unique names and continue numerical report comparison before asking for more manual review.
+
+## 2026-04-10 23:55:52Z
+- Git branch: `uninitialized (music-motion-lab has no commits yet)`
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/external_smpl_bvh_baselines.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/run_external_smpl_bvh_baselines.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/export_cat_aistpp_to_bvh.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_external_smpl_bvh_baselines.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_smpl_compat_input.npz`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_aist_compat_input.pkl`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_external_bvh_comparison.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_external_smpl2bvh_source.bvh`
+  - `/Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_external_smpl2bvh_fk_joints.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_external_smpl2bvh_validation_report.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_external_cat_source.bvh`
+  - `/Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_external_cat_fk_joints.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_external_cat_validation_report.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_current_source_fk_joints_rerun.json`
+- What changed:
+  - Implemented the new `M3-R2` comparison line that starts from raw FineDance `168.npy`, converts it into two external-tool-friendly intermediate formats, runs outside SMPL-to-BVH baselines, and validates every route against the official mesh-preview joints.
+  - Added a reusable lab module for SMPL-compatible export, alias-aware BVH extraction, root-centered grouped error summaries, and route-level validation payload generation.
+  - Added an end-to-end runner that now produces:
+    - `finedance_168_smpl_compat_input.npz` for `KosukeFukazawa/smpl2bvh`
+    - `finedance_168_aist_compat_input.pkl` for `KosukeFukazawa/CharacterAnimationTools`
+    - external BVH outputs, FK joint dumps, per-route validation reports, and one unified comparison report.
+  - Added a dedicated CharacterAnimationTools export helper plus a Python 3.9 compatibility shim that patches only the repository's `match-case` syntax points, so the existing baseline environment with working `chumpy` can still run the upstream code.
+  - Added a tiny zero-rotation stabilization step only for the `smpl2bvh` `.npz` input because the upstream `axis-angle -> quaternion` implementation emits `nan` for exact zero rotvecs.
+  - Re-ran the current self-generated `finedance_168_source.bvh` through the same comparison chain so all three routes are scored under the same official-truth contract.
+  - Final numerical comparison on `FineDance 168`:
+    - `current_source`: mean `7.572461446940388e-07`, p95 `1.5431477569805975e-06`, max `2.0779316639794985e-06`
+    - `external_smpl2bvh`: mean `0.5635139373030185`, p95 `1.2885574774535875`, max `1.8989078376427588`
+    - `external_cat`: mean `0.5635136111502926`, p95 `1.2885567200299737`, max `1.8989067764924852`
+  - The unified comparison report ranks `current_source` first by a very large margin; the two external baselines are numerically almost identical and both are dramatically worse than the current self-generated source BVH.
+- Why it was changed:
+  - The user explicitly asked to pause local Willa bone-by-bone retarget debugging and instead verify whether our BVH generation itself was fundamentally wrong by testing against existing external `smpl2bvh` implementations from the raw `.npy` motion.
+  - This work creates a falsifiable baseline: if the external routes had outperformed the current source BVH, the mainline should have pivoted toward reusing those generation semantics before continuing any Willa adaptation.
+- Whether the project goal changed:
+  - The overall product goal did not change.
+  - The active short-term delivery direction did change: the current main diagnostic focus is now `raw FineDance motion -> external SMPL-to-BVH baseline -> official truth comparison`, rather than continuing local Willa retarget tuning without first re-checking source generation.
+- Remaining work / next plan:
+  - Use this result to realign the main hypothesis: the current self-generated `finedance_168_source.bvh` is still the numerically correct source-truth path, and the remaining problem is more likely in downstream retarget semantics (`axis basis`, `rotation order`, `root semantics`, or Blender/Willa local-space interpretation).
+  - If we continue the source-generation audit, inspect why both external SMPL-body baselines collapse in nearly the same way on legs/spine relative to the official SMPL-X truth, but do not treat them as better candidates than `current_source`.
+  - Return to the Blender/Willa mapping line using `current_source` / `canonical` as trusted input, and debug the fundamental coordinate / local-rotation convention mismatch instead of replacing the source BVH generator.
+## 2026-04-11T01:28:12Z
+- Git branch: `main`
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/willa_canonicalization.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/src/music_motion_lab/willa_contract_diagnostic.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/blender_dump_willa_rest_contract.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/build_willa_contract_report.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/blender_retarget_willa_rest_pose.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/config/willa_retarget_profile.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_willa_canonicalization.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_willa_contract_diagnostic.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_willa_retarget.py`
+- Artifacts generated:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/willa_rest_contract_dump.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_contract_report.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_source_willa_canonical_posy_r001.bvh`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_source_willa_canonicalization_posy_r001.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_contract_posy_r001.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_contract_default_from_profile_r001.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_trace_posy_restpose_r001.log`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_trace_posy_constraint_r001.log`
+- What changed:
+  - Built a new contract-level diagnostic line for `source -> canonical -> Willa` so we can compare declared space semantics, actual first-frame orientation, root semantics, and per-bone rest-basis deltas instead of guessing from visual retarget failures.
+  - Added Blender-side rest-contract dumping for `willa.blend`, then used it to produce an initial report showing the previous canonical BVH contract was internally inconsistent with the existing Willa alignment profile.
+  - Parameterized source canonicalization so the target forward axis is no longer hardcoded, then generated a saved `+Y` comparison canonical BVH (`...canonical_posy_r001.bvh`) and matching canonicalization / contract reports.
+  - Verified the key numeric difference:
+    - previous `-Y` canonical contract: mean canonical rest-basis delta `176.005226861171°`, with issues `canonical_forward_mismatch_with_reference_profile`, `global_axis_transform_forward_mismatch`, and `canonicalization_introduces_rest_basis_flip`
+    - new `+Y` canonical contract: mean canonical rest-basis delta `53.15740214651205°`, space-contract issues cleared, and the canonical-vs-raw mean delta dropped to `1.5272666104657446°`
+  - Promoted the `+Y` canonical direction to the code default in `willa_canonicalization.py`, and updated the default Willa retarget profile to point at the saved `+Y` canonical artifacts instead of the older `-Y` canonical file.
+  - Added an override path for normalization reports in the Blender rest-pose retarget helper so future experiments can explicitly bind a retarget run to the exact canonicalization artifact being tested.
+  - Attempted two Blender comparison runs using the new `+Y` canonical input:
+    - `rest_pose_first` run stalled/terminated after `scale_ratio`
+    - `constraint_bake` run stalled/terminated at `nla_bake_start`
+    - both runs wrote trace logs but did not save `.blend` or report outputs, so the environment/runtime instability remains separate from the coordinate-contract diagnosis.
+  - Re-ran Python validation successfully after these changes: `16` unit tests passed.
+- Why it was changed:
+  - The user pointed out that the failures looked fundamental rather than local to one body part, and suspected a coordinate-system / quaternion-convention mismatch.
+  - This work was aimed at proving or disproving that suspicion in a measurable way before doing any more per-bone tweaking.
+- Whether the project goal changed:
+  - The end goal did not change.
+  - The active implementation direction shifted again: the mainline now treats `source.bvh` as trusted, treats the old `-Y` canonicalization as suspect, and adopts `+Y` canonical source space as the new default contract for future Willa mapping experiments.
+- Remaining work / next plan:
+  - Rebuild the downstream Blender/Willa retarget runs on top of the new default `+Y` canonical contract and verify whether the visual posture problems collapse once the bake/runtime path is stable.
+  - Isolate why Blender stops during `rest_pose_first` and `constraint_bake` when fed the new saved comparison artifacts, since that now blocks visual confirmation more than the coordinate diagnosis itself.
+  - Continue debugging the remaining high-delta joints under the improved contract (`shoulder`, `elbow`, `wrist`, `foot`), but only after the runtime path is stable enough to produce saved results again.
+## 2026-04-12T05:42:52Z
+- Git branch: `main`
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/blender_retarget_willa.py`
+- Artifacts generated:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_trace_posy_constraint_r002.log`
+- What changed:
+  - Added finer-grained trace checkpoints to the `constraint_bake` Blender retarget helper around diagnostics generation, pose-json writes, blend save, and report write.
+  - Re-ran the saved `+Y canonical` constraint-bake experiment as `r002` to locate the exact stop point.
+  - The new trace shows this run now terminates at `bake:nla_bake_start`, before `bake:nla_bake_done`, which narrows the current blocker from “somewhere after bake” to Blender's `bpy.ops.nla.bake(...)` execution path itself.
+- Why it was changed:
+  - After the first `+Y canonical` comparison run got much further than the old `-Y` contract but still failed to save outputs, we needed a sharper trace to distinguish between an `nla.bake` failure and a later diagnostics/save failure.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Treat `nla.bake` runtime instability as the current blocking issue for visual confirmation of the corrected `+Y` canonical contract.
+  - Either stabilize that bake path or sidestep it with a non-`nla.bake` keyframe baking route so the improved coordinate contract can be verified visually in Blender.
+## 2026-04-12T06:19:17Z
+- Git branch: `main`
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/blender_retarget_willa_rest_pose.py`
+- Artifacts generated:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/renders/finedance_168_willa_retarget_posy_restpose_fast_r002.blend`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_report_posy_restpose_fast_r002.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/finedance_168_willa_retarget_trace_posy_restpose_fast_r002.log`
+- What changed:
+  - Reworked the `rest_pose_first` Blender helper so it no longer depends on Blender's unstable per-frame `keyframe_insert` path for this experiment.
+  - Added a lightweight mode that skips penetration and diagnostics, and changed target action writing to direct FCurve creation from the already-computed target local quaternions and motion-root locations.
+  - Re-ran the `+Y canonical` Willa retarget in this fast mode and successfully produced the first saved Blender result under the corrected canonical contract.
+  - Confirmed saved output state:
+    - blend saved successfully
+    - `rootLocked = true`
+    - `targetMotionRootBone = J_Bip_C_Hips`
+    - `frameRange = [1, 1800]`
+    - `frameCount = 1800`
+    - `fps = 30`
+    - `targetActionFcurveCount = 91`
+    - `motionRootHasAnimation = {location: true, rotation: true}`
+- Why it was changed:
+  - Both `nla.bake(...)` and Blender's visual/per-frame key insertion paths were unstable and prevented us from getting a saved `.blend` for visual inspection under the corrected `+Y` contract.
+  - Direct FCurve writing gives us a stable path to inspect the actual local-rotation retarget result instead of staying blocked on Blender bake/runtime issues.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Visually inspect `finedance_168_willa_retarget_posy_restpose_fast_r002.blend` and judge whether the corrected canonical contract plus direct local-space retarget materially improves posture.
+  - If the new result is directionally correct, add diagnostics back in incrementally and then reintroduce penetration handling on top of this stable FCurve-writing path.
+  - If posture is still fundamentally wrong, continue debugging the local basis map and correction matrices now that a stable saved-output path exists.
+## 2026-04-13T08:59:39Z
+- Git branch: `main`
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/milestone_m3_r2_external_smpl2bvh_baseline.md`
+- What changed:
+  - Marked the external `smpl2bvh` BVH route for `FineDance 168` as a milestone reference and wrote a dedicated milestone note that locks the artifact path, validation report, and relationship to the current mainline inputs.
+- Why it was changed:
+  - The user explicitly confirmed that `/Users/alex/Desktop/codex project/3d-digital/motion-base-assets/previewCache/layer_compare/finedance/168/finedance_168_external_smpl2bvh_source.bvh` should be treated as a normal baseline and asked to mark it as a milestone.
+- Whether the project goal changed:
+  - No.
+- Remaining work / next plan:
+  - Continue the active mainline on the `+Y canonical -> Willa` path while keeping this external `smpl2bvh` artifact as a preserved comparison checkpoint.
+## 2026-04-13T12:24:22Z
+- Git branch: `main`
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tools/build_finedance_external_smpl2bvh_dataset.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/tests/test_build_finedance_external_smpl2bvh_dataset.py`
+  - `/Users/alex/Desktop/codex project/3d-digital/motion-base-assets/datasets/finedance/external_smpl2bvh_dataset/manifest.json`
+  - `/Users/alex/Desktop/codex project/3d-digital/motion-base-assets/datasets/finedance/external_smpl2bvh_dataset/bvh/`
+- What changed:
+  - Reprioritized the project from `Willa` retarget debugging to batch-building a reusable FineDance external `smpl2bvh` BVH dataset.
+  - Added a dedicated batch exporter that enumerates the actual `203` raw FineDance `.npy` files on disk, converts each one into the SMPL-compatible `.npz` expected by the upstream exporter, and writes all generated BVHs into a single dataset folder with a manifest.
+  - Added a lightweight test file that locks the new script's file enumeration and manifest summary behavior.
+  - Ran the full batch with the existing `motion-base-assets/tools/venvs/official-baseline` Python environment because the desktop default Python lacks `torch` and `smplx`, which the upstream exporter requires.
+  - Finished the dataset build successfully: `203/203` completed, `0` failed, output size about `588M`, total frames `826983`.
+- Why it was changed:
+  - The user explicitly lowered `Willa` debugging priority and asked to generate all `203` original motions using the milestone `smpl2bvh` route into a dataset folder.
+  - Reusing the external baseline path gives us a clean, reproducible dataset artifact that can feed later Blender or retarget experiments without re-deriving the same BVHs one by one.
+- Whether the project goal changed:
+  - Yes. The immediate goal is now to produce and preserve the full `203`-sequence FineDance external `smpl2bvh` BVH dataset first; `Willa` retarget debugging is temporarily lower priority.
+- Remaining work / next plan:
+  - Verify spot-check usability of several generated BVHs in Blender if needed.
+  - If the user wants, add a follow-up manifest/report that groups durations, frame counts, and missing numeric ids for easier dataset browsing.
+  - Return to `Willa` retarget only after this dataset milestone is accepted.
+## 2026-04-14T06:08:00Z
+- Git branch: `codex/music-motion-lab-milestones`
+- Files changed:
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.gitignore`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/outputs/reports/milestone_m4_external_smpl2bvh_dataset_203.md`
+  - `/Users/alex/Desktop/codex project/3d-digital/music-motion-lab/.git/config`
+- What changed:
+  - Reconfigured the `music-motion-lab` repo for milestone synchronization by attaching the remote `git@github.com:alexLIUMinhao/DigitalDance.git` and creating the dedicated branch `codex/music-motion-lab-milestones`.
+  - Tightened `.gitignore` so the remote branch keeps code, config, logs, and milestone markdown files, while excluding heavyweight local-only artifact trees such as `.external/` and most of `outputs/`.
+  - Added a dedicated milestone note for the completed `203`-sequence external `smpl2bvh` dataset build.
+- Why it was changed:
+  - The user asked whether milestones could be synchronized to a remote and then provided the target GitHub repository for branch-based sync.
+  - Keeping only the durable project state in git avoids pushing local cache directories and multi-gigabyte render artifacts that would make the milestone branch hard to use.
+- Whether the project goal changed:
+  - No. The immediate goal remains preserving and syncing the `203`-sequence external `smpl2bvh` baseline before returning to lower-priority `Willa` work.
+- Remaining work / next plan:
+  - Create the initial commit for the `music-motion-lab` repo state on `codex/music-motion-lab-milestones`.
+  - Push that branch to the configured `origin` remote.
+  - Confirm the remote branch is available as the milestone sync line.

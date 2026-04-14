@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "library_id": "motion_unit_library_v1",
+  "source_roots": {
+    "motion_base_assets_root": "../motion-base-assets"
+  },
+  "units": [
+    {
+      "unit_id": "finedance_168_0000_0119",
+      "dataset": "finedance",
+      "source_sequence": "168",
+      "skeleton_id": "bridge_truth_v1_common22",
+      "frame_range": {"start": 0, "end_exclusive": 120},
+      "duration_beats_estimate": 8.0,
+      "energy": "mid_energy"
+    }
+  ],
+  "notes": [],
+  "generated_at_utc": "2026-04-02T00:00:00+00:00"
+}
+

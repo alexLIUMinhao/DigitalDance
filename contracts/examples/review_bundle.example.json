@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "bundle_id": "demo_song_review_bundle",
+  "song_id": "demo_song",
+  "plan_id": "demo_song_plan",
+  "song_summary": {
+    "analysis_mode": "automatic",
+    "manual_review_required": false
+  },
+  "library_summary": {
+    "library_id": "motion_unit_library_v1"
+  },
+  "choreography_summary": {
+    "step_count": 8
+  },
+  "retarget_summary": {
+    "status": "backend_unavailable"
+  },
+  "highlights": [
+    "Demo highlight"
+  ],
+  "generated_at_utc": "2026-04-02T00:00:00+00:00"
+}

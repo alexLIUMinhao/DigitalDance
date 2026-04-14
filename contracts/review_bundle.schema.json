@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "review_bundle",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "song_id",
+    "plan_id",
+    "song_summary",
+    "library_summary",
+    "choreography_summary",
+    "retarget_summary",
+    "highlights",
+    "generated_at_utc"
+  ],
+  "properties": {
+    "schema_version": {"type": "integer"},
+    "bundle_id": {"type": "string"},
+    "song_id": {"type": "string"},
+    "plan_id": {"type": "string"},
+    "song_summary": {"type": "object"},
+    "library_summary": {"type": "object"},
+    "choreography_summary": {"type": "object"},
+    "retarget_summary": {"type": "object"},
+    "highlights": {"type": "array"},
+    "generated_at_utc": {"type": "string"}
+  }
+}

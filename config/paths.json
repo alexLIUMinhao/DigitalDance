@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "description": "Shared roots are read-only inputs. All generated artifacts must stay inside this project.",
+  "sharedRoots": {
+    "musicRoot": "../music",
+    "motionBaseAssetsRoot": "../motion-base-assets",
+    "unityReferenceRoot": "../3d-digital-human"
+  },
+  "tooling": {
+    "blenderPath": "/Applications/Blender.app/Contents/MacOS/Blender",
+    "meshTemplateFbx": "../motion-base-assets/rawFbx/mixamo_reference_skeleton.fbx"
+  }
+}

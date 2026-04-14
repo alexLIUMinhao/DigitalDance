@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "plan_id": "demo_song_plan",
+  "song_id": "demo_song",
+  "library_id": "motion_unit_library_v1",
+  "steps": [
+    {
+      "start_beat": 0,
+      "target_beats": 8,
+      "selected_unit_id": "finedance_168_0000_0119",
+      "speed_scale": 1.0
+    }
+  ],
+  "notes": [],
+  "generated_at_utc": "2026-04-02T00:00:00+00:00"
+}
+

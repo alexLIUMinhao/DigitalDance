@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "song_event_map",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "song_id",
+    "source_audio_path",
+    "duration_sec",
+    "beats_per_bar",
+    "tempo_hypotheses",
+    "beats",
+    "downbeats",
+    "accents",
+    "phrases",
+    "sections",
+    "confidence",
+    "manual_review_required",
+    "analysis_mode",
+    "applied_override_keys",
+    "generated_at_utc"
+  ],
+  "properties": {
+    "schema_version": {"type": "integer"},
+    "song_id": {"type": "string"},
+    "source_audio_path": {"type": "string"},
+    "duration_sec": {"type": "number"},
+    "beats_per_bar": {"type": "integer"},
+    "tempo_hypotheses": {"type": "array"},
+    "beats": {"type": "array"},
+    "downbeats": {"type": "array"},
+    "accents": {"type": "array"},
+    "phrases": {"type": "array"},
+    "sections": {"type": "array"},
+    "confidence": {"type": "object"},
+    "manual_review_required": {"type": "boolean"},
+    "analysis_mode": {"type": "string"},
+    "override_source": {"type": ["string", "null"]},
+    "applied_override_keys": {"type": "array"},
+    "notes": {"type": "array"},
+    "generated_at_utc": {"type": "string"}
+  }
+}

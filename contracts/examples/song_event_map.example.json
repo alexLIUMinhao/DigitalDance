@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "song_id": "demo_song",
+  "source_audio_path": "../music/demo_song.mp3",
+  "duration_sec": 120.0,
+  "beats_per_bar": 4,
+  "tempo_hypotheses": [
+    {"label": "primary", "bpm": 96.0, "confidence": 0.8}
+  ],
+  "beats": [],
+  "downbeats": [],
+  "accents": [],
+  "phrases": [],
+  "sections": [],
+  "confidence": {"overall": 0.8},
+  "manual_review_required": false,
+  "analysis_mode": "automatic",
+  "override_source": null,
+  "applied_override_keys": [],
+  "notes": [],
+  "generated_at_utc": "2026-04-02T00:00:00+00:00"
+}

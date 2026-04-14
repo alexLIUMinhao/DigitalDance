@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "motion_unit_library",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "library_id",
+    "units",
+    "generated_at_utc"
+  ],
+  "properties": {
+    "schema_version": {"type": "integer"},
+    "library_id": {"type": "string"},
+    "units": {"type": "array"},
+    "generated_at_utc": {"type": "string"},
+    "source_roots": {"type": "object"},
+    "notes": {"type": "array"}
+  }
+}
+

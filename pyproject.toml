@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "music-motion-lab"
+version = "0.1.0"
+description = "Isolated Python and Blender experiment workspace for music-driven 3D dance."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+audio = ["numpy", "soundfile"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

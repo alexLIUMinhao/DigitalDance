@@ -1,0 +1,15 @@
+.venv/
+.external/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.cache/
+.coverage
+*.pyc
+*.pyo
+*.pyd
+
+outputs/**
+!outputs/reports/
+!outputs/reports/*.md
+!outputs/**/.gitkeep

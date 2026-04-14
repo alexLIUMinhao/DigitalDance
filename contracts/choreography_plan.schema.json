@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "choreography_plan",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "plan_id",
+    "song_id",
+    "library_id",
+    "steps",
+    "generated_at_utc"
+  ],
+  "properties": {
+    "schema_version": {"type": "integer"},
+    "plan_id": {"type": "string"},
+    "song_id": {"type": "string"},
+    "library_id": {"type": "string"},
+    "steps": {"type": "array"},
+    "generated_at_utc": {"type": "string"},
+    "notes": {"type": "array"}
+  }
+}
+

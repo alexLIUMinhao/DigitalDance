@@ -1,0 +1,52 @@
+{
+  "description": "Template for manual song-event correction in music-motion-lab.",
+  "bpm": 70.0,
+  "beats_per_bar": 4,
+  "beats": [
+    0.0,
+    0.85714,
+    1.71429,
+    2.57143,
+    3.42857,
+    4.28571,
+    5.14286,
+    6.0
+  ],
+  "downbeats": [
+    0.0,
+    3.42857
+  ],
+  "accents": [
+    0.0,
+    1.71429,
+    3.42857,
+    5.14286
+  ],
+  "phrases": [
+    {
+      "label": "phrase_a",
+      "startBeat": 0,
+      "endBeatExclusive": 4
+    },
+    {
+      "label": "phrase_b",
+      "startBeat": 4,
+      "endBeatExclusive": 8
+    }
+  ],
+  "sections": [
+    {
+      "label": "intro",
+      "startBeat": 0,
+      "endBeatExclusive": 4,
+      "confidence": 1.0
+    },
+    {
+      "label": "verse",
+      "startBeat": 4,
+      "endBeatExclusive": 8,
+      "confidence": 1.0
+    }
+  ],
+  "manual_review_required": false
+}
