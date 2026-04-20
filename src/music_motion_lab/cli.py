@@ -102,6 +102,21 @@ def build_parser() -> argparse.ArgumentParser:
     smplx_stitch_web.add_argument("--audio", help="Optional audio path. Defaults to song_event_map.source_audio_path when available.")
     smplx_stitch_web.add_argument("--output", help="Optional HTML output path inside outputs/.")
 
+    smplx_mesh_stitch = subparsers.add_parser(
+        "build-smplx-stitch-mesh-preview",
+        help="Build a true SMPL-X mesh video/HTML review from a stitch manifest.",
+    )
+    smplx_mesh_stitch.add_argument("--manifest", required=True)
+    smplx_mesh_stitch.add_argument("--output-video", help="Optional MP4 output path inside outputs/.")
+    smplx_mesh_stitch.add_argument("--output-strip", help="Optional strip PNG output path inside outputs/.")
+    smplx_mesh_stitch.add_argument("--output-report", help="Optional report JSON output path inside outputs/.")
+    smplx_mesh_stitch.add_argument("--output-html", help="Optional HTML review output path inside outputs/.")
+    smplx_mesh_stitch.add_argument("--force-cache", action="store_true", help="Rebuild source mesh caches even if they already exist.")
+    smplx_mesh_stitch.add_argument("--batch-size", type=int, default=128)
+    smplx_mesh_stitch.add_argument("--face-stride", type=int, default=12)
+    smplx_mesh_stitch.add_argument("--render-frame-stride", type=int, default=2)
+    smplx_mesh_stitch.add_argument("--max-render-frames", type=int, default=0)
+
     mesh_launch = subparsers.add_parser("launch-mesh-preview", help="Launch Blender UI with a true skinned-mesh preview scene.")
     mesh_launch.add_argument("--manifest", required=True)
     mesh_launch.add_argument("--blender-path", help="Optional explicit Blender executable path. Overrides config and PATH lookup.")
@@ -451,6 +466,35 @@ def main() -> int:
             encoding="utf-8",
         )
         print(output_path)
+        return 0
+
+    if args.command == "build-smplx-stitch-mesh-preview":
+        from .pipelines.smplx_mesh_stitch_renderer import build_smplx_mesh_stitch_visual_preview
+
+        manifest = load_json(resolve_input_path(config, args.manifest))
+        stem = slugify(str(manifest.get("manifest_id", "smplx_stitch_mesh_preview"))).replace("_smplx_stitch_preview", "")
+        output_video = ensure_output_path(config, args.output_video or f"renders/{stem}_mesh_preview.mp4")
+        output_strip = ensure_output_path(config, args.output_strip or f"renders/{stem}_mesh_strip.png")
+        output_report = ensure_output_path(config, args.output_report or f"reports/{stem}_mesh_report.json")
+        output_html = ensure_output_path(config, args.output_html or f"renders/{stem}_mesh_review.html")
+        report = build_smplx_mesh_stitch_visual_preview(
+            manifest=manifest,
+            project_root=config.project_root,
+            motion_base_assets_root=config.shared_roots.motion_base_assets_root,
+            output_video=output_video,
+            output_strip=output_strip,
+            output_report=output_report,
+            output_html=output_html,
+            force_cache=args.force_cache,
+            batch_size=args.batch_size,
+            face_stride=args.face_stride,
+            render_frame_stride=args.render_frame_stride,
+            max_render_frames=args.max_render_frames,
+        )
+        print(report["artifacts"]["video"])
+        print(report["artifacts"]["strip"])
+        print(report["artifacts"]["html"])
+        print(report["artifacts"]["report"])
         return 0
 
     if args.command == "launch-mesh-preview":
