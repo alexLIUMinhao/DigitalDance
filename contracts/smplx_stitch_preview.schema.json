@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "smplx_stitch_preview",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "manifest_id",
+    "plan_id",
+    "library_id",
+    "fps",
+    "mesh_backend",
+    "steps",
+    "cache_requests",
+    "generated_at_utc"
+  ],
+  "properties": {
+    "schema_version": {"type": "integer"},
+    "manifest_id": {"type": "string"},
+    "plan_id": {"type": "string"},
+    "song_id": {"type": ["string", "null"]},
+    "library_id": {"type": "string"},
+    "fps": {"type": "integer"},
+    "mesh_backend": {"type": "string"},
+    "blend_policy": {"type": "object"},
+    "scene": {"type": "object"},
+    "steps": {"type": "array"},
+    "transitions": {"type": "array"},
+    "cache_requests": {"type": "array"},
+    "notes": {"type": "array"},
+    "generated_at_utc": {"type": "string"}
+  }
+}

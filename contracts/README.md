@@ -5,6 +5,7 @@ These schemas define the first stable handoff files exported by `music-motion-la
 - `song_event_map.schema.json`
 - `motion_unit_library.schema.json`
 - `choreography_plan.schema.json`
+- `smplx_stitch_preview.schema.json`
 - `retarget_report.schema.json`
 - `review_bundle.schema.json`
 

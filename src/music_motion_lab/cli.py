@@ -81,6 +81,18 @@ def build_parser() -> argparse.ArgumentParser:
     mesh_preview.add_argument("--basis-mode", default="constraint_world_pelvis_local")
     mesh_preview.add_argument("--max-steps", type=int, default=0, help="How many plan steps to include. Use 0 for all steps.")
 
+    smplx_stitch = subparsers.add_parser(
+        "build-smplx-stitch-preview",
+        help="Build a lightweight SMPL-X mesh stitch preview manifest from a rhythmic choreography plan.",
+    )
+    smplx_stitch.add_argument("--plan", required=True)
+    smplx_stitch.add_argument("--motion-library", required=True)
+    smplx_stitch.add_argument("--song-event-map")
+    smplx_stitch.add_argument("--output", help="Optional manifest output path inside outputs/.")
+    smplx_stitch.add_argument("--fps", type=int, default=30)
+    smplx_stitch.add_argument("--blend-frames", type=int, default=6)
+    smplx_stitch.add_argument("--max-steps", type=int, default=0, help="How many plan steps to include. Use 0 for all steps.")
+
     mesh_launch = subparsers.add_parser("launch-mesh-preview", help="Launch Blender UI with a true skinned-mesh preview scene.")
     mesh_launch.add_argument("--manifest", required=True)
     mesh_launch.add_argument("--blender-path", help="Optional explicit Blender executable path. Overrides config and PATH lookup.")
@@ -381,6 +393,25 @@ def main() -> int:
             max_steps=args.max_steps,
         )
         output_path = ensure_output_path(config, args.output or f"mesh_preview_jobs/{slugify(preview_job['plan_id'])}_mesh_preview.json")
+        write_json(output_path, payload)
+        print(output_path)
+        return 0
+
+    if args.command == "build-smplx-stitch-preview":
+        from .pipelines.smplx_stitch_preview import build_smplx_stitch_preview_manifest
+
+        plan = load_json(resolve_input_path(config, args.plan))
+        motion_library = load_json(resolve_input_path(config, args.motion_library))
+        song_event_map = load_json(resolve_input_path(config, args.song_event_map)) if args.song_event_map else None
+        payload = build_smplx_stitch_preview_manifest(
+            plan=plan,
+            motion_library=motion_library,
+            song_event_map=song_event_map,
+            fps=args.fps,
+            blend_frames=args.blend_frames,
+            max_steps=args.max_steps,
+        )
+        output_path = ensure_output_path(config, args.output or f"smplx_mesh_previews/{slugify(plan['plan_id'])}_stitch_manifest.json")
         write_json(output_path, payload)
         print(output_path)
         return 0

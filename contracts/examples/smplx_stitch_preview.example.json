@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "manifest_id": "demo_song_rhythmic_smplx_plan_smplx_stitch_preview",
+  "plan_id": "demo_song_rhythmic_smplx_plan",
+  "song_id": "demo_song",
+  "library_id": "finedance_rhythmic_smplx_library_v1",
+  "generated_at_utc": "2026-04-20T00:00:00+00:00",
+  "fps": 30,
+  "mesh_backend": "smplx_neutral",
+  "blend_policy": {
+    "default_blend_frames": 6,
+    "rotation": "slerp",
+    "root_translation": "continuous_offset",
+    "root_yaw": "shortest_arc_offset",
+    "beat_locks": "preserve_target_scene_frames"
+  },
+  "scene": {"frame_start": 1, "frame_end": 126},
+  "steps": [
+    {
+      "index": 0,
+      "unit_id": "finedance_168_0000b_0008b_00000_00125",
+      "source_sequence": "168",
+      "source_motion_path": "../motion-base-assets/datasets/finedance/raw/extracted/finedance/motion/168.npy",
+      "source_frame_start": 0,
+      "source_frame_end_exclusive": 126,
+      "source_beat_range": {"start": 0, "end_exclusive": 8},
+      "scene_frame_start": 1,
+      "scene_frame_end": 126,
+      "start_time_sec": 0.0,
+      "end_time_sec": 4.18,
+      "speed_scale": 1.0,
+      "blend_in_frames": 0,
+      "blend_out_frames": 6,
+      "rhythm_locks": [
+        {"index": 0, "kind": "expected_accent", "time_sec": 1.04, "scene_frame": 32}
+      ],
+      "root_alignment": {
+        "mode": "pelvis_yaw_translation_continuity",
+        "preserve_beat_locked_frames": true
+      },
+      "transition_score": 0.0,
+      "section_label": "chorus"
+    }
+  ],
+  "transitions": [],
+  "cache_requests": [
+    {
+      "sequence_id": "168",
+      "source_motion_path": "../motion-base-assets/datasets/finedance/raw/extracted/finedance/motion/168.npy",
+      "frame_ranges": [{"start": 0, "end_exclusive": 126}],
+      "cache_path": "outputs/smplx_mesh_previews/cache/demo_song_rhythmic_smplx_plan/168_00000_00125.npz",
+      "cache_format": "npz: vertices float32 [frames, verts, 3], joints float32 [frames, joints, 3], faces int32 [faces, 3]"
+    }
+  ],
+  "notes": []
+}
