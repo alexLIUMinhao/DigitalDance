@@ -93,6 +93,15 @@ def build_parser() -> argparse.ArgumentParser:
     smplx_stitch.add_argument("--blend-frames", type=int, default=6)
     smplx_stitch.add_argument("--max-steps", type=int, default=0, help="How many plan steps to include. Use 0 for all steps.")
 
+    smplx_stitch_web = subparsers.add_parser(
+        "build-smplx-stitch-web-preview",
+        help="Build a self-contained HTML preview for a SMPL-X stitch manifest.",
+    )
+    smplx_stitch_web.add_argument("--manifest", required=True)
+    smplx_stitch_web.add_argument("--song-event-map")
+    smplx_stitch_web.add_argument("--audio", help="Optional audio path. Defaults to song_event_map.source_audio_path when available.")
+    smplx_stitch_web.add_argument("--output", help="Optional HTML output path inside outputs/.")
+
     mesh_launch = subparsers.add_parser("launch-mesh-preview", help="Launch Blender UI with a true skinned-mesh preview scene.")
     mesh_launch.add_argument("--manifest", required=True)
     mesh_launch.add_argument("--blender-path", help="Optional explicit Blender executable path. Overrides config and PATH lookup.")
@@ -413,6 +422,34 @@ def main() -> int:
         )
         output_path = ensure_output_path(config, args.output or f"smplx_mesh_previews/{slugify(plan['plan_id'])}_stitch_manifest.json")
         write_json(output_path, payload)
+        print(output_path)
+        return 0
+
+    if args.command == "build-smplx-stitch-web-preview":
+        from .pipelines.smplx_stitch_web_preview import build_smplx_stitch_web_preview_document
+
+        manifest = load_json(resolve_input_path(config, args.manifest))
+        song_event_map = load_json(resolve_input_path(config, args.song_event_map)) if args.song_event_map else None
+        output_path = ensure_output_path(
+            config,
+            args.output or f"renders/{slugify(str(manifest.get('manifest_id', 'smplx_stitch_preview')))}.html",
+        )
+        audio_href = None
+        audio_path = None
+        if args.audio:
+            audio_path = resolve_input_path(config, args.audio)
+        elif song_event_map and song_event_map.get("source_audio_path"):
+            audio_path = resolve_input_path(config, str(song_event_map["source_audio_path"]))
+        if audio_path is not None:
+            audio_href = os.path.relpath(audio_path.resolve(), output_path.parent.resolve())
+        output_path.write_text(
+            build_smplx_stitch_web_preview_document(
+                manifest=manifest,
+                song_event_map=song_event_map,
+                audio_href=audio_href,
+            ),
+            encoding="utf-8",
+        )
         print(output_path)
         return 0
 
