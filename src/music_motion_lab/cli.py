@@ -183,6 +183,19 @@ def build_parser() -> argparse.ArgumentParser:
     rhythmic_library.add_argument("--accent-unit-beats", type=int, default=4)
     rhythmic_library.add_argument("--max-unit-beats", type=int, default=16)
 
+    finedance_song = subparsers.add_parser(
+        "build-finedance-song-event-map",
+        help="Convert M2-2 FineDance audio features into a full-song song_event_map.json.",
+    )
+    finedance_song.add_argument("--sequence-id", required=True)
+    finedance_song.add_argument(
+        "--audio-feature-report",
+        default="outputs/reports/dataset_truth_finedance_audio_features_all.json",
+        help="M2-2 dataset truth audio feature report JSON.",
+    )
+    finedance_song.add_argument("--output", help="Optional song_event_map output path inside outputs/.")
+    finedance_song.add_argument("--phrase-beats", type=int, default=8)
+
     return parser
 
 
@@ -398,6 +411,24 @@ def main() -> int:
         write_json(summary_output_path, showcase)
         print(output_path)
         print(summary_output_path)
+        return 0
+
+    if args.command == "build-finedance-song-event-map":
+        from .pipelines.finedance_song_event_map import build_finedance_song_event_map_from_report
+
+        report = load_json(resolve_input_path(config, args.audio_feature_report))
+        payload = build_finedance_song_event_map_from_report(
+            audio_feature_report=report,
+            sequence_id=args.sequence_id,
+            motion_base_assets_root=config.shared_roots.motion_base_assets_root,
+            phrase_beats=args.phrase_beats,
+        )
+        output_path = ensure_output_path(
+            config,
+            args.output or f"song_event_maps/{slugify(payload['song_id'])}_song_event_map.json",
+        )
+        write_json(output_path, payload)
+        print(output_path)
         return 0
 
     if args.command == "build-mesh-preview":
