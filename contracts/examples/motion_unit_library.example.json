@@ -1,21 +1,77 @@
 {
-  "schema_version": 1,
-  "library_id": "motion_unit_library_v1",
+  "schema_version": 2,
+  "library_id": "finedance_rhythmic_smplx_library_v1",
   "source_roots": {
-    "motion_base_assets_root": "../motion-base-assets"
+    "finedance_raw_root": "../motion-base-assets/datasets/finedance/raw/extracted/finedance"
   },
   "units": [
     {
-      "unit_id": "finedance_168_0000_0119",
+      "unit_id": "finedance_168_0000b_0008b_00000_00125",
       "dataset": "finedance",
       "source_sequence": "168",
-      "skeleton_id": "bridge_truth_v1_common22",
-      "frame_range": {"start": 0, "end_exclusive": 120},
+      "skeleton_id": "finedance_smplx_source_v1",
+      "mesh_backend": "smplx_neutral",
+      "frame_range": {"start": 0, "end_exclusive": 126},
+      "beat_range": {"start": 0, "end_exclusive": 8},
+      "time_range_sec": {"start": 0.0, "end": 4.18},
+      "duration_beats": 8,
       "duration_beats_estimate": 8.0,
-      "energy": "mid_energy"
+      "segment_source": "downbeat_phrase",
+      "energy": "high_energy",
+      "style_tags": ["street", "hiphop", "praisethelord"],
+      "keyframes": [
+        {
+          "kind": "downbeat",
+          "beat_index": 0,
+          "beat_offset": 0,
+          "time_sec": 0.0,
+          "frame_index": 0,
+          "strength": 0.64,
+          "is_downbeat": true,
+          "accent_bands": [],
+          "accent_level": 0
+        }
+      ],
+      "rhythm_profile": {
+        "beat_count": 8,
+        "downbeat_count": 2,
+        "accent_count": 1,
+        "mean_beat_spacing_sec": 0.52267,
+        "source_profile": "rhythmic_first",
+        "source_bpm": 114.79592
+      },
+      "entry_anchor": {
+        "frame_index": 0,
+        "root_translation": [0.0, 0.0, 0.0],
+        "root_velocity": [0.0, 0.0, 0.0],
+        "root_speed": 0.0,
+        "planar_speed": 0.0,
+        "root_yaw_deg": 0.0
+      },
+      "exit_anchor": {
+        "frame_index": 125,
+        "root_translation": [0.14, 0.0, 0.05],
+        "root_velocity": [0.12, 0.0, 0.03],
+        "root_speed": 0.12369,
+        "planar_speed": 0.12369,
+        "root_yaw_deg": 6.0
+      },
+      "transition_profile": {
+        "root_displacement": 0.14866,
+        "root_displacement_vector": [0.14, 0.0, 0.05],
+        "mean_root_speed": 0.24,
+        "p90_root_speed": 0.36,
+        "yaw_delta_deg": 6.0
+      },
+      "reference_artifacts": {
+        "source_motion_path": "../motion-base-assets/datasets/finedance/raw/extracted/finedance/motion/168.npy",
+        "source_music_path": "../motion-base-assets/datasets/finedance/raw/extracted/finedance/music_wav/168.wav",
+        "source_label_path": "../motion-base-assets/datasets/finedance/raw/extracted/finedance/label_json/168.json",
+        "event_report": "dataset_truth_finedance_audio_features_all"
+      },
+      "compatible_next_units": []
     }
   ],
   "notes": [],
   "generated_at_utc": "2026-04-02T00:00:00+00:00"
 }
-

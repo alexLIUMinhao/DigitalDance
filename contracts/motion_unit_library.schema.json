@@ -11,10 +11,43 @@
   "properties": {
     "schema_version": {"type": "integer"},
     "library_id": {"type": "string"},
-    "units": {"type": "array"},
+    "units": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "unit_id",
+          "dataset",
+          "source_sequence",
+          "skeleton_id",
+          "frame_range"
+        ],
+        "properties": {
+          "unit_id": {"type": "string"},
+          "dataset": {"type": "string"},
+          "source_sequence": {"type": "string"},
+          "skeleton_id": {"type": "string"},
+          "mesh_backend": {"type": "string"},
+          "frame_range": {"type": "object"},
+          "beat_range": {"type": "object"},
+          "time_range_sec": {"type": "object"},
+          "duration_beats": {"type": "number"},
+          "duration_beats_estimate": {"type": "number"},
+          "segment_source": {"type": "string"},
+          "energy": {"type": "string"},
+          "style_tags": {"type": "array"},
+          "keyframes": {"type": "array"},
+          "rhythm_profile": {"type": "object"},
+          "entry_anchor": {"type": "object"},
+          "exit_anchor": {"type": "object"},
+          "transition_profile": {"type": "object"},
+          "reference_artifacts": {"type": "object"},
+          "compatible_next_units": {"type": "array"}
+        }
+      }
+    },
     "generated_at_utc": {"type": "string"},
     "source_roots": {"type": "object"},
     "notes": {"type": "array"}
   }
 }
-

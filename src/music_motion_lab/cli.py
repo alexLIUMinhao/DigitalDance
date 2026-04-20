@@ -117,6 +117,23 @@ def build_parser() -> argparse.ArgumentParser:
     truth.add_argument("--all-sequences", action="store_true", help="Include every sequence available for the dataset.")
     truth.add_argument("--output", help="Optional HTML output path inside outputs/.")
 
+    rhythmic_library = subparsers.add_parser(
+        "build-finedance-rhythmic-library",
+        help="Build a FineDance rhythmic-first SMPL-X motion-unit library from M2-2 Event Rail reports.",
+    )
+    rhythmic_library.add_argument(
+        "--audio-feature-report",
+        default="outputs/reports/dataset_truth_finedance_audio_features_all.json",
+        help="M2-2 dataset truth audio feature report JSON.",
+    )
+    rhythmic_library.add_argument("--output", help="Optional library JSON path inside outputs/.")
+    rhythmic_library.add_argument("--summary-output", help="Optional showcase summary path inside outputs/.")
+    rhythmic_library.add_argument("--include-fallback", action="store_true", help="Include non-rhythmic-first FineDance entries too.")
+    rhythmic_library.add_argument("--max-sequences", type=int, default=0, help="Optional limit for smoke builds. Use 0 for all selected sequences.")
+    rhythmic_library.add_argument("--unit-beats", type=int, default=8)
+    rhythmic_library.add_argument("--accent-unit-beats", type=int, default=4)
+    rhythmic_library.add_argument("--max-unit-beats", type=int, default=16)
+
     return parser
 
 
@@ -285,6 +302,36 @@ def main() -> int:
         )
         print(output_path)
         print(report_path)
+        return 0
+
+    if args.command == "build-finedance-rhythmic-library":
+        from .pipelines.finedance_rhythmic_library import (
+            build_finedance_rhythmic_library_showcase,
+            build_finedance_rhythmic_smplx_library,
+        )
+
+        report = load_json(resolve_input_path(config, args.audio_feature_report))
+        raw_root = config.shared_roots.motion_base_assets_root / "datasets" / "finedance" / "raw" / "extracted" / "finedance"
+        library = build_finedance_rhythmic_smplx_library(
+            audio_feature_report=report,
+            raw_root=raw_root,
+            rhythmic_only=not args.include_fallback,
+            unit_beats=args.unit_beats,
+            accent_unit_beats=args.accent_unit_beats,
+            max_unit_beats=args.max_unit_beats,
+            max_sequences=args.max_sequences,
+        )
+        payload = library.to_dict()
+        showcase = build_finedance_rhythmic_library_showcase(library)
+        output_path = ensure_output_path(config, args.output or "motion_libraries/finedance_rhythmic_smplx_library.json")
+        summary_output_path = ensure_output_path(
+            config,
+            args.summary_output or "motion_libraries/finedance_rhythmic_smplx_library_showcase.json",
+        )
+        write_json(output_path, payload)
+        write_json(summary_output_path, showcase)
+        print(output_path)
+        print(summary_output_path)
         return 0
 
     if args.command == "build-mesh-preview":
