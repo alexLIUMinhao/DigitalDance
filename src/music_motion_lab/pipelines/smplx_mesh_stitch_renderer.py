@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 import importlib.util
+import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -580,6 +581,105 @@ def _max_metric(items: list[dict[str, Any]], key: str) -> float:
     return max(float(item.get(key, 0.0) or 0.0) for item in items)
 
 
+def _timed_events(
+    events: list[dict[str, Any]],
+    start_time_sec: float,
+    end_time_sec: float,
+    fps: int,
+    kind: str,
+) -> list[dict[str, Any]]:
+    mapped: list[dict[str, Any]] = []
+    for item in events:
+        time_sec = _safe_float(item.get("time_sec"), -1.0)
+        if time_sec < start_time_sec - 1e-6 or time_sec > end_time_sec + 1e-6:
+            continue
+        mapped.append(
+            {
+                "kind": kind,
+                "index": _safe_int(item.get("index"), len(mapped)),
+                "source_beat_index": item.get("source_beat_index", item.get("beat_index", item.get("index"))),
+                "time_sec": round(time_sec, 5),
+                "local_time_sec": round(time_sec - start_time_sec, 5),
+                "scene_frame": int(round(time_sec * fps)) + 1,
+                "strength": round(_safe_float(item.get("strength")), 5),
+                "level": item.get("level"),
+                "band": item.get("band"),
+                "is_downbeat": bool(item.get("is_downbeat", kind == "downbeat")),
+            }
+        )
+    return mapped
+
+
+def build_rhythm_mapping(manifest: dict[str, Any], song_event_map: dict[str, Any] | None) -> dict[str, Any]:
+    steps = list(manifest.get("steps", []) or [])
+    fps = _safe_int(manifest.get("fps"), 30)
+    if steps:
+        start_time_sec = min(_safe_float(step.get("start_time_sec")) for step in steps)
+        end_time_sec = max(_safe_float(step.get("end_time_sec")) for step in steps)
+    else:
+        start_time_sec = 0.0
+        end_time_sec = 0.0
+
+    song = song_event_map or {}
+    beats = _timed_events(list(song.get("beats", []) or []), start_time_sec, end_time_sec, fps, "beat")
+    downbeats = _timed_events(list(song.get("downbeats", []) or []), start_time_sec, end_time_sec, fps, "downbeat")
+    accents = _timed_events(list(song.get("accents", []) or []), start_time_sec, end_time_sec, fps, "accent")
+    drum_source = list(song.get("drum_hits", []) or song.get("kick_hits", []) or song.get("accents", []) or song.get("downbeats", []) or [])
+    drum_hits = _timed_events(drum_source, start_time_sec, end_time_sec, fps, "drum_hit")
+    if not drum_hits:
+        drum_hits = [dict(item, kind="drum_hit", strength=item.get("strength") or 1.0) for item in downbeats]
+    step_maps: list[dict[str, Any]] = []
+    for step in steps:
+        step_start = _safe_float(step.get("start_time_sec"), start_time_sec)
+        step_end = _safe_float(step.get("end_time_sec"), step_start)
+        step_maps.append(
+            {
+                "index": _safe_int(step.get("index")),
+                "unit_id": step.get("unit_id"),
+                "source_sequence": step.get("source_sequence"),
+                "section_label": step.get("section_label"),
+                "target_time_sec": {"start": round(step_start, 5), "end": round(step_end, 5)},
+                "local_time_sec": {"start": round(step_start - start_time_sec, 5), "end": round(step_end - start_time_sec, 5)},
+                "scene_frames": {
+                    "start": _safe_int(step.get("scene_frame_start")),
+                    "end": _safe_int(step.get("scene_frame_end")),
+                },
+                "source_frames": {
+                    "start": _safe_int(step.get("source_frame_start")),
+                    "end_exclusive": _safe_int(step.get("source_frame_end_exclusive")),
+                },
+                "source_beat_range": dict(step.get("source_beat_range", {}) or {}),
+                "speed_scale": _safe_float(step.get("speed_scale"), 1.0),
+                "transition_score": _safe_float(step.get("transition_score")),
+                "blend": {
+                    "in_frames": _safe_int(step.get("blend_in_frames")),
+                    "out_frames": _safe_int(step.get("blend_out_frames")),
+                },
+                "rhythm_locks": list(step.get("rhythm_locks", []) or []),
+            }
+        )
+
+    return {
+        "song_id": manifest.get("song_id") or song.get("song_id"),
+        "source_audio_path": song.get("source_audio_path"),
+        "beats_per_bar": song.get("beats_per_bar"),
+        "duration_sec": song.get("duration_sec"),
+        "preview_window_sec": {"start": round(start_time_sec, 5), "end": round(end_time_sec, 5)},
+        "beats": beats,
+        "downbeats": downbeats,
+        "accents": accents,
+        "drum_hits": drum_hits,
+        "steps": step_maps,
+        "summary": {
+            "beat_count": len(beats),
+            "downbeat_count": len(downbeats),
+            "accent_count": len(accents),
+            "drum_hit_count": len(drum_hits),
+            "step_count": len(step_maps),
+        },
+    }
+
+
 def build_mesh_stitch_report(
     manifest: dict[str, Any],
     stitched: StitchedMeshSequence,
@@ -587,9 +687,11 @@ def build_mesh_stitch_report(
     render_summary: dict[str, Any],
     output_report: Path,
     output_html: Path,
+    song_event_map: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     transition_reports = stitched.transition_reports
     rhythm_lock_reports = stitched.rhythm_lock_reports
+    rhythm_mapping = build_rhythm_mapping(manifest, song_event_map)
     report = {
         "schema_version": 1,
         "report_id": f"{slugify(str(manifest.get('manifest_id', 'smplx_stitch')))}_mesh_visual_report",
@@ -617,10 +719,16 @@ def build_mesh_stitch_report(
         },
         "cache": cache_summaries,
         "steps": stitched.step_reports,
+        "rhythm_mapping": rhythm_mapping,
+        "segment_mapping": rhythm_mapping["steps"],
         "transitions": transition_reports,
         "rhythm_locks": rhythm_lock_reports,
         "metrics": {
             "transition_count": int(len(transition_reports)),
+            "beat_count": int(rhythm_mapping["summary"]["beat_count"]),
+            "downbeat_count": int(rhythm_mapping["summary"]["downbeat_count"]),
+            "accent_count": int(rhythm_mapping["summary"]["accent_count"]),
+            "drum_hit_count": int(rhythm_mapping["summary"]["drum_hit_count"]),
             "max_joint_delta_after_blend": round(_max_metric(transition_reports, "joint_delta_after_blend"), 6),
             "max_vertex_delta_after_blend": round(_max_metric(transition_reports, "vertex_delta_after_blend"), 6),
             "max_rhythm_lock_frame_error": int(_max_metric(rhythm_lock_reports, "frame_error")),
@@ -635,10 +743,24 @@ def build_mesh_stitch_report(
     return report
 
 
-def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip_href: str) -> str:
+def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip_href: str, audio_href: str | None = None) -> str:
     title = html.escape(str(report.get("report_id", "SMPL-X mesh stitch review")))
     transitions = list(report.get("transitions", []) or [])
     locks = list(report.get("rhythm_locks", []) or [])
+    segment_mapping = list(report.get("segment_mapping", []) or [])
+    rhythm_mapping = dict(report.get("rhythm_mapping", {}) or {})
+    rhythm_payload = json.dumps(
+        {
+            "previewWindow": rhythm_mapping.get("preview_window_sec", {}),
+            "beats": rhythm_mapping.get("beats", []),
+            "downbeats": rhythm_mapping.get("downbeats", []),
+            "accents": rhythm_mapping.get("accents", []),
+            "drumHits": rhythm_mapping.get("drum_hits", []),
+            "segments": segment_mapping,
+            "transitions": transitions,
+        },
+        ensure_ascii=False,
+    ).replace("</", "<\\/")
 
     def transition_rows() -> str:
         if not transitions:
@@ -661,7 +783,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
 
     def lock_rows() -> str:
         if not locks:
-            return "<tr><td colspan=\"4\">No rhythm locks.</td></tr>"
+            return "<tr><td colspan=\"4\">No explicit step rhythm locks. Use beat/downbeat/accent map above for this smoke pass.</td></tr>"
         rows = []
         for item in locks:
             rows.append(
@@ -674,9 +796,38 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
             )
         return "\n".join(rows)
 
+    def segment_rows() -> str:
+        if not segment_mapping:
+            return "<tr><td colspan=\"8\">No segments.</td></tr>"
+        rows = []
+        for item in segment_mapping:
+            target = dict(item.get("target_time_sec", {}) or {})
+            source_frames = dict(item.get("source_frames", {}) or {})
+            source_beats = dict(item.get("source_beat_range", {}) or {})
+            scene_frames = dict(item.get("scene_frames", {}) or {})
+            blend = dict(item.get("blend", {}) or {})
+            rows.append(
+                "<tr>"
+                f"<td>{html.escape(str(item.get('index')))}</td>"
+                f"<td>{html.escape(str(item.get('unit_id')))}</td>"
+                f"<td>{html.escape(str(item.get('source_sequence')))}</td>"
+                f"<td>{html.escape(str(source_beats.get('start')))}-{html.escape(str(source_beats.get('end_exclusive')))}</td>"
+                f"<td>{html.escape(str(source_frames.get('start')))}-{html.escape(str(source_frames.get('end_exclusive')))}</td>"
+                f"<td>{html.escape(str(target.get('start')))}-{html.escape(str(target.get('end')))}s</td>"
+                f"<td>{html.escape(str(scene_frames.get('start')))}-{html.escape(str(scene_frames.get('end')))}</td>"
+                f"<td>{html.escape(str(blend.get('in_frames')))} / {html.escape(str(blend.get('out_frames')))}</td>"
+                "</tr>"
+            )
+        return "\n".join(rows)
+
     scene = dict(report.get("scene", {}))
     mesh = dict(report.get("mesh", {}))
     metrics = dict(report.get("metrics", {}))
+    audio_html = (
+        f'<audio id="audio" controls preload="metadata" src="{html.escape(audio_href)}"></audio>'
+        if audio_href
+        else '<span class="missing-audio">No audio linked</span>'
+    )
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -695,6 +846,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
       --blue: #74b9ff;
       --gold: #f4c95d;
       --green: #7bd88f;
+      --coral: #ff7b63;
     }}
     * {{ box-sizing: border-box; }}
     body {{
@@ -731,6 +883,34 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
       border-radius: 6px;
     }}
     img {{ margin-top: 14px; max-height: none; }}
+    .media-bar {{
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      margin: 10px 0 12px;
+    }}
+    button {{
+      border: 1px solid rgba(255,255,255,0.18);
+      background: #f3f1ea;
+      color: #101214;
+      border-radius: 6px;
+      height: 34px;
+      padding: 0 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }}
+    audio {{ width: 100%; height: 34px; }}
+    .missing-audio {{ color: var(--coral); }}
+    #rhythmCanvas {{
+      display: block;
+      width: 100%;
+      height: 132px;
+      margin: 12px 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #11161a;
+    }}
     .grid {{
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -777,7 +957,12 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
   <div class="shell">
     <main>
       <h1>{title}</h1>
+      <div class="media-bar">
+        <button id="syncPlay" type="button">Play Sync</button>
+        {audio_html}
+      </div>
       <video controls src="{html.escape(video_href)}"></video>
+      <canvas id="rhythmCanvas" width="1280" height="132"></canvas>
       <img src="{html.escape(strip_href)}" alt="SMPL-X stitched mesh strip">
     </main>
     <aside>
@@ -786,9 +971,18 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
         <div class="metric"><b>{html.escape(str(report.get('fps')))}</b><span>source fps</span></div>
         <div class="metric"><b>{html.escape(str(mesh.get('vertex_count')))}</b><span>vertices</span></div>
         <div class="metric"><b>{html.escape(str(mesh.get('face_count')))}</b><span>faces</span></div>
+        <div class="metric"><b>{html.escape(str(metrics.get('beat_count')))}</b><span>beats in preview</span></div>
+        <div class="metric"><b>{html.escape(str(metrics.get('downbeat_count')))}</b><span>downbeats</span></div>
+        <div class="metric"><b>{html.escape(str(metrics.get('drum_hit_count')))}</b><span>drum hits mapped</span></div>
+        <div class="metric"><b>{html.escape(str(metrics.get('accent_count')))}</b><span>accents in preview</span></div>
         <div class="metric"><b>{html.escape(str(metrics.get('max_vertex_delta_after_blend')))}</b><span>max vertex delta after blend</span></div>
         <div class="metric"><b>{html.escape(str(metrics.get('max_rhythm_lock_frame_error')))}</b><span>max rhythm frame error</span></div>
       </div>
+      <h2>Segments</h2>
+      <table>
+        <thead><tr><th>step</th><th>unit</th><th>seq</th><th>src beats</th><th>src frames</th><th>target time</th><th>scene frames</th><th>blend in/out</th></tr></thead>
+        <tbody>{segment_rows()}</tbody>
+      </table>
       <h2>Transitions</h2>
       <table>
         <thead><tr><th>steps</th><th>boundary</th><th>gap</th><th>blend</th><th>raw root</th><th>aligned root</th><th>joint after</th><th>vertex after</th></tr></thead>
@@ -802,6 +996,109 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
       <p class="path">{html.escape(str(report.get('artifacts', {}).get('report', '')))}</p>
     </aside>
   </div>
+  <script id="rhythmData" type="application/json">{rhythm_payload}</script>
+  <script>
+    const rhythmData = JSON.parse(document.getElementById("rhythmData").textContent);
+    const video = document.querySelector("video");
+    const audio = document.getElementById("audio");
+    const syncPlay = document.getElementById("syncPlay");
+    const canvas = document.getElementById("rhythmCanvas");
+    const ctx = canvas.getContext("2d");
+    const preview = rhythmData.previewWindow || {{}};
+    const start = Number(preview.start || 0);
+    const end = Math.max(start + 0.001, Number(preview.end || start + 1));
+    function xFor(time) {{
+      return Math.max(0, Math.min(canvas.width, ((Number(time) - start) / (end - start)) * canvas.width));
+    }}
+    function draw() {{
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#11161a";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      for (const segment of rhythmData.segments || []) {{
+        const local = segment.target_time_sec || {{}};
+        const x0 = xFor(local.start);
+        const x1 = xFor(local.end);
+        ctx.fillStyle = Number(segment.index || 0) % 2 ? "rgba(116,185,255,0.26)" : "rgba(123,216,143,0.22)";
+        ctx.fillRect(x0, 14, Math.max(2, x1 - x0), 34);
+        ctx.fillStyle = "#f3f1ea";
+        ctx.font = "12px system-ui, sans-serif";
+        ctx.fillText("step " + segment.index, x0 + 6, 35);
+      }}
+      for (const beat of rhythmData.beats || []) {{
+        const x = xFor(beat.time_sec);
+        ctx.strokeStyle = beat.is_downbeat ? "#f4c95d" : "rgba(255,255,255,0.35)";
+        ctx.lineWidth = beat.is_downbeat ? 2 : 1;
+        ctx.beginPath();
+        ctx.moveTo(x, 58);
+        ctx.lineTo(x, 100);
+        ctx.stroke();
+      }}
+      for (const downbeat of rhythmData.downbeats || []) {{
+        const x = xFor(downbeat.time_sec);
+        ctx.fillStyle = "#f4c95d";
+        ctx.fillRect(x - 2, 56, 4, 48);
+      }}
+      for (const accent of rhythmData.accents || []) {{
+        const x = xFor(accent.time_sec);
+        const height = 10 + Math.min(28, Number(accent.strength || 0) * 48);
+        ctx.fillStyle = "#ff7b63";
+        ctx.fillRect(x - 1.5, 108 - height, 3, height);
+      }}
+      for (const hit of rhythmData.drumHits || []) {{
+        const x = xFor(hit.time_sec);
+        ctx.fillStyle = "#7bd88f";
+        ctx.beginPath();
+        ctx.arc(x, 112, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }}
+      for (const transition of rhythmData.transitions || []) {{
+        const segment = (rhythmData.segments || []).find((item) => Number(item.index) === Number(transition.incoming_step));
+        if (!segment) continue;
+        const x = xFor((segment.target_time_sec || {{}}).start);
+        ctx.strokeStyle = "#bba7ff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x, 8);
+        ctx.lineTo(x, 122);
+        ctx.stroke();
+      }}
+      const playhead = start + (video.currentTime || 0);
+      const px = xFor(playhead);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(px, 0);
+      ctx.lineTo(px, canvas.height);
+      ctx.stroke();
+      ctx.fillStyle = "#aeb8ba";
+      ctx.font = "12px system-ui, sans-serif";
+      ctx.fillText("segments", 8, 12);
+      ctx.fillText("beats/downbeats", 8, 72);
+      ctx.fillText("drum hits / accents", 8, 120);
+    }}
+    syncPlay?.addEventListener("click", async () => {{
+      if (audio) audio.currentTime = start + video.currentTime;
+      await video.play();
+      if (audio) await audio.play();
+    }});
+    video.addEventListener("play", () => {{
+      if (audio && Math.abs(audio.currentTime - (start + video.currentTime)) > 0.2) audio.currentTime = start + video.currentTime;
+      if (audio) audio.play();
+    }});
+    video.addEventListener("pause", () => audio?.pause());
+    video.addEventListener("seeked", () => {{
+      if (audio) audio.currentTime = start + video.currentTime;
+      draw();
+    }});
+    function tick() {{
+      if (audio && !video.paused && Math.abs(audio.currentTime - (start + video.currentTime)) > 0.35) {{
+        audio.currentTime = start + video.currentTime;
+      }}
+      draw();
+      requestAnimationFrame(tick);
+    }}
+    tick();
+  </script>
 </body>
 </html>
 """
@@ -815,6 +1112,8 @@ def build_smplx_mesh_stitch_visual_preview(
     output_strip: Path,
     output_report: Path,
     output_html: Path,
+    song_event_map: dict[str, Any] | None = None,
+    audio_path: Path | None = None,
     force_cache: bool = False,
     batch_size: int = 128,
     face_stride: int = 12,
@@ -844,9 +1143,14 @@ def build_smplx_mesh_stitch_visual_preview(
         render_summary=render_summary,
         output_report=output_report,
         output_html=output_html,
+        song_event_map=song_event_map,
     )
     video_href = os.path.relpath(output_video.resolve(), output_html.parent.resolve())
     strip_href = os.path.relpath(output_strip.resolve(), output_html.parent.resolve())
+    audio_href = os.path.relpath(audio_path.resolve(), output_html.parent.resolve()) if audio_path is not None else None
     output_html.parent.mkdir(parents=True, exist_ok=True)
-    output_html.write_text(build_mesh_stitch_review_html(report, video_href=video_href, strip_href=strip_href), encoding="utf-8")
+    output_html.write_text(
+        build_mesh_stitch_review_html(report, video_href=video_href, strip_href=strip_href, audio_href=audio_href),
+        encoding="utf-8",
+    )
     return report

@@ -107,6 +107,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="Build a true SMPL-X mesh video/HTML review from a stitch manifest.",
     )
     smplx_mesh_stitch.add_argument("--manifest", required=True)
+    smplx_mesh_stitch.add_argument("--song-event-map", help="Optional song_event_map JSON for audio, beat, downbeat, and accent review.")
+    smplx_mesh_stitch.add_argument("--audio", help="Optional audio path. Defaults to song_event_map.source_audio_path when available.")
     smplx_mesh_stitch.add_argument("--output-video", help="Optional MP4 output path inside outputs/.")
     smplx_mesh_stitch.add_argument("--output-strip", help="Optional strip PNG output path inside outputs/.")
     smplx_mesh_stitch.add_argument("--output-report", help="Optional report JSON output path inside outputs/.")
@@ -472,6 +474,12 @@ def main() -> int:
         from .pipelines.smplx_mesh_stitch_renderer import build_smplx_mesh_stitch_visual_preview
 
         manifest = load_json(resolve_input_path(config, args.manifest))
+        song_event_map = load_json(resolve_input_path(config, args.song_event_map)) if args.song_event_map else None
+        audio_path = None
+        if args.audio:
+            audio_path = resolve_input_path(config, args.audio)
+        elif song_event_map and song_event_map.get("source_audio_path"):
+            audio_path = resolve_input_path(config, str(song_event_map["source_audio_path"]))
         stem = slugify(str(manifest.get("manifest_id", "smplx_stitch_mesh_preview"))).replace("_smplx_stitch_preview", "")
         output_video = ensure_output_path(config, args.output_video or f"renders/{stem}_mesh_preview.mp4")
         output_strip = ensure_output_path(config, args.output_strip or f"renders/{stem}_mesh_strip.png")
@@ -485,6 +493,8 @@ def main() -> int:
             output_strip=output_strip,
             output_report=output_report,
             output_html=output_html,
+            song_event_map=song_event_map,
+            audio_path=audio_path,
             force_cache=args.force_cache,
             batch_size=args.batch_size,
             face_stride=args.face_stride,
