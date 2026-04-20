@@ -1,17 +1,33 @@
 {
-  "schema_version": 1,
-  "plan_id": "demo_song_plan",
+  "schema_version": 2,
+  "plan_id": "demo_song_rhythmic_smplx_plan",
   "song_id": "demo_song",
-  "library_id": "motion_unit_library_v1",
+  "library_id": "finedance_rhythmic_smplx_library_v1",
   "steps": [
     {
+      "index": 0,
+      "section_label": "chorus",
       "start_beat": 0,
       "target_beats": 8,
-      "selected_unit_id": "finedance_168_0000_0119",
-      "speed_scale": 1.0
+      "target_time_sec": {"start": 0.0, "end": 4.18},
+      "selected_unit_id": "finedance_168_0000b_0008b_00000_00125",
+      "source_sequence": "168",
+      "source_frame_range": {"start": 0, "end_exclusive": 126},
+      "source_beat_range": {"start": 0, "end_exclusive": 8},
+      "speed_scale": 1.0,
+      "transition_score": 0.0,
+      "switch_reason": {
+        "planner": "rhythmic_beam_search_v1",
+        "target_energy": "high_energy",
+        "candidate_energy": "high_energy",
+        "compatible_from_previous": false
+      },
+      "expected_accent_hits": [1.04, 2.08],
+      "reference_artifacts": {
+        "source_motion_path": "../motion-base-assets/datasets/finedance/raw/extracted/finedance/motion/168.npy"
+      }
     }
   ],
   "notes": [],
   "generated_at_utc": "2026-04-02T00:00:00+00:00"
 }
-

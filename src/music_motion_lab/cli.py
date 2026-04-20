@@ -35,6 +35,17 @@ def build_parser() -> argparse.ArgumentParser:
     plan.add_argument("--motion-library", required=True)
     plan.add_argument("--output", help="Optional output path inside outputs/.")
 
+    rhythmic_plan = subparsers.add_parser(
+        "plan-rhythmic-choreography",
+        help="Build a beat-locked choreography_plan.json from a song map and FineDance rhythmic SMPL-X library.",
+    )
+    rhythmic_plan.add_argument("--song-event-map", required=True)
+    rhythmic_plan.add_argument("--motion-library", required=True)
+    rhythmic_plan.add_argument("--output", help="Optional output path inside outputs/.")
+    rhythmic_plan.add_argument("--beam-width", type=int, default=4)
+    rhythmic_plan.add_argument("--candidate-limit", type=int, default=18)
+    rhythmic_plan.add_argument("--max-speed-adjustment", type=float, default=0.10)
+
     preview = subparsers.add_parser("build-preview", help="Create preview_job.json and retarget_report.json.")
     preview.add_argument("--plan", required=True)
     preview.add_argument("--motion-library", required=True)
@@ -214,6 +225,23 @@ def main() -> int:
         motion_library = load_json(resolve_input_path(config, args.motion_library))
         payload = build_choreography_plan(song_event_map=song_event_map, motion_library=motion_library).to_dict()
         output_path = ensure_output_path(config, args.output or _default_plan_output(song_event_map["song_id"]))
+        write_json(output_path, payload)
+        print(output_path)
+        return 0
+
+    if args.command == "plan-rhythmic-choreography":
+        from .pipelines.rhythmic_planner import build_rhythmic_choreography_plan
+
+        song_event_map = load_json(resolve_input_path(config, args.song_event_map))
+        motion_library = load_json(resolve_input_path(config, args.motion_library))
+        payload = build_rhythmic_choreography_plan(
+            song_event_map=song_event_map,
+            motion_library=motion_library,
+            beam_width=args.beam_width,
+            candidate_limit=args.candidate_limit,
+            max_speed_adjustment=args.max_speed_adjustment,
+        ).to_dict()
+        output_path = ensure_output_path(config, args.output or f"choreography_plans/{slugify(song_event_map['song_id'])}_rhythmic_smplx_plan.json")
         write_json(output_path, payload)
         print(output_path)
         return 0

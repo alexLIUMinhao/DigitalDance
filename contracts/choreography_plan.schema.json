@@ -15,9 +15,36 @@
     "plan_id": {"type": "string"},
     "song_id": {"type": "string"},
     "library_id": {"type": "string"},
-    "steps": {"type": "array"},
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "index",
+          "start_beat",
+          "target_beats",
+          "selected_unit_id",
+          "speed_scale"
+        ],
+        "properties": {
+          "index": {"type": "integer"},
+          "section_label": {"type": "string"},
+          "start_beat": {"type": "number"},
+          "target_beats": {"type": "number"},
+          "target_time_sec": {"type": "object"},
+          "selected_unit_id": {"type": "string"},
+          "source_sequence": {"type": "string"},
+          "source_frame_range": {"type": "object"},
+          "source_beat_range": {"type": "object"},
+          "speed_scale": {"type": "number"},
+          "transition_score": {"type": "number"},
+          "switch_reason": {"type": "object"},
+          "expected_accent_hits": {"type": "array"},
+          "reference_artifacts": {"type": "object"}
+        }
+      }
+    },
     "generated_at_utc": {"type": "string"},
     "notes": {"type": "array"}
   }
 }
-
