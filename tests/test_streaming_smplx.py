@@ -70,11 +70,15 @@ def _library(source_motion_path: Path) -> dict:
     weaker["unit_id"] = "finedance_001_weak"
     weaker["keyframes"] = [{"kind": "beat", "beat_offset": 1, "frame_index": 30, "strength": 0.1, "is_downbeat": False}]
     weaker["compatible_next_units"] = []
+    other_sequence = dict(unit)
+    other_sequence["unit_id"] = "finedance_002_other"
+    other_sequence["source_sequence"] = "002"
+    other_sequence["compatible_next_units"] = []
     return {
         "schema_version": 2,
         "library_id": "demo_library",
         "source_roots": {},
-        "units": [weaker, unit],
+        "units": [weaker, unit, other_sequence],
         "notes": [],
         "generated_at_utc": "2026-04-21T00:00:00+00:00",
     }
@@ -189,6 +193,38 @@ class StreamingSmplxTests(unittest.TestCase):
                 float(decision["playhead_sec"]) + 2.00001,
             )
         self.assertGreater(decisions[0]["score_breakdown"]["rhythm_lock"], 0.5)
+
+    def test_streaming_planner_can_constrain_source_sequences(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            motion_path = _write_motion(Path(tmpdir) / "finedance")
+            library = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir), contact_mode="joints")
+        stream_events = [
+            {"kind": "stream_header", "song_id": "demo", "duration_sec": 2.1, "initial_buffer_sec": 2.0, "beats_per_bar": 4},
+            {
+                "kind": "tick",
+                "tick_index": 0,
+                "playhead_sec": 0.0,
+                "available_audio_until_sec": 2.0,
+                "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.9},
+                "beats": [{"index": index, "time_sec": index * 0.5, "strength": 0.7, "confidence": 0.9, "is_downbeat": index % 4 == 0} for index in range(5)],
+                "downbeats": [{"index": 0, "time_sec": 0.0, "confidence": 0.9, "is_downbeat": True}],
+                "drum_hits": [{"index": 0, "time_sec": 0.0, "strength": 0.95, "kind": "kick"}],
+                "accents": [],
+            },
+        ]
+
+        plan = simulate_streaming_smplx_plan_records(
+            stream_events,
+            library,
+            planner_version="m12",
+            source_sequence_allowlist=["001"],
+            max_steps=1,
+        )
+        header = plan[0]
+        decisions = [record for record in plan if record["kind"] == "decision"]
+
+        self.assertEqual(header["source_sequence_allowlist"], ["001"])
+        self.assertEqual(decisions[0]["source_sequence"], "001")
 
     def test_m12_tail_policy_extends_final_segment_and_evaluator_reports_acceptance(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -320,6 +356,7 @@ class StreamingSmplxTests(unittest.TestCase):
         self.assertEqual(event_map["song_id"], "demo")
         self.assertEqual(len(event_map["beats"]), 1)
         self.assertEqual(len(event_map["downbeats"]), 1)
+        self.assertEqual(event_map["beats"][0]["count"], 1)
         self.assertEqual(len(event_map["drum_hits"]), 1)
         self.assertTrue(event_map["manual_review_required"])
 

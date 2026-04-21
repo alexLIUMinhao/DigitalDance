@@ -833,12 +833,16 @@ def simulate_streaming_smplx_plan_records(
     max_steps: int = 0,
     planner_version: str = "m9",
     tail_policy: str = "none",
+    source_sequence_allowlist: list[str] | tuple[str, ...] | None = None,
 ) -> list[dict[str, Any]]:
     header = _header(stream_event_records, "stream_header")
     ticks = _records_by_kind(stream_event_records, "tick")
     if not ticks:
         raise ValueError("stream_event_records contain no tick records")
     units = [dict(unit) for unit in list(annotated_library.get("units", []) or [])]
+    allowed_sequences = {str(value) for value in list(source_sequence_allowlist or []) if str(value)}
+    if allowed_sequences:
+        units = [unit for unit in units if str(unit.get("source_sequence")) in allowed_sequences]
     if not units:
         raise ValueError("annotated motion library contains no units")
     song_id = str(header.get("song_id") or "stream_song")
@@ -862,6 +866,7 @@ def simulate_streaming_smplx_plan_records(
             "planner": planner_name,
             "planner_version": planner_version,
             "tail_policy": tail_policy,
+            "source_sequence_allowlist": sorted(allowed_sequences),
             "score_weights": {
                 "rhythm_lock": 0.45,
                 "transition_smoothness": 0.25,
@@ -912,6 +917,11 @@ def simulate_streaming_smplx_plan_records(
             viable.sort(key=lambda item: (_safe_float(item.get("confidence")), _safe_int(item.get("duration_beats")) in {4, 8}), reverse=True)
             if viable:
                 target_beats = _safe_int(viable[0].get("duration_beats"), target_beats)
+            if tail_policy == "recover":
+                remaining_total = duration_sec - next_start_sec
+                if remaining_total < target_beats * spacing * 0.75:
+                    tail_options = [count for count in counts if count <= target_beats] or counts
+                    target_beats = min(tail_options, key=lambda count: abs(count * spacing - remaining_total))
         target_end_sec = min(duration_sec, next_start_sec + target_beats * spacing)
         tail_extended = False
         if planner_version == "m12" and tail_policy == "recover" and target_end_sec < duration_sec:
@@ -1011,11 +1021,16 @@ def simulate_streaming_smplx_plan_records(
 
 def _dedupe_timed_events(records: list[dict[str, Any]], key: str, confidence_floor: float = 0.0) -> list[dict[str, Any]]:
     by_time: dict[float, dict[str, Any]] = {}
-    for tick in _records_by_kind(records, "tick"):
+    previous_available_until = -1e-4
+    for tick in sorted(_records_by_kind(records, "tick"), key=lambda item: _safe_float(item.get("available_audio_until_sec"), 0.0)):
         available_until = _safe_float(tick.get("available_audio_until_sec"), 0.0)
+        if available_until + 1e-8 < previous_available_until:
+            previous_available_until = available_until
         for event in list(tick.get(key, []) or []):
             time_sec = _round_time(_safe_float(event.get("time_sec")))
             if time_sec > available_until + 1e-8:
+                continue
+            if time_sec <= previous_available_until + 1e-8:
                 continue
             if _safe_float(event.get("confidence"), _safe_float(event.get("strength"))) < confidence_floor:
                 continue
@@ -1023,6 +1038,7 @@ def _dedupe_timed_events(records: list[dict[str, Any]], key: str, confidence_flo
             current = by_time.get(slot)
             if current is None or _safe_float(event.get("strength"), _safe_float(event.get("confidence"))) > _safe_float(current.get("strength"), _safe_float(current.get("confidence"))):
                 by_time[slot] = dict(event, time_sec=time_sec)
+        previous_available_until = max(previous_available_until, available_until)
     events = sorted(by_time.values(), key=lambda item: _safe_float(item.get("time_sec")))
     for index, event in enumerate(events):
         event["index"] = index
@@ -1032,6 +1048,11 @@ def _dedupe_timed_events(records: list[dict[str, Any]], key: str, confidence_flo
 def stream_events_to_song_event_map(stream_records: list[dict[str, Any]]) -> dict[str, Any]:
     header = _header(stream_records, "stream_header")
     beats = _dedupe_timed_events(stream_records, "beats", confidence_floor=0.18)
+    beats_per_bar = max(1, _safe_int(header.get("beats_per_bar"), 4))
+    for index, beat in enumerate(beats):
+        beat["index"] = index
+        beat["count"] = int(index % beats_per_bar) + 1
+        beat["is_downbeat"] = bool(index % beats_per_bar == 0)
     downbeats = [
         {
             "index": len([item for item in beats[:idx] if item.get("is_downbeat")]),
@@ -1050,7 +1071,7 @@ def stream_events_to_song_event_map(stream_records: list[dict[str, Any]]) -> dic
         "song_id": header.get("song_id", "stream_song"),
         "source_audio_path": header.get("source_audio_path", ""),
         "duration_sec": round(float(duration_sec), 5),
-        "beats_per_bar": _safe_int(header.get("beats_per_bar"), 4),
+        "beats_per_bar": beats_per_bar,
         "tempo_hypotheses": [
             {
                 "label": "stream_primary",

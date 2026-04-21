@@ -20,12 +20,14 @@ This milestone upgrades the M9 local streaming smoke into a broader optimization
 - M12 planner:
   - Added `--planner-version m12` and `--tail-policy recover`.
   - Planner now records phrase-aware mode, stronger diversity/speed penalties, and tail recovery decisions.
+  - Added `--source-sequence-allowlist` after visual review showed that unconstrained full-library retrieval can jump across incompatible source dances and look chaotic.
   - Planner reports:
     - `outputs/reports/milestone_m12_streaming_planner_eval.json`
     - `outputs/reports/milestone_m12_audio_pressure_planner_eval.json`
 - M13 transition quality:
   - Added transition metrics for root acceleration discontinuity, joint jerk, and foot-slide proxies.
-  - Added a temporal delta limiter inside transition smoothing windows.
+  - Removed the aggressive temporal delta limiter after visual review showed it improved a numeric vertex-delta metric while making the body motion look jittery and off-rhythm.
+  - The current `audio4` visual fix prioritizes source-sequence continuity and a corrected beat rail over the earlier `<= 0.05` visual metric chase.
   - Transition report: `outputs/reports/milestone_m13_motion_transition_report.json`.
 - M14 runtime bundle:
   - Added Unity/endpoint runtime bundle export with compact motion-unit manifest, planner config, and stream samples.
@@ -45,6 +47,12 @@ This milestone upgrades the M9 local streaming smoke into a broader optimization
   - Gaps: `0`
   - Speed scale outside `0.85-1.15`: `2/97` (`0.02062`)
   - Max non-tail speed scale: `1.15413`
+  - Visual coherence pass: source sequence allowlist `001`; rendered review `outputs/renders/unity_audio4_rhythm_visual_fix_mesh_review.html`
+- `audio4` corrected rhythm map:
+  - Beats: `389`
+  - Downbeats: `98`
+  - Drum hits: `955`
+  - Previous over-counted rolling-window map: about `844-851` beats, which was rejected in visual review.
 - `audio.mp3` pressure planner:
   - Decisions: `139`
   - Future visibility violations: `0`
@@ -52,9 +60,10 @@ This milestone upgrades the M9 local streaming smoke into a broader optimization
   - Speed scale outside `0.85-1.15`: `0`
   - Max speed scale: `1.1328`
 - M13 transition smoothing:
-  - Max temporal vertex delta after smoothing: `0.048`
-  - Max temporal joint delta after smoothing: `0.06`
+  - Max temporal vertex delta after smoothing: `0.071477`
+  - Max temporal joint delta after smoothing: `0.100518`
   - Rhythm lock frame error: `0`
+  - Note: this intentionally no longer passes the earlier `<= 0.05` metric because that limiter made the dancer look worse. The next transition milestone should use pose/contact-aware blending instead of vertex delta clamping.
 - Runtime bundle:
   - Compact unit count: `10067`
   - Motion-unit manifest size: `32348234` bytes
@@ -72,5 +81,5 @@ This milestone upgrades the M9 local streaming smoke into a broader optimization
 
 - Replace contact proxies with true SMPL-X foot-joint contact from cached joints for the production runtime bundle.
 - Add manual beat/downbeat calibration files for all Unity music tracks instead of self-consistency event-rail evaluation.
-- Validate the M12 full-library planner with true mesh render on selected non-`audio4` songs; current heavy visual render was refreshed on `audio4`.
+- Validate a source-coherent M12 planner with true mesh render on selected non-`audio4` songs. Avoid unconstrained full-library visual retrieval until transition compatibility is stronger.
 - Port the runtime bundle consumer into Unity and measure device memory, load time, and playback frame rate.

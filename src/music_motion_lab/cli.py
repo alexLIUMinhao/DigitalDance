@@ -231,6 +231,7 @@ def build_parser() -> argparse.ArgumentParser:
     stream_plan.add_argument("--max-steps", type=int, default=0)
     stream_plan.add_argument("--planner-version", choices=["m9", "m12"], default="m9")
     stream_plan.add_argument("--tail-policy", choices=["none", "recover"], default="none")
+    stream_plan.add_argument("--source-sequence-allowlist", help="Comma-separated FineDance source sequence ids for visually coherent planning.")
 
     stream_render = subparsers.add_parser(
         "render-streaming-smplx-mesh-review",
@@ -586,6 +587,7 @@ def main() -> int:
             max_steps=args.max_steps,
             planner_version=args.planner_version,
             tail_policy=args.tail_policy,
+            source_sequence_allowlist=[value.strip() for value in str(args.source_sequence_allowlist or "").split(",") if value.strip()] or None,
         )
         header = next((record for record in records if record.get("kind") == "stream_plan_header"), {})
         song_id = str(header.get("song_id", "stream_song") or "stream_song")

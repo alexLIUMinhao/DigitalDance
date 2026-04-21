@@ -403,8 +403,6 @@ def _smooth_transition_windows(
         before_joints = joints[window_start : window_end + 1].copy()
         _smooth_array_window(vertices, window_start, window_end, passes=passes)
         _smooth_array_window(joints, window_start, window_end, passes=passes)
-        _limit_temporal_delta_window(vertices, window_start, window_end, target_delta=0.048)
-        _limit_temporal_delta_window(joints, window_start, window_end, target_delta=0.06)
         after_vertices = vertices[window_start : window_end + 1]
         after_joints = joints[window_start : window_end + 1]
         report.update(
