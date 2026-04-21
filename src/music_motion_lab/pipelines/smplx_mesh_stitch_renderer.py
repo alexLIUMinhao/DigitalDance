@@ -937,13 +937,18 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
 
     def streaming_rows() -> str:
         if not streaming_decisions:
-            return "<tr><td colspan=\"10\">No streaming decision records.</td></tr>"
+            return "<tr><td colspan=\"13\">No streaming decision records.</td></tr>"
         rows = []
         for item in streaming_decisions:
             target = dict(item.get("target_time_sec", {}) or {})
             guard = dict(item.get("future_visibility_guard", {}) or {})
             score = dict(item.get("score_breakdown", {}) or {})
             source_frames = dict(item.get("source_frame_range", {}) or {})
+            rejected = list(item.get("rejected_top_candidates", []) or [])
+            reject_summary = " | ".join(
+                f"{entry.get('source_sequence')}:{entry.get('unit_id')} => {','.join(list(entry.get('reasons', []) or []))}"
+                for entry in rejected[:2]
+            ) or "-"
             rows.append(
                 "<tr>"
                 f"<td>{html.escape(str(item.get('index')))}</td>"
@@ -953,9 +958,12 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
                 f"<td>{html.escape(str(target.get('start')))}-{html.escape(str(target.get('end')))}s</td>"
                 f"<td>{html.escape(str(item.get('selected_unit_id')))}</td>"
                 f"<td>{html.escape(str(item.get('source_sequence')))}:{html.escape(str(source_frames.get('start')))}-{html.escape(str(source_frames.get('end_exclusive')))}</td>"
+                f"<td>{html.escape(str(item.get('selected_from_tier')))}</td>"
+                f"<td>{html.escape(','.join(list(item.get('cohort_source_sequences', []) or [])[:8]))}</td>"
                 f"<td>{html.escape(str(item.get('target_energy')))} / {html.escape(str(item.get('target_bpm')))}</td>"
                 f"<td>{html.escape(str(item.get('speed_scale')))} / {html.escape(str(item.get('score')))}</td>"
                 f"<td>{html.escape(str(guard.get('passed')))} r={html.escape(str(score.get('rhythm_lock')))} t={html.escape(str(score.get('transition_smoothness')))}</td>"
+                f"<td>{html.escape(reject_summary)}</td>"
                 "</tr>"
             )
         return "\n".join(rows)
@@ -1165,7 +1173,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
       </table>
       <h2>Streaming Decisions</h2>
       <table>
-        <thead><tr><th>step</th><th>decision</th><th>playhead</th><th>available</th><th>target</th><th>unit</th><th>source</th><th>energy/bpm</th><th>speed/score</th><th>guard/scores</th></tr></thead>
+        <thead><tr><th>step</th><th>decision</th><th>playhead</th><th>available</th><th>target</th><th>unit</th><th>source</th><th>tier</th><th>cohort songs</th><th>energy/bpm</th><th>speed/score</th><th>guard/scores</th><th>top rejects</th></tr></thead>
         <tbody>{streaming_rows()}</tbody>
       </table>
       <h2>Transitions</h2>

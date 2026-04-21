@@ -20,6 +20,7 @@ DEFAULT_STREAM_FPS = 30
 DEFAULT_BLEND_FRAMES = 10
 DEFAULT_SAFE_RETIME_MIN = 0.85
 DEFAULT_SAFE_RETIME_MAX = 1.15
+DEFAULT_M15_COHORT_SIZE = 10
 
 
 def _safe_float(value: Any, fallback: float = 0.0) -> float:
@@ -660,6 +661,76 @@ def _target_energy_for_tick(tick: dict[str, Any], start_sec: float, visible_end_
     return "mid_energy"
 
 
+def _target_style_profile_for_tick(
+    tick: dict[str, Any],
+    start_sec: float,
+    visible_end_sec: float,
+    previous_unit: dict[str, Any] | None,
+) -> dict[str, Any]:
+    window_end = min(visible_end_sec, start_sec + 2.0)
+    accents = _events_in_time_window(tick, "accents", start_sec, window_end)
+    drums = _events_in_time_window(tick, "drum_hits", start_sec, window_end)
+    target_energy = _target_energy_for_tick(tick, start_sec=start_sec, visible_end_sec=visible_end_sec)
+    sharp_activity = len(accents) + len(drums)
+    target_attack = "sharp" if sharp_activity >= 4 or max([_safe_float(item.get("strength")) for item in [*accents, *drums]] or [0.0]) >= 0.82 else "smooth"
+    target_size = "large_motion" if target_energy == "high_energy" else ("small_motion" if target_energy == "low_energy" else "medium_motion")
+    preferred_tags = list(dict(previous_unit or {}).get("style_tags", []) or [])
+    if not preferred_tags:
+        preferred_tags = ["street"] if _safe_float(dict(tick.get("beat_phase", {}) or {}).get("bpm"), 120.0) >= 110.0 else ["jazz"]
+    return {
+        "energy": target_energy,
+        "attack": target_attack,
+        "size": target_size,
+        "preferred_tags": preferred_tags[:4],
+    }
+
+
+def _sequence_profiles(units: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    profiles: dict[str, dict[str, Any]] = {}
+    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for unit in units:
+        grouped[str(unit.get("source_sequence", "unknown"))].append(unit)
+    for sequence_id, sequence_units in grouped.items():
+        bpm_values = [_safe_float(unit.get("source_song_bpm"), _safe_float(dict(unit.get("rhythm_profile", {}) or {}).get("source_bpm"), 120.0)) for unit in sequence_units]
+        quality_weights = [_safe_float(unit.get("source_song_quality_weight"), 0.65) for unit in sequence_units]
+        energy_counts = Counter(str(unit.get("source_song_energy", unit.get("energy", "unknown")) or "unknown") for unit in sequence_units)
+        style_counts = Counter(str(tag) for unit in sequence_units for tag in list(unit.get("source_song_style_tags", unit.get("style_tags", [])) or []))
+        attack_counts = Counter(str(dict(unit.get("movement_quality", {}) or {}).get("attack", "smooth")) for unit in sequence_units)
+        size_counts = Counter(str(dict(unit.get("movement_quality", {}) or {}).get("size", "medium_motion")) for unit in sequence_units)
+        profiles[sequence_id] = {
+            "sequence_id": sequence_id,
+            "unit_count": len(sequence_units),
+            "bpm": round(float(np.median(np.asarray(bpm_values or [120.0], dtype=np.float32))), 5),
+            "dominant_energy": energy_counts.most_common(1)[0][0] if energy_counts else "unknown",
+            "priority_tier": str(sequence_units[0].get("priority_tier", "unknown") or "unknown"),
+            "quality_weight": round(float(np.mean(np.asarray(quality_weights or [0.65], dtype=np.float32))), 5),
+            "style_tags": [key for key, _ in style_counts.most_common(4)],
+            "dominant_attack": attack_counts.most_common(1)[0][0] if attack_counts else "smooth",
+            "dominant_size": size_counts.most_common(1)[0][0] if size_counts else "medium_motion",
+        }
+    return profiles
+
+
+def _sequence_cohort_score(
+    profile: dict[str, Any],
+    target_bpm: float,
+    style_profile: dict[str, Any],
+    previous_unit: dict[str, Any] | None,
+) -> float:
+    bpm_score = 1.0 - min(1.0, abs(_safe_float(profile.get("bpm"), target_bpm) - target_bpm) / 40.0)
+    target_energy = str(style_profile.get("energy", "mid_energy"))
+    dominant_energy = str(profile.get("dominant_energy", "unknown"))
+    energy_score = 1.0 if dominant_energy == target_energy else (0.75 if "mid" in {dominant_energy, target_energy} else 0.35)
+    attack_score = 1.0 if str(profile.get("dominant_attack")) == str(style_profile.get("attack")) else 0.72
+    size_score = 1.0 if str(profile.get("dominant_size")) == str(style_profile.get("size")) else 0.76
+    preferred_tags = {str(tag) for tag in list(style_profile.get("preferred_tags", []) or [])}
+    style_tags = {str(tag) for tag in list(profile.get("style_tags", []) or [])}
+    tag_score = 0.82 if not preferred_tags else (1.0 if preferred_tags & style_tags else 0.58)
+    quality_weight = _safe_float(profile.get("quality_weight"), 0.65)
+    continuity = 1.0 if previous_unit and str(previous_unit.get("source_sequence")) == str(profile.get("sequence_id")) else 0.78
+    return round(float(bpm_score * 0.28 + energy_score * 0.26 + attack_score * 0.14 + size_score * 0.10 + tag_score * 0.12 + quality_weight * 0.10) * continuity, 5)
+
+
 def _transition_score(previous_unit: dict[str, Any] | None, candidate: dict[str, Any]) -> float:
     if previous_unit is None:
         return 1.0
@@ -669,23 +740,34 @@ def _transition_score(previous_unit: dict[str, Any] | None, candidate: dict[str,
     entry = dict(candidate.get("entry_pose_anchor") or candidate.get("entry_anchor") or {})
     speed_delta = abs(_safe_float(previous_exit.get("planar_speed")) - _safe_float(entry.get("planar_speed")))
     yaw_delta = abs((_safe_float(previous_exit.get("root_yaw_deg")) - _safe_float(entry.get("root_yaw_deg")) + 180.0) % 360.0 - 180.0)
-    same_sequence = 0.1 if previous_unit.get("source_sequence") == candidate.get("source_sequence") else 0.0
-    return round(float(_clamp(0.55 - speed_delta * 0.12 + 0.35 - yaw_delta / 180.0 + same_sequence, 0.0, 1.0)), 5)
+    previous_energy = str(previous_unit.get("energy", "mid_energy") or "mid_energy")
+    candidate_energy = str(candidate.get("energy", "mid_energy") or "mid_energy")
+    energy_score = 1.0 if previous_energy == candidate_energy else (0.74 if "mid" in {previous_energy, candidate_energy} else 0.42)
+    previous_styles = set(str(tag) for tag in list(previous_unit.get("style_tags", []) or []))
+    candidate_styles = set(str(tag) for tag in list(candidate.get("style_tags", []) or []))
+    style_score = 1.0 if previous_styles & candidate_styles else 0.68
+    previous_contacts = list(previous_unit.get("foot_contact_windows", []) or [])
+    candidate_contacts = list(candidate.get("foot_contact_windows", []) or [])
+    contact_score = 1.0 if previous_contacts and candidate_contacts else (0.84 if not previous_contacts and not candidate_contacts else 0.62)
+    same_sequence = 0.12 if previous_unit.get("source_sequence") == candidate.get("source_sequence") else -0.06
+    score = 0.34 + max(0.0, 0.26 - speed_delta * 0.22) + max(0.0, 0.18 - yaw_delta / 180.0) + energy_score * 0.16 + style_score * 0.12 + contact_score * 0.10 + same_sequence
+    return round(float(_clamp(score, 0.0, 1.0)), 5)
 
 
-def _music_style_score(candidate: dict[str, Any], target_energy: str, target_bpm: float) -> float:
+def _music_style_score(candidate: dict[str, Any], target_style_profile: dict[str, Any], target_bpm: float) -> float:
+    target_energy = str(target_style_profile.get("energy", "mid_energy") or "mid_energy")
     energy = str(candidate.get("energy", "mid_energy") or "mid_energy")
     energy_score = 1.0 if energy == target_energy else (0.72 if "mid" in {energy, target_energy} else 0.32)
-    source_bpm = _safe_float(dict(candidate.get("rhythm_profile", {}) or {}).get("source_bpm"), target_bpm)
+    source_bpm = _safe_float(candidate.get("source_song_bpm"), _safe_float(dict(candidate.get("rhythm_profile", {}) or {}).get("source_bpm"), target_bpm))
     bpm_score = 1.0 - min(1.0, abs(source_bpm - target_bpm) / 45.0)
     quality = dict(candidate.get("movement_quality", {}) or {})
-    if target_energy == "high_energy":
-        quality_score = 1.0 if quality.get("attack") == "sharp" or quality.get("size") == "large_motion" else 0.65
-    elif target_energy == "low_energy":
-        quality_score = 1.0 if quality.get("attack") == "smooth" or quality.get("size") == "small_motion" else 0.62
-    else:
-        quality_score = 0.82
-    return round(float((energy_score * 0.45) + (bpm_score * 0.35) + (quality_score * 0.20)), 5)
+    attack_score = 1.0 if quality.get("attack") == target_style_profile.get("attack") else 0.7
+    size_score = 1.0 if quality.get("size") == target_style_profile.get("size") else 0.74
+    preferred_tags = set(str(tag) for tag in list(target_style_profile.get("preferred_tags", []) or []))
+    candidate_tags = set(str(tag) for tag in list(candidate.get("style_tags", []) or []))
+    tag_score = 0.85 if not preferred_tags else (1.0 if preferred_tags & candidate_tags else 0.6)
+    quality_weight = _safe_float(candidate.get("source_song_quality_weight"), 0.65)
+    return round(float((energy_score * 0.32) + (bpm_score * 0.28) + (attack_score * 0.14) + (size_score * 0.11) + (tag_score * 0.10) + (quality_weight * 0.05)), 5)
 
 
 def _rhythm_score(
@@ -787,7 +869,7 @@ def _score_candidate(
     target_start_sec: float,
     target_end_sec: float,
     target_beats: int,
-    target_energy: str,
+    target_style_profile: dict[str, Any],
     planner_version: str = "m9",
 ) -> tuple[float, dict[str, Any], list[dict[str, Any]], list[float]]:
     beat_phase = dict(tick.get("beat_phase", {}) or {})
@@ -802,11 +884,14 @@ def _score_candidate(
         target_beats=target_beats,
     )
     transition = _transition_score(previous_unit, candidate)
-    style = _music_style_score(candidate, target_energy=target_energy, target_bpm=_safe_float(beat_phase.get("bpm"), 120.0))
-    repeat_penalty = 0.5 if str(planner_version).lower() == "m12" else 0.35
+    style = _music_style_score(candidate, target_style_profile=target_style_profile, target_bpm=_safe_float(beat_phase.get("bpm"), 120.0))
+    repeat_penalty = 0.5 if str(planner_version).lower() in {"m12", "m15"} else 0.35
     diversity = max(0.0, 1.0 - recent_units[str(candidate.get("unit_id"))] * repeat_penalty)
     is_m12 = str(planner_version).lower() == "m12"
-    if is_m12:
+    is_m15 = str(planner_version).lower() == "m15"
+    if is_m15:
+        total = rhythm_score * 0.45 + transition * 0.30 + style * 0.15 + _safe_float(candidate.get("source_song_quality_weight"), 0.65) * 0.05 + diversity * 0.05
+    elif is_m12:
         total = rhythm_score * 0.55 + transition * 0.30 + style * 0.10 + diversity * 0.05
     else:
         total = rhythm_score * 0.45 + transition * 0.25 + style * 0.20 + diversity * 0.10
@@ -821,7 +906,7 @@ def _score_candidate(
         total -= min(1.0, abs(speed_scale - _clamp(speed_scale, min_retime, max_retime)) * speed_penalty_gain)
     if abs(_safe_float(candidate.get("duration_beats"), target_beats) - target_beats) > 0.1:
         total -= 0.12
-    if is_m12:
+    if is_m12 or is_m15:
         if rhythm_score < 0.35:
             total -= 0.25
         if transition < 0.45:
@@ -833,6 +918,7 @@ def _score_candidate(
         "diversity": round(float(diversity), 5),
         "weighted_total": round(float(total), 5),
         "speed_scale": round(float(speed_scale), 5),
+        "source_quality_weight": round(float(_safe_float(candidate.get("source_song_quality_weight"), 0.65)), 5),
     }
     return round(float(total), 5), breakdown, lock_reports, expected_hits
 
@@ -846,6 +932,7 @@ def simulate_streaming_smplx_plan_records(
     tail_policy: str = "none",
     source_sequence_allowlist: list[str] | tuple[str, ...] | None = None,
     initial_hold_sec: float = 0.0,
+    cohort_size: int = DEFAULT_M15_COHORT_SIZE,
 ) -> list[dict[str, Any]]:
     header = _header(stream_event_records, "stream_header")
     ticks = _records_by_kind(stream_event_records, "tick")
@@ -857,6 +944,7 @@ def simulate_streaming_smplx_plan_records(
         units = [unit for unit in units if str(unit.get("source_sequence")) in allowed_sequences]
     if not units:
         raise ValueError("annotated motion library contains no units")
+    sequence_profiles = _sequence_profiles(units)
     song_id = str(header.get("song_id") or "stream_song")
     duration_sec = _safe_float(header.get("duration_sec"), _safe_float(ticks[-1].get("available_audio_until_sec")))
     initial_buffer_sec = _safe_float(header.get("initial_buffer_sec"), DEFAULT_INITIAL_BUFFER_SEC)
@@ -864,8 +952,9 @@ def simulate_streaming_smplx_plan_records(
     preferred_beats = 4 if 4 in counts else (2 if 2 in counts else (8 if 8 in counts else counts[0]))
     planner_version = str(planner_version or "m9").lower()
     tail_policy = str(tail_policy or "none").lower()
+    cohort_size = max(1, int(cohort_size or DEFAULT_M15_COHORT_SIZE))
     initial_hold_sec = _clamp(_safe_float(initial_hold_sec), 0.0, max(0.0, duration_sec - 0.35))
-    planner_name = "streaming_retrieval_v2_phrase_aware" if planner_version == "m12" else "streaming_retrieval_v1"
+    planner_name = "streaming_retrieval_v3_style_cohort" if planner_version == "m15" else ("streaming_retrieval_v2_phrase_aware" if planner_version == "m12" else "streaming_retrieval_v1")
     records: list[dict[str, Any]] = [
         {
             "schema_version": 1,
@@ -880,12 +969,14 @@ def simulate_streaming_smplx_plan_records(
             "planner_version": planner_version,
             "tail_policy": tail_policy,
             "initial_hold_sec": round(float(initial_hold_sec), 5),
+            "cohort_size": int(cohort_size),
             "source_sequence_allowlist": sorted(allowed_sequences),
             "score_weights": {
-                "rhythm_lock": 0.55 if planner_version == "m12" else 0.45,
-                "transition_smoothness": 0.30 if planner_version == "m12" else 0.25,
-                "style_energy_bpm": 0.10 if planner_version == "m12" else 0.20,
-                "diversity": 0.05 if planner_version == "m12" else 0.10,
+                "rhythm_lock": 0.45 if planner_version == "m15" else (0.55 if planner_version == "m12" else 0.45),
+                "transition_smoothness": 0.30 if planner_version in {"m12", "m15"} else 0.25,
+                "style_energy_bpm": 0.15 if planner_version == "m15" else (0.10 if planner_version == "m12" else 0.20),
+                "source_quality_weight": 0.05 if planner_version == "m15" else 0.0,
+                "diversity": 0.05 if planner_version in {"m12", "m15"} else 0.10,
             },
             "generated_at_utc": utc_now_iso(),
         }
@@ -945,11 +1036,38 @@ def simulate_streaming_smplx_plan_records(
                 tail_extended = True
         if target_end_sec - next_start_sec < 0.35:
             break
-        target_energy = _target_energy_for_tick(scoring_tick, next_start_sec, _safe_float(tick.get("available_audio_until_sec"), next_start_sec))
+        visible_until_sec = _safe_float(tick.get("available_audio_until_sec"), next_start_sec)
+        target_style_profile = _target_style_profile_for_tick(
+            scoring_tick,
+            start_sec=next_start_sec,
+            visible_end_sec=visible_until_sec,
+            previous_unit=previous_unit,
+        )
+        target_energy = str(target_style_profile.get("energy", "mid_energy"))
+        cohort_source_sequences: list[str] = []
+        cohort_rankings: list[dict[str, Any]] = []
+        sequence_pool = sequence_profiles
+        if planner_version == "m15":
+            target_bpm = _safe_float(dict(scoring_tick.get("beat_phase", {}) or {}).get("bpm"), 120.0)
+            cohort_rankings = sorted(
+                [
+                    {
+                        "sequence_id": sequence_id,
+                        "score": _sequence_cohort_score(profile, target_bpm=target_bpm, style_profile=target_style_profile, previous_unit=previous_unit),
+                        "priority_tier": profile.get("priority_tier"),
+                        "quality_weight": profile.get("quality_weight"),
+                    }
+                    for sequence_id, profile in sequence_pool.items()
+                ],
+                key=lambda item: item["score"],
+                reverse=True,
+            )
+            cohort_source_sequences = [str(item.get("sequence_id")) for item in cohort_rankings[:cohort_size]]
         candidates = [
             unit
             for unit in units
-            if _safe_int(unit.get("duration_beats"), target_beats) == target_beats
+            if (not cohort_source_sequences or str(unit.get("source_sequence")) in cohort_source_sequences)
+            and _safe_int(unit.get("duration_beats"), target_beats) == target_beats
         ] or units
         scored: list[tuple[float, dict[str, Any], dict[str, Any], list[dict[str, Any]], list[float]]] = []
         for candidate in candidates:
@@ -961,16 +1079,38 @@ def simulate_streaming_smplx_plan_records(
                 target_start_sec=next_start_sec,
                 target_end_sec=target_end_sec,
                 target_beats=target_beats,
-                target_energy=target_energy,
+                target_style_profile=target_style_profile,
                 planner_version=planner_version,
             )
             scored.append((score, candidate, breakdown, lock_reports, expected_hits))
         scored.sort(key=lambda item: item[0], reverse=True)
-        score, selected, breakdown, lock_reports, expected_hits = scored[0]
+        hard_rejects: list[dict[str, Any]] = []
+        valid_scored: list[tuple[float, dict[str, Any], dict[str, Any], list[dict[str, Any]], list[float]]] = []
+        for score, candidate, breakdown, lock_reports, expected_hits in scored:
+            reject_reasons: list[str] = []
+            if planner_version == "m15" and _safe_float(breakdown.get("rhythm_lock")) < 0.40:
+                reject_reasons.append("rhythm_lock_below_0_40")
+            if planner_version == "m15" and _safe_float(breakdown.get("transition_smoothness")) < 0.45:
+                reject_reasons.append("transition_smoothness_below_0_45")
+            if reject_reasons:
+                hard_rejects.append(
+                    {
+                        "unit_id": candidate.get("unit_id"),
+                        "source_sequence": candidate.get("source_sequence"),
+                        "score": score,
+                        "score_breakdown": breakdown,
+                        "reasons": reject_reasons,
+                    }
+                )
+                continue
+            valid_scored.append((score, candidate, breakdown, lock_reports, expected_hits))
+        effective_scored = valid_scored or scored
+        score, selected, breakdown, lock_reports, expected_hits = effective_scored[0]
         source_artifacts = dict(selected.get("reference_artifacts", {}) or {})
         available_until = _safe_float(tick.get("available_audio_until_sec"), 0.0)
         playhead = _safe_float(tick.get("playhead_sec"), 0.0)
         guard_passed = available_until <= playhead + initial_buffer_sec + 1e-5 and next_start_sec <= available_until + 1e-5
+        selected_tier = str(selected.get("priority_tier", "unknown") or "unknown")
         decision = {
             "schema_version": 1,
             "kind": "decision",
@@ -990,6 +1130,10 @@ def simulate_streaming_smplx_plan_records(
             "target_energy": target_energy,
             "selected_unit_id": selected.get("unit_id"),
             "source_sequence": selected.get("source_sequence"),
+            "selected_from_sequence": selected.get("source_sequence"),
+            "selected_from_tier": selected_tier,
+            "cohort_source_sequences": cohort_source_sequences,
+            "cohort_rankings": cohort_rankings[: min(len(cohort_rankings), max(4, cohort_size))],
             "source_frame_range": dict(selected.get("frame_range", {}) or {}),
             "source_beat_range": dict(selected.get("beat_range", {}) or {}),
             "source_motion_path": source_artifacts.get("source_motion_path"),
@@ -998,16 +1142,18 @@ def simulate_streaming_smplx_plan_records(
             "score_breakdown": breakdown,
             "switch_reason": {
                 "planner": planner_name,
-                "fallback": bool(tempo_confidence < 0.28),
+                "fallback": bool(tempo_confidence < 0.28 or not valid_scored),
                 "target_energy": target_energy,
                 "candidate_energy": selected.get("energy"),
                 "compatible_from_previous": bool(previous_unit and selected.get("unit_id") in previous_unit.get("compatible_next_units", [])),
                 "tail_policy": tail_policy,
                 "tail_extended_to_song_end": bool(tail_extended),
+                "same_sequence_as_previous": bool(previous_unit and previous_unit.get("source_sequence") == selected.get("source_sequence")),
             },
             "expected_accent_hits": expected_hits,
             "rhythm_locks": lock_reports,
             "reference_artifacts": source_artifacts,
+            "rejected_top_candidates": hard_rejects[:3],
         }
         records.append(decision)
         previous_unit = selected
@@ -1049,6 +1195,7 @@ def simulate_streaming_smplx_plan_records(
                     "rhythm_lock": 1.0,
                     "transition_smoothness": 1.0,
                     "style_energy_bpm": 1.0,
+                    "source_quality_weight": 1.0,
                     "diversity": 1.0,
                     "weighted_total": 1.0,
                     "speed_scale": 0.0,
@@ -1310,6 +1457,10 @@ def stream_plan_to_stitch_manifest(
                     "target_beats": item.get("target_beats"),
                     "selected_unit_id": item.get("selected_unit_id"),
                     "source_sequence": item.get("source_sequence"),
+                    "selected_from_sequence": item.get("selected_from_sequence"),
+                    "selected_from_tier": item.get("selected_from_tier"),
+                    "cohort_source_sequences": item.get("cohort_source_sequences"),
+                    "cohort_rankings": item.get("cohort_rankings"),
                     "source_frame_range": item.get("source_frame_range"),
                     "target_bpm": item.get("target_bpm"),
                     "target_energy": item.get("target_energy"),
@@ -1318,6 +1469,7 @@ def stream_plan_to_stitch_manifest(
                     "score_breakdown": item.get("score_breakdown"),
                     "switch_reason": item.get("switch_reason"),
                     "future_visibility_guard": item.get("future_visibility_guard"),
+                    "rejected_top_candidates": item.get("rejected_top_candidates"),
                 }
                 for item in decisions
             ],
@@ -1380,10 +1532,23 @@ def render_streaming_smplx_mesh_review(
         if not bool(dict(item.get("future_visibility_guard", {}) or {}).get("passed"))
     )
     speed_values = [_safe_float(item.get("speed_scale"), 1.0) for item in decisions]
+    rejected_candidates = [candidate for item in decisions for candidate in list(item.get("rejected_top_candidates", []) or [])]
     report["metrics"]["streaming_decision_count"] = len(decisions)
     report["metrics"]["speed_scale_outside_default_range_count"] = sum(1 for value in speed_values if value < 0.85 or value > 1.15)
     report["metrics"]["max_streaming_speed_scale"] = round(max(speed_values or [1.0]), 6)
     report["metrics"]["min_streaming_speed_scale"] = round(min(speed_values or [1.0]), 6)
+    report["metrics"]["cross_sequence_transition_count"] = sum(
+        1 for previous, current in zip(decisions, decisions[1:]) if str(previous.get("source_sequence")) != str(current.get("source_sequence"))
+    )
+    report["metrics"]["rhythm_hard_reject_count"] = sum(
+        1 for item in rejected_candidates if "rhythm_lock_below_0_40" in list(item.get("reasons", []) or [])
+    )
+    report["metrics"]["transition_hard_reject_count"] = sum(
+        1 for item in rejected_candidates if "transition_smoothness_below_0_45" in list(item.get("reasons", []) or [])
+    )
+    report["metrics"]["cohort_song_count"] = len(
+        {str(sequence_id) for decision in decisions for sequence_id in list(decision.get("cohort_source_sequences", []) or [])}
+    )
     report["metrics"]["max_streaming_lookahead_sec"] = round(
         max(
             [
@@ -1523,6 +1688,14 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
     non_tail_speeds = speeds[:-1] if len(speeds) > 1 else speeds
     outside = [value for value in speeds if value < DEFAULT_SAFE_RETIME_MIN or value > DEFAULT_SAFE_RETIME_MAX]
     non_tail_outside = [value for value in non_tail_speeds if value < DEFAULT_SAFE_RETIME_MIN or value > DEFAULT_SAFE_RETIME_MAX]
+    rejected_candidates = [item for decision in decisions for item in list(decision.get("rejected_top_candidates", []) or [])]
+    rhythm_reject_count = sum(1 for item in rejected_candidates if "rhythm_lock_below_0_40" in list(item.get("reasons", []) or []))
+    transition_reject_count = sum(1 for item in rejected_candidates if "transition_smoothness_below_0_45" in list(item.get("reasons", []) or []))
+    cross_sequence_transition_count = sum(
+        1
+        for previous, current in zip(decisions, decisions[1:])
+        if str(previous.get("source_sequence")) != str(current.get("source_sequence"))
+    )
     return {
         "schema_version": 1,
         "report_id": f"{header.get('song_id', 'stream_song')}_streaming_planner_eval",
@@ -1541,7 +1714,11 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
             "min_speed_scale": round(float(min(speeds or [1.0])), 6),
             "future_visibility_violations": sum(1 for item in decisions if not bool(dict(item.get("future_visibility_guard", {}) or {}).get("passed"))),
             "gap_count": len(gaps),
+            "rhythm_hard_reject_count": rhythm_reject_count,
+            "transition_hard_reject_count": transition_reject_count,
+            "cross_sequence_transition_count": cross_sequence_transition_count,
         },
+        "cohort_source_sequences": sorted({str(sequence_id) for decision in decisions for sequence_id in list(decision.get("cohort_source_sequences", []) or [])}),
         "gaps": gaps,
         "acceptance": {
             "no_future_visibility_violations": all(bool(dict(item.get("future_visibility_guard", {}) or {}).get("passed")) for item in decisions),

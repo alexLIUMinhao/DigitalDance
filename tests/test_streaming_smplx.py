@@ -53,6 +53,11 @@ def _library(source_motion_path: Path) -> dict:
         "duration_beats_estimate": 4.0,
         "energy": "mid_energy",
         "style_tags": ["street"],
+        "priority_tier": "rhythmic_first",
+        "source_song_bpm": 120.0,
+        "source_song_energy": "mid_energy",
+        "source_song_style_tags": ["street"],
+        "source_song_quality_weight": 1.0,
         "keyframes": [
             {"kind": "downbeat", "beat_offset": 0, "frame_index": 0, "strength": 0.95, "is_downbeat": True},
             {"kind": "beat", "beat_offset": 1, "frame_index": 30, "strength": 0.25, "is_downbeat": False},
@@ -73,12 +78,30 @@ def _library(source_motion_path: Path) -> dict:
     other_sequence = dict(unit)
     other_sequence["unit_id"] = "finedance_002_other"
     other_sequence["source_sequence"] = "002"
+    other_sequence["style_tags"] = ["street", "jazz"]
+    other_sequence["source_song_style_tags"] = ["street", "jazz"]
+    other_sequence["source_song_quality_weight"] = 0.92
     other_sequence["compatible_next_units"] = []
+    other_sequence["entry_anchor"] = {"planar_speed": 0.21, "root_yaw_deg": 3.0}
+    other_sequence["exit_anchor"] = {"planar_speed": 0.24, "root_yaw_deg": 8.0}
+    bad_sequence = dict(unit)
+    bad_sequence["unit_id"] = "finedance_003_bad"
+    bad_sequence["source_sequence"] = "003"
+    bad_sequence["style_tags"] = ["jazz"]
+    bad_sequence["source_song_style_tags"] = ["jazz"]
+    bad_sequence["energy"] = "high_energy"
+    bad_sequence["source_song_energy"] = "high_energy"
+    bad_sequence["source_song_quality_weight"] = 0.72
+    bad_sequence["priority_tier"] = "fallback"
+    bad_sequence["keyframes"] = [{"kind": "beat", "beat_offset": 1, "frame_index": 30, "strength": 0.1, "is_downbeat": False}]
+    bad_sequence["compatible_next_units"] = []
+    bad_sequence["entry_anchor"] = {"planar_speed": 2.0, "root_yaw_deg": 170.0}
+    bad_sequence["exit_anchor"] = {"planar_speed": 2.25, "root_yaw_deg": 178.0}
     return {
         "schema_version": 2,
         "library_id": "demo_library",
         "source_roots": {},
-        "units": [weaker, unit, other_sequence],
+        "units": [weaker, unit, other_sequence, bad_sequence],
         "notes": [],
         "generated_at_utc": "2026-04-21T00:00:00+00:00",
     }
@@ -333,6 +356,51 @@ class StreamingSmplxTests(unittest.TestCase):
         self.assertTrue(decisions[-1]["switch_reason"]["tail_extended_to_song_end"])
         self.assertTrue(evaluation["acceptance"]["no_gaps"])
         self.assertTrue(evaluation["acceptance"]["non_tail_max_speed_le_1_25"])
+
+    def test_m15_builds_multi_song_cohort_and_tracks_hard_rejects(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            motion_path = _write_motion(Path(tmpdir) / "finedance")
+            _write_motion(Path(tmpdir) / "finedance", sequence_id="002")
+            _write_motion(Path(tmpdir) / "finedance", sequence_id="003")
+            library = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir), contact_mode="joints")
+        stream_events = [
+            {
+                "kind": "stream_header",
+                "song_id": "m15_demo",
+                "duration_sec": 4.2,
+                "initial_buffer_sec": 2.0,
+                "beats_per_bar": 4,
+            },
+            {
+                "kind": "tick",
+                "tick_index": 0,
+                "playhead_sec": 0.0,
+                "available_audio_until_sec": 2.0,
+                "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.95},
+                "beats": [{"index": index, "time_sec": index * 0.5, "strength": 0.75, "confidence": 0.9, "is_downbeat": index % 4 == 0} for index in range(5)],
+                "downbeats": [{"index": 0, "time_sec": 0.0, "confidence": 0.9, "is_downbeat": True}],
+                "drum_hits": [{"index": 0, "time_sec": 0.0, "strength": 0.92, "kind": "kick"}, {"index": 1, "time_sec": 1.0, "strength": 0.85, "kind": "snare"}],
+                "accents": [{"index": 0, "time_sec": 1.0, "strength": 0.82, "kind": "accent_peak"}],
+            },
+        ]
+
+        plan = simulate_streaming_smplx_plan_records(
+            stream_events,
+            library,
+            planner_version="m15",
+            cohort_size=3,
+            max_steps=2,
+        )
+        decisions = [record for record in plan if record["kind"] == "decision"]
+        evaluation = evaluate_streaming_planner_records(plan)
+
+        self.assertEqual(plan[0]["planner_version"], "m15")
+        self.assertEqual(plan[0]["cohort_size"], 3)
+        self.assertGreaterEqual(len(decisions[0]["cohort_source_sequences"]), 3)
+        self.assertEqual(decisions[0]["selected_from_tier"], "rhythmic_first")
+        self.assertIn("001", evaluation["cohort_source_sequences"])
+        self.assertIn("transition_hard_reject_count", evaluation["metrics"])
+        self.assertIn("rhythm_hard_reject_count", evaluation["metrics"])
 
     def test_stream_plan_to_manifest_is_continuous_and_carries_decisions(self) -> None:
         decisions = [

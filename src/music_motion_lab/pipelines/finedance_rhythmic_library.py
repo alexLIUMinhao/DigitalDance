@@ -20,6 +20,12 @@ DEFAULT_UNIT_BEATS = 8
 DEFAULT_ACCENT_UNIT_BEATS = 4
 DEFAULT_MAX_UNIT_BEATS = 16
 DEFAULT_UNIT_BEAT_SET = (2, 4, 8, 16)
+QUALITY_WEIGHT_BY_TIER = {
+    "rhythmic_first": 1.0,
+    "rhythmic_second": 0.9,
+    "fallback": 0.72,
+    "unknown": 0.65,
+}
 
 
 def _clamp(value: int, low: int, high: int) -> int:
@@ -223,6 +229,14 @@ def _style_tags(entry: dict[str, Any]) -> list[str]:
     return [value for value in values if value][:5] or ["finedance"]
 
 
+def _priority_tier(entry: dict[str, Any]) -> str:
+    return str((entry.get("analysis_priority") or {}).get("tier", "unknown") or "unknown").strip().lower() or "unknown"
+
+
+def _source_song_quality_weight(entry: dict[str, Any]) -> float:
+    return float(QUALITY_WEIGHT_BY_TIER.get(_priority_tier(entry), QUALITY_WEIGHT_BY_TIER["unknown"]))
+
+
 def _candidate_segments(
     beats: list[dict[str, Any]],
     accent_candidates: list[dict[str, Any]],
@@ -337,6 +351,7 @@ def build_finedance_rhythmic_library_showcase(library: MotionUnitLibrary, sample
     energy_counts = Counter(str(unit.get("energy", "unknown")) for unit in units)
     duration_counts = Counter(str(unit.get("duration_beats", "unknown")) for unit in units)
     segment_source_counts = Counter(str(unit.get("segment_source", "unknown")) for unit in units)
+    tier_counts = Counter(str(unit.get("priority_tier", "unknown")) for unit in units)
     return {
         "schema_version": library.schema_version,
         "library_id": library.library_id,
@@ -347,6 +362,7 @@ def build_finedance_rhythmic_library_showcase(library: MotionUnitLibrary, sample
             "energy": dict(energy_counts),
             "duration_beats": dict(duration_counts),
             "segment_source": dict(segment_source_counts),
+            "priority_tier": dict(tier_counts),
         },
         "top_sequences": [{"sequence_id": sequence_id, "unit_count": count} for sequence_id, count in sequence_counts.most_common(12)],
         "sampled_units": [
@@ -356,6 +372,8 @@ def build_finedance_rhythmic_library_showcase(library: MotionUnitLibrary, sample
                 "duration_beats": unit["duration_beats"],
                 "energy": unit["energy"],
                 "segment_source": unit["segment_source"],
+                "priority_tier": unit.get("priority_tier"),
+                "source_song_quality_weight": unit.get("source_song_quality_weight"),
                 "frame_range": unit["frame_range"],
                 "rhythm_profile": unit["rhythm_profile"],
                 "compatible_next_units": unit.get("compatible_next_units", [])[:4],
@@ -406,6 +424,11 @@ def build_finedance_rhythmic_smplx_library(
 
         frame_count = int(motion.shape[0])
         audio_features = dict(entry.get("audio_features", {}))
+        priority_tier = _priority_tier(entry)
+        source_song_bpm = round(_safe_float(audio_features.get("bpm") or audio_features.get("beat_tracking", {}).get("global_bpm")), 5)
+        source_song_energy = str(audio_features.get("energy_label") or "").strip() or "unknown"
+        source_song_style_tags = _style_tags(entry)
+        source_song_quality_weight = round(_source_song_quality_weight(entry), 5)
         beats = sorted(list(audio_features.get("beats", [])), key=lambda item: _safe_int(item.get("index")))
         accent_candidates = sorted(list(audio_features.get("accent_candidates", [])), key=lambda item: (_safe_int(item.get("source_beat_index")), _safe_float(item.get("time_sec"))))
         if len(beats) < max(2, accent_unit_beats + 1):
@@ -461,7 +484,12 @@ def build_finedance_rhythmic_smplx_library(
                 "duration_beats_estimate": float(duration_beats),
                 "segment_source": str(segment["source"]),
                 "energy": _energy_label(entry, motion_profile),
-                "style_tags": _style_tags(entry),
+                "style_tags": source_song_style_tags,
+                "priority_tier": priority_tier,
+                "source_song_bpm": source_song_bpm,
+                "source_song_energy": source_song_energy,
+                "source_song_style_tags": source_song_style_tags,
+                "source_song_quality_weight": source_song_quality_weight,
                 "keyframes": keyframes,
                 "rhythm_profile": {
                     "beat_count": duration_beats,
@@ -518,6 +546,7 @@ def build_motion_library_coverage_report(
     duration_counts = Counter(_safe_int(unit.get("duration_beats"), 0) for unit in units)
     sequence_counts = Counter(str(unit.get("source_sequence", "unknown")) for unit in units)
     energy_counts = Counter(str(unit.get("energy", "unknown")) for unit in units)
+    tier_counts = Counter(str(unit.get("priority_tier", "unknown")) for unit in units)
     style_counts: Counter[str] = Counter()
     segment_source_counts = Counter(str(unit.get("segment_source", "unknown")) for unit in units)
     contact_count = 0
@@ -561,6 +590,7 @@ def build_motion_library_coverage_report(
             "sequence_count": len(sequence_counts),
             "duration_beats": {str(key): int(value) for key, value in sorted(duration_counts.items()) if key > 0},
             "energy": dict(energy_counts),
+            "priority_tier": dict(tier_counts),
             "style_tags": dict(style_counts.most_common(20)),
             "segment_source": dict(segment_source_counts),
         },

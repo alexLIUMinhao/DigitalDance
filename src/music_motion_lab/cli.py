@@ -230,10 +230,11 @@ def build_parser() -> argparse.ArgumentParser:
     stream_plan.add_argument("--library", required=True)
     stream_plan.add_argument("--output", help="Optional JSONL stream plan output path inside outputs/.")
     stream_plan.add_argument("--max-steps", type=int, default=0)
-    stream_plan.add_argument("--planner-version", choices=["m9", "m12"], default="m9")
+    stream_plan.add_argument("--planner-version", choices=["m9", "m12", "m15"], default="m9")
     stream_plan.add_argument("--tail-policy", choices=["none", "recover"], default="none")
     stream_plan.add_argument("--source-sequence-allowlist", help="Comma-separated FineDance source sequence ids for visually coherent planning.")
     stream_plan.add_argument("--initial-hold-sec", type=float, default=0.0, help="Hold the first selected source pose before starting retrieval.")
+    stream_plan.add_argument("--cohort-size", type=int, default=10, help="How many source songs to keep in the M15 style cohort before unit-level retrieval.")
 
     stream_render = subparsers.add_parser(
         "render-streaming-smplx-mesh-review",
@@ -592,6 +593,7 @@ def main() -> int:
             tail_policy=args.tail_policy,
             source_sequence_allowlist=[value.strip() for value in str(args.source_sequence_allowlist or "").split(",") if value.strip()] or None,
             initial_hold_sec=args.initial_hold_sec,
+            cohort_size=args.cohort_size,
         )
         header = next((record for record in records if record.get("kind") == "stream_plan_header"), {})
         song_id = str(header.get("song_id", "stream_song") or "stream_song")

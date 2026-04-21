@@ -91,6 +91,10 @@ class FineDanceRhythmicLibraryTests(unittest.TestCase):
             self.assertGreater(first["frame_range"]["end_exclusive"], first["frame_range"]["start"])
             self.assertTrue(first["keyframes"])
             self.assertEqual(first["rhythm_profile"]["source_profile"], "rhythmic_first")
+            self.assertEqual(first["priority_tier"], "rhythmic_first")
+            self.assertEqual(first["source_song_bpm"], 120.0)
+            self.assertEqual(first["source_song_energy"], "high_energy")
+            self.assertGreaterEqual(first["source_song_quality_weight"], 0.99)
             self.assertIn("source_motion_path", first["reference_artifacts"])
 
     def test_can_drop_early_source_seconds_from_all_sequences(self) -> None:
@@ -156,6 +160,7 @@ class FineDanceRhythmicLibraryTests(unittest.TestCase):
             report = build_motion_library_coverage_report(library, required_unit_beats=[2, 4, 8, 16])
             self.assertTrue(report["acceptance"]["has_required_2_4_8_16_units"])
             self.assertFalse(report["coverage"]["missing_unit_beats"])
+            self.assertIn("rhythmic_first", report["counts"]["priority_tier"])
 
 
 if __name__ == "__main__":
