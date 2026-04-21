@@ -226,6 +226,54 @@ class StreamingSmplxTests(unittest.TestCase):
         self.assertEqual(header["source_sequence_allowlist"], ["001"])
         self.assertEqual(decisions[0]["source_sequence"], "001")
 
+    def test_streaming_planner_can_hold_initial_pose_before_retrieval(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            motion_path = _write_motion(Path(tmpdir) / "finedance")
+            library = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir), contact_mode="joints")
+        stream_events = [
+            {"kind": "stream_header", "song_id": "hold_demo", "duration_sec": 4.2, "initial_buffer_sec": 2.0, "beats_per_bar": 4},
+            {
+                "kind": "tick",
+                "tick_index": 0,
+                "playhead_sec": 0.0,
+                "available_audio_until_sec": 2.0,
+                "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.9},
+                "beats": [{"index": index, "time_sec": index * 0.5, "strength": 0.7, "confidence": 0.9, "is_downbeat": index % 4 == 0} for index in range(5)],
+                "downbeats": [{"index": 0, "time_sec": 0.0, "confidence": 0.9, "is_downbeat": True}],
+                "drum_hits": [{"index": 0, "time_sec": 0.0, "strength": 0.95, "kind": "kick"}],
+                "accents": [],
+            },
+            {
+                "kind": "tick",
+                "tick_index": 20,
+                "playhead_sec": 2.0,
+                "available_audio_until_sec": 4.0,
+                "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.9},
+                "beats": [{"index": index, "time_sec": index * 0.5, "strength": 0.7, "confidence": 0.9, "is_downbeat": index % 4 == 0} for index in range(9)],
+                "downbeats": [{"index": 1, "time_sec": 2.0, "confidence": 0.9, "is_downbeat": True}],
+                "drum_hits": [{"index": 0, "time_sec": 2.0, "strength": 0.95, "kind": "kick"}],
+                "accents": [],
+            },
+        ]
+
+        plan = simulate_streaming_smplx_plan_records(
+            stream_events,
+            library,
+            planner_version="m12",
+            initial_hold_sec=2.0,
+            max_steps=1,
+        )
+        header = plan[0]
+        decisions = [record for record in plan if record["kind"] == "decision"]
+        manifest = stream_plan_to_stitch_manifest(plan, fps=30, blend_frames=10)
+
+        self.assertEqual(header["initial_hold_sec"], 2.0)
+        self.assertEqual(decisions[0]["switch_reason"]["mode"], "initial_hold")
+        self.assertEqual(decisions[0]["target_time_sec"], {"start": 0.0, "end": 2.0})
+        self.assertEqual(decisions[1]["target_time_sec"]["start"], 2.0)
+        self.assertEqual(decisions[0]["source_frame_range"]["start"], decisions[1]["source_frame_range"]["start"])
+        self.assertEqual(manifest["steps"][0]["source_frame_start"], manifest["steps"][0]["source_frame_end_exclusive"] - 1)
+
     def test_m12_tail_policy_extends_final_segment_and_evaluator_reports_acceptance(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             motion_path = _write_motion(Path(tmpdir) / "finedance")

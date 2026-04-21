@@ -834,6 +834,7 @@ def simulate_streaming_smplx_plan_records(
     planner_version: str = "m9",
     tail_policy: str = "none",
     source_sequence_allowlist: list[str] | tuple[str, ...] | None = None,
+    initial_hold_sec: float = 0.0,
 ) -> list[dict[str, Any]]:
     header = _header(stream_event_records, "stream_header")
     ticks = _records_by_kind(stream_event_records, "tick")
@@ -852,6 +853,7 @@ def simulate_streaming_smplx_plan_records(
     preferred_beats = 4 if 4 in counts else (2 if 2 in counts else (8 if 8 in counts else counts[0]))
     planner_version = str(planner_version or "m9").lower()
     tail_policy = str(tail_policy or "none").lower()
+    initial_hold_sec = _clamp(_safe_float(initial_hold_sec), 0.0, max(0.0, duration_sec - 0.35))
     planner_name = "streaming_retrieval_v2_phrase_aware" if planner_version == "m12" else "streaming_retrieval_v1"
     records: list[dict[str, Any]] = [
         {
@@ -866,6 +868,7 @@ def simulate_streaming_smplx_plan_records(
             "planner": planner_name,
             "planner_version": planner_version,
             "tail_policy": tail_policy,
+            "initial_hold_sec": round(float(initial_hold_sec), 5),
             "source_sequence_allowlist": sorted(allowed_sequences),
             "score_weights": {
                 "rhythm_lock": 0.45,
@@ -876,7 +879,7 @@ def simulate_streaming_smplx_plan_records(
             "generated_at_utc": utc_now_iso(),
         }
     ]
-    next_start_sec = 0.0
+    next_start_sec = initial_hold_sec
     previous_unit: dict[str, Any] | None = None
     recent_units: Counter[str] = Counter()
     step_index = 0
@@ -1000,6 +1003,59 @@ def simulate_streaming_smplx_plan_records(
         recent_units.update([str(selected.get("unit_id"))])
         next_start_sec = target_end_sec
         step_index += 1
+    if initial_hold_sec > 0.0:
+        decisions = [record for record in records if record.get("kind") == "decision"]
+        if decisions:
+            first_decision = decisions[0]
+            first_range = dict(first_decision.get("source_frame_range", {}) or {})
+            hold_start_frame = _safe_int(first_range.get("start"))
+            first_guard = dict(first_decision.get("future_visibility_guard", {}) or {})
+            hold_decision = {
+                "schema_version": 1,
+                "kind": "decision",
+                "index": 0,
+                "decision_time_sec": 0.0,
+                "decision_tick_index": 0,
+                "playhead_sec": 0.0,
+                "available_audio_until_sec": round(float(initial_buffer_sec), 5),
+                "future_visibility_guard": {
+                    "lookahead_sec": round(float(initial_buffer_sec), 5),
+                    "used_audio_until_sec": first_guard.get("used_audio_until_sec", round(float(initial_buffer_sec), 5)),
+                    "passed": True,
+                },
+                "target_time_sec": {"start": 0.0, "end": _round_time(initial_hold_sec)},
+                "target_beats": 0,
+                "target_bpm": first_decision.get("target_bpm"),
+                "target_energy": "hold",
+                "selected_unit_id": f"{first_decision.get('selected_unit_id')}_initial_hold",
+                "source_sequence": first_decision.get("source_sequence"),
+                "source_frame_range": {"start": hold_start_frame, "end_exclusive": hold_start_frame + 1},
+                "source_beat_range": dict(first_decision.get("source_beat_range", {}) or {}),
+                "source_motion_path": first_decision.get("source_motion_path"),
+                "speed_scale": 0.0,
+                "score": 1.0,
+                "score_breakdown": {
+                    "rhythm_lock": 1.0,
+                    "transition_smoothness": 1.0,
+                    "style_energy_bpm": 1.0,
+                    "diversity": 1.0,
+                    "weighted_total": 1.0,
+                    "speed_scale": 0.0,
+                },
+                "switch_reason": {
+                    "planner": planner_name,
+                    "mode": "initial_hold",
+                    "hold_until_sec": _round_time(initial_hold_sec),
+                },
+                "expected_accent_hits": [],
+                "rhythm_locks": [],
+                "reference_artifacts": dict(first_decision.get("reference_artifacts", {}) or {}),
+            }
+            insert_at = next((index for index, record in enumerate(records) if record.get("kind") == "decision"), len(records))
+            records.insert(insert_at, hold_decision)
+            for new_index, decision in enumerate(record for record in records if record.get("kind") == "decision"):
+                decision["index"] = new_index
+            step_index += 1
     records.append(
         {
             "schema_version": 1,

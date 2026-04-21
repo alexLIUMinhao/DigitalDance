@@ -83,3 +83,21 @@ This milestone upgrades the M9 local streaming smoke into a broader optimization
 - Add manual beat/downbeat calibration files for all Unity music tracks instead of self-consistency event-rail evaluation.
 - Validate a source-coherent M12 planner with true mesh render on selected non-`audio4` songs. Avoid unconstrained full-library visual retrieval until transition compatibility is stronger.
 - Port the runtime bundle consumer into Unity and measure device memory, load time, and playback frame rate.
+
+## Update 2026-04-21 · Hold-2s + 42-50s Diagnosis
+
+- Added planner option `--initial-hold-sec` and validated `--initial-hold-sec 2` on `audio4`.
+- New source-coherent render:
+  - `outputs/renders/unity_audio4_hold2_rhythm_visual_fix_mesh_review.html`
+  - `outputs/renders/unity_audio4_hold2_rhythm_visual_fix_mesh_preview.mp4`
+  - `outputs/reports/unity_audio4_hold2_rhythm_visual_fix_mesh_report.json`
+- Behavior change:
+  - `0s-2s` stays on an initial hold pose.
+  - Retrieval starts at exactly `2.0s`, reusing the same source start frame as the first live unit.
+- Why `42s-50s` still feels weak:
+  - Not missing actions, but low-quality matches under current constraints.
+  - `source_sequence_allowlist=001` protects visual continuity, but this sequence has limited low-energy/transition coverage in that segment.
+  - Rhythm subscore remains low for several chosen units because only part of future lock targets is visible under the strict 2-second lookahead; late locks are scored against sparse visible candidates.
+- Next optimization target:
+  - Keep source continuity but allow a small compatibility set (`2-3` curated sequences) for low-energy transition units.
+  - Improve rhythm scoring for partially visible lock targets to avoid penalizing valid short-horizon streaming decisions.
