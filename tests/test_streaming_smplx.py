@@ -123,12 +123,17 @@ class StreamingSmplxTests(unittest.TestCase):
         self.assertEqual(first_without_time, second_without_time)
         header = first[0]
         self.assertEqual(header["kind"], "stream_header")
+        self.assertEqual(header["lookahead_sec"], 2.0)
+        self.assertEqual(header["lookfront_sec"], 1.0)
+        self.assertEqual(header["total_future_sec"], 3.0)
         ticks = [record for record in first if record["kind"] == "tick"]
         self.assertTrue(ticks)
-        self.assertLessEqual(ticks[0]["available_audio_until_sec"], 2.0)
+        self.assertLessEqual(ticks[0]["available_audio_until_sec"], 3.0)
         for tick in ticks:
             available = float(tick["available_audio_until_sec"])
             self.assertLessEqual(float(tick["lookahead_sec"]), 2.00001)
+            self.assertLessEqual(float(tick["lookfront_sec"]), 1.00001)
+            self.assertLessEqual(float(tick["total_future_sec"]), 3.00001)
             for key in ("beats", "downbeats", "drum_hits", "accents"):
                 for event in tick[key]:
                     self.assertLessEqual(float(event["time_sec"]), available + 1e-8)
@@ -171,6 +176,9 @@ class StreamingSmplxTests(unittest.TestCase):
                 "song_id": "demo",
                 "duration_sec": 4.2,
                 "initial_buffer_sec": 2.0,
+                "lookahead_sec": 2.0,
+                "lookfront_sec": 1.0,
+                "total_future_sec": 3.0,
                 "beats_per_bar": 4,
                 "source_audio_path": "demo.wav",
             },
@@ -178,7 +186,7 @@ class StreamingSmplxTests(unittest.TestCase):
                 "kind": "tick",
                 "tick_index": 0,
                 "playhead_sec": 0.0,
-                "available_audio_until_sec": 2.0,
+                "available_audio_until_sec": 3.0,
                 "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.9},
                 "beats": [
                     {"index": index, "time_sec": index * 0.5, "strength": 0.7, "confidence": 0.9, "is_downbeat": index % 4 == 0}
@@ -192,7 +200,7 @@ class StreamingSmplxTests(unittest.TestCase):
                 "kind": "tick",
                 "tick_index": 20,
                 "playhead_sec": 2.0,
-                "available_audio_until_sec": 4.0,
+                "available_audio_until_sec": 4.2,
                 "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.9},
                 "beats": [
                     {"index": index, "time_sec": index * 0.5, "strength": 0.7, "confidence": 0.9, "is_downbeat": index % 4 == 0}
@@ -213,7 +221,7 @@ class StreamingSmplxTests(unittest.TestCase):
             self.assertTrue(decision["future_visibility_guard"]["passed"])
             self.assertLessEqual(
                 float(decision["available_audio_until_sec"]),
-                float(decision["playhead_sec"]) + 2.00001,
+                float(decision["playhead_sec"]) + 3.00001,
             )
         self.assertGreater(decisions[0]["score_breakdown"]["rhythm_lock"], 0.5)
 

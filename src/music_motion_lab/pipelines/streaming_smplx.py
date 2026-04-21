@@ -13,6 +13,8 @@ from .smplx_mesh_stitch_renderer import build_smplx_mesh_stitch_visual_preview
 
 
 DEFAULT_INITIAL_BUFFER_SEC = 2.0
+DEFAULT_LOOKAHEAD_SEC = 2.0
+DEFAULT_LOOKFRONT_SEC = 1.0
 DEFAULT_CHUNK_MS = 46.44
 DEFAULT_ROLLING_WINDOW_SEC = 8.0
 DEFAULT_TEMPO_WINDOW_SEC = 16.0
@@ -21,6 +23,10 @@ DEFAULT_BLEND_FRAMES = 10
 DEFAULT_SAFE_RETIME_MIN = 0.85
 DEFAULT_SAFE_RETIME_MAX = 1.15
 DEFAULT_M15_COHORT_SIZE = 10
+M15_LOW_CONFIDENCE_THRESHOLD = 0.38
+M15_MIN_SEQUENCE_DWELL_STEPS = 2
+M15_SEQUENCE_SWITCH_MARGIN = 0.055
+M15_CROSS_SEQUENCE_TRANSITION_FLOOR = 0.62
 
 
 def _safe_float(value: Any, fallback: float = 0.0) -> float:
@@ -244,6 +250,8 @@ def build_streaming_song_event_records(
     audio_path: Path,
     song_id: str,
     initial_buffer_sec: float = DEFAULT_INITIAL_BUFFER_SEC,
+    lookahead_sec: float = DEFAULT_LOOKAHEAD_SEC,
+    lookfront_sec: float = DEFAULT_LOOKFRONT_SEC,
     chunk_ms: float = DEFAULT_CHUNK_MS,
     beats_per_bar: int = 4,
     rolling_window_sec: float = DEFAULT_ROLLING_WINDOW_SEC,
@@ -266,6 +274,9 @@ def build_streaming_song_event_records(
 
     chunk_sec = max(0.001, float(chunk_ms) / 1000.0)
     tick_count = int(math.ceil(duration_sec / chunk_sec)) + 1
+    planning_future_sec = max(0.0, float(lookahead_sec))
+    transport_future_sec = max(0.0, float(lookfront_sec))
+    total_future_sec = planning_future_sec + transport_future_sec
     records: list[dict[str, Any]] = [
         {
             "schema_version": 1,
@@ -278,6 +289,9 @@ def build_streaming_song_event_records(
             "hop_size": hop_size,
             "chunk_ms": round(float(chunk_ms), 5),
             "initial_buffer_sec": round(float(initial_buffer_sec), 5),
+            "lookahead_sec": round(float(planning_future_sec), 5),
+            "lookfront_sec": round(float(transport_future_sec), 5),
+            "total_future_sec": round(float(total_future_sec), 5),
             "rolling_window_sec": round(float(rolling_window_sec), 5),
             "beats_per_bar": int(beats_per_bar),
             "analysis_mode": "streaming_simulation",
@@ -291,7 +305,8 @@ def build_streaming_song_event_records(
     tempo_update_ticks = max(1, int(round(0.25 / chunk_sec)))
     for tick_index in range(tick_count):
         playhead_sec = min(duration_sec, tick_index * chunk_sec)
-        available_until = min(duration_sec, playhead_sec + max(0.0, float(initial_buffer_sec)))
+        planning_until = min(duration_sec, playhead_sec + planning_future_sec)
+        available_until = min(duration_sec, playhead_sec + total_future_sec)
         window_start = max(0.0, playhead_sec - max(0.0, float(rolling_window_sec)))
         tempo_start = max(0.0, available_until - max(1.0, float(tempo_window_sec)))
         if tempo_cache is None or tick_index % tempo_update_ticks == 0:
@@ -342,7 +357,10 @@ def build_streaming_song_event_records(
                 "tick_index": tick_index,
                 "playhead_sec": _round_time(playhead_sec),
                 "available_audio_until_sec": _round_time(available_until),
-                "lookahead_sec": round(float(max(0.0, available_until - playhead_sec)), 5),
+                "planning_audio_until_sec": _round_time(planning_until),
+                "lookahead_sec": round(float(planning_future_sec), 5),
+                "lookfront_sec": round(float(transport_future_sec), 5),
+                "total_future_sec": round(float(max(0.0, available_until - playhead_sec)), 5),
                 "visible_window_sec": {"start": _round_time(window_start), "end": _round_time(available_until)},
                 "tempo_hypotheses": [
                     {
@@ -948,6 +966,11 @@ def simulate_streaming_smplx_plan_records(
     song_id = str(header.get("song_id") or "stream_song")
     duration_sec = _safe_float(header.get("duration_sec"), _safe_float(ticks[-1].get("available_audio_until_sec")))
     initial_buffer_sec = _safe_float(header.get("initial_buffer_sec"), DEFAULT_INITIAL_BUFFER_SEC)
+    planning_lookahead_sec = _safe_float(header.get("lookahead_sec"), initial_buffer_sec)
+    lookfront_sec = _safe_float(header.get("lookfront_sec"), 0.0)
+    total_future_sec = _safe_float(header.get("total_future_sec"), planning_lookahead_sec + lookfront_sec)
+    if total_future_sec <= 0.0:
+        total_future_sec = initial_buffer_sec
     counts = sorted({_safe_int(unit.get("duration_beats"), 0) for unit in units if _safe_int(unit.get("duration_beats"), 0) > 0})
     preferred_beats = 4 if 4 in counts else (2 if 2 in counts else (8 if 8 in counts else counts[0]))
     planner_version = str(planner_version or "m9").lower()
@@ -964,7 +987,9 @@ def simulate_streaming_smplx_plan_records(
             "source_stream_events_path": stream_events_path,
             "duration_sec": round(float(duration_sec), 5),
             "initial_buffer_sec": round(float(initial_buffer_sec), 5),
-            "lookahead_sec": round(float(initial_buffer_sec), 5),
+            "lookahead_sec": round(float(planning_lookahead_sec), 5),
+            "lookfront_sec": round(float(lookfront_sec), 5),
+            "total_future_sec": round(float(total_future_sec), 5),
             "planner": planner_name,
             "planner_version": planner_version,
             "tail_policy": tail_policy,
@@ -983,12 +1008,13 @@ def simulate_streaming_smplx_plan_records(
     ]
     next_start_sec = initial_hold_sec
     previous_unit: dict[str, Any] | None = None
+    current_sequence_run = 0
     recent_units: Counter[str] = Counter()
     step_index = 0
     while next_start_sec < duration_sec - 0.20:
         if max_steps > 0 and step_index >= max_steps:
             break
-        decision_time = max(0.0, next_start_sec - initial_buffer_sec)
+        decision_time = max(0.0, next_start_sec - total_future_sec)
         tick = _find_tick_for_decision(ticks, decision_time)
         beat_phase = dict(tick.get("beat_phase", {}) or {})
         tempo_confidence = _safe_float(beat_phase.get("confidence"), 0.0)
@@ -1011,7 +1037,7 @@ def simulate_streaming_smplx_plan_records(
             if tempo_confidence >= 0.28
             else min(preferred_beats, 4)
         )
-        if planner_version == "m12":
+        if planner_version in {"m12", "m15"}:
             hypotheses = list(scoring_tick.get("segment_hypotheses", []) or [])
             viable = [
                 item
@@ -1022,6 +1048,9 @@ def simulate_streaming_smplx_plan_records(
             viable.sort(key=lambda item: (_safe_float(item.get("confidence")), _safe_int(item.get("duration_beats")) in {4, 8}), reverse=True)
             if viable:
                 target_beats = _safe_int(viable[0].get("duration_beats"), target_beats)
+            if planner_version == "m15" and tempo_confidence < M15_LOW_CONFIDENCE_THRESHOLD:
+                short_options = [count for count in counts if count <= 2] or [2]
+                target_beats = min(short_options)
             if tail_policy == "recover":
                 remaining_total = duration_sec - next_start_sec
                 if remaining_total < target_beats * spacing * 0.75:
@@ -1029,7 +1058,7 @@ def simulate_streaming_smplx_plan_records(
                     target_beats = min(tail_options, key=lambda count: abs(count * spacing - remaining_total))
         target_end_sec = min(duration_sec, next_start_sec + target_beats * spacing)
         tail_extended = False
-        if planner_version == "m12" and tail_policy == "recover" and target_end_sec < duration_sec:
+        if planner_version in {"m12", "m15"} and tail_policy == "recover" and target_end_sec < duration_sec:
             remaining_after = duration_sec - target_end_sec
             if remaining_after < max(0.75, spacing * 1.25):
                 target_end_sec = duration_sec
@@ -1092,6 +1121,13 @@ def simulate_streaming_smplx_plan_records(
                 reject_reasons.append("rhythm_lock_below_0_40")
             if planner_version == "m15" and _safe_float(breakdown.get("transition_smoothness")) < 0.45:
                 reject_reasons.append("transition_smoothness_below_0_45")
+            if (
+                planner_version == "m15"
+                and previous_unit is not None
+                and str(previous_unit.get("source_sequence")) != str(candidate.get("source_sequence"))
+                and _safe_float(breakdown.get("transition_smoothness")) < M15_CROSS_SEQUENCE_TRANSITION_FLOOR
+            ):
+                reject_reasons.append("cross_sequence_transition_below_0_62")
             if reject_reasons:
                 hard_rejects.append(
                     {
@@ -1106,10 +1142,45 @@ def simulate_streaming_smplx_plan_records(
             valid_scored.append((score, candidate, breakdown, lock_reports, expected_hits))
         effective_scored = valid_scored or scored
         score, selected, breakdown, lock_reports, expected_hits = effective_scored[0]
+        if planner_version == "m15" and previous_unit is not None:
+            previous_sequence = str(previous_unit.get("source_sequence"))
+            selected_sequence = str(selected.get("source_sequence"))
+            same_sequence_candidate = next(
+                (
+                    item
+                    for item in effective_scored
+                    if str(item[1].get("source_sequence")) == previous_sequence
+                ),
+                None,
+            )
+            if (
+                selected_sequence != previous_sequence
+                and same_sequence_candidate is not None
+            ):
+                same_score, same_selected, same_breakdown, same_lock_reports, same_expected_hits = same_sequence_candidate
+                score_margin = score - same_score
+                should_stick = current_sequence_run < M15_MIN_SEQUENCE_DWELL_STEPS or score_margin < M15_SEQUENCE_SWITCH_MARGIN
+                if should_stick:
+                    hard_rejects.append(
+                        {
+                            "unit_id": selected.get("unit_id"),
+                            "source_sequence": selected.get("source_sequence"),
+                            "score": score,
+                            "score_breakdown": breakdown,
+                            "reasons": ["sequence_switch_margin_not_met"],
+                        }
+                    )
+                    score, selected, breakdown, lock_reports, expected_hits = (
+                        same_score,
+                        same_selected,
+                        same_breakdown,
+                        same_lock_reports,
+                        same_expected_hits,
+                    )
         source_artifacts = dict(selected.get("reference_artifacts", {}) or {})
         available_until = _safe_float(tick.get("available_audio_until_sec"), 0.0)
         playhead = _safe_float(tick.get("playhead_sec"), 0.0)
-        guard_passed = available_until <= playhead + initial_buffer_sec + 1e-5 and next_start_sec <= available_until + 1e-5
+        guard_passed = available_until <= playhead + total_future_sec + 1e-5 and next_start_sec <= available_until + 1e-5
         selected_tier = str(selected.get("priority_tier", "unknown") or "unknown")
         decision = {
             "schema_version": 1,
@@ -1120,7 +1191,9 @@ def simulate_streaming_smplx_plan_records(
             "playhead_sec": _round_time(playhead),
             "available_audio_until_sec": _round_time(available_until),
             "future_visibility_guard": {
-                "lookahead_sec": round(float(initial_buffer_sec), 5),
+                "lookahead_sec": round(float(planning_lookahead_sec), 5),
+                "lookfront_sec": round(float(lookfront_sec), 5),
+                "total_future_sec": round(float(total_future_sec), 5),
                 "used_audio_until_sec": _round_time(available_until),
                 "passed": bool(guard_passed),
             },
@@ -1156,6 +1229,12 @@ def simulate_streaming_smplx_plan_records(
             "rejected_top_candidates": hard_rejects[:3],
         }
         records.append(decision)
+        selected_sequence = str(selected.get("source_sequence"))
+        previous_sequence = str(previous_unit.get("source_sequence")) if previous_unit is not None else None
+        if previous_sequence == selected_sequence:
+            current_sequence_run += 1
+        else:
+            current_sequence_run = 1
         previous_unit = selected
         recent_units.update([str(selected.get("unit_id"))])
         next_start_sec = target_end_sec
@@ -1174,10 +1253,12 @@ def simulate_streaming_smplx_plan_records(
                 "decision_time_sec": 0.0,
                 "decision_tick_index": 0,
                 "playhead_sec": 0.0,
-                "available_audio_until_sec": round(float(initial_buffer_sec), 5),
+                "available_audio_until_sec": round(float(total_future_sec), 5),
                 "future_visibility_guard": {
-                    "lookahead_sec": round(float(initial_buffer_sec), 5),
-                    "used_audio_until_sec": first_guard.get("used_audio_until_sec", round(float(initial_buffer_sec), 5)),
+                    "lookahead_sec": round(float(planning_lookahead_sec), 5),
+                    "lookfront_sec": round(float(lookfront_sec), 5),
+                    "total_future_sec": round(float(total_future_sec), 5),
+                    "used_audio_until_sec": first_guard.get("used_audio_until_sec", round(float(total_future_sec), 5)),
                     "passed": True,
                 },
                 "target_time_sec": {"start": 0.0, "end": _round_time(initial_hold_sec)},
@@ -1544,7 +1625,10 @@ def render_streaming_smplx_mesh_review(
         1 for item in rejected_candidates if "rhythm_lock_below_0_40" in list(item.get("reasons", []) or [])
     )
     report["metrics"]["transition_hard_reject_count"] = sum(
-        1 for item in rejected_candidates if "transition_smoothness_below_0_45" in list(item.get("reasons", []) or [])
+        1
+        for item in rejected_candidates
+        if "transition_smoothness_below_0_45" in list(item.get("reasons", []) or [])
+        or "cross_sequence_transition_below_0_62" in list(item.get("reasons", []) or [])
     )
     report["metrics"]["cohort_song_count"] = len(
         {str(sequence_id) for decision in decisions for sequence_id in list(decision.get("cohort_source_sequences", []) or [])}
@@ -1691,6 +1775,7 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
     rejected_candidates = [item for decision in decisions for item in list(decision.get("rejected_top_candidates", []) or [])]
     rhythm_reject_count = sum(1 for item in rejected_candidates if "rhythm_lock_below_0_40" in list(item.get("reasons", []) or []))
     transition_reject_count = sum(1 for item in rejected_candidates if "transition_smoothness_below_0_45" in list(item.get("reasons", []) or []))
+    transition_reject_count += sum(1 for item in rejected_candidates if "cross_sequence_transition_below_0_62" in list(item.get("reasons", []) or []))
     cross_sequence_transition_count = sum(
         1
         for previous, current in zip(decisions, decisions[1:])

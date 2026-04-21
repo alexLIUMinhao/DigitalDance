@@ -210,6 +210,8 @@ def build_parser() -> argparse.ArgumentParser:
     stream_events.add_argument("--song-id", help="Stable song id. Defaults to the audio filename stem.")
     stream_events.add_argument("--output", help="Optional JSONL output path inside outputs/.")
     stream_events.add_argument("--initial-buffer-sec", type=float, default=2.0)
+    stream_events.add_argument("--lookahead-sec", type=float, default=2.0)
+    stream_events.add_argument("--lookfront-sec", type=float, default=1.0)
     stream_events.add_argument("--chunk-ms", type=float, default=46.44)
     stream_events.add_argument("--beats-per-bar", type=int, default=4)
     stream_events.add_argument("--rolling-window-sec", type=float, default=8.0)
@@ -557,6 +559,8 @@ def main() -> int:
             audio_path=audio_path,
             song_id=song_id,
             initial_buffer_sec=args.initial_buffer_sec,
+            lookahead_sec=args.lookahead_sec,
+            lookfront_sec=args.lookfront_sec,
             chunk_ms=args.chunk_ms,
             beats_per_bar=args.beats_per_bar,
             rolling_window_sec=args.rolling_window_sec,
