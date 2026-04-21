@@ -822,6 +822,7 @@ def build_mesh_stitch_report(
         "segment_mapping": rhythm_mapping["steps"],
         "transitions": transition_reports,
         "rhythm_locks": rhythm_lock_reports,
+        "streaming": dict(manifest.get("streaming_review", {}) or {}),
         "metrics": {
             "transition_count": int(len(transition_reports)),
             "beat_count": int(rhythm_mapping["summary"]["beat_count"]),
@@ -850,6 +851,8 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
     locks = list(report.get("rhythm_locks", []) or [])
     segment_mapping = list(report.get("segment_mapping", []) or [])
     rhythm_mapping = dict(report.get("rhythm_mapping", {}) or {})
+    streaming = dict(report.get("streaming", {}) or {})
+    streaming_decisions = list(streaming.get("decisions", []) or [])
     rhythm_payload = json.dumps(
         {
             "previewWindow": rhythm_mapping.get("preview_window_sec", {}),
@@ -879,6 +882,29 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
                 f"<td>{html.escape(str(item.get('aligned_root_xz_delta_before_blend')))}</td>"
                 f"<td>{html.escape(str(item.get('joint_delta_after_blend')))}</td>"
                 f"<td>{html.escape(str(item.get('vertex_delta_after_blend')))}</td>"
+                "</tr>"
+            )
+        return "\n".join(rows)
+
+    def streaming_rows() -> str:
+        if not streaming_decisions:
+            return "<tr><td colspan=\"9\">No streaming decision records.</td></tr>"
+        rows = []
+        for item in streaming_decisions:
+            target = dict(item.get("target_time_sec", {}) or {})
+            guard = dict(item.get("future_visibility_guard", {}) or {})
+            score = dict(item.get("score_breakdown", {}) or {})
+            rows.append(
+                "<tr>"
+                f"<td>{html.escape(str(item.get('index')))}</td>"
+                f"<td>{html.escape(str(item.get('decision_time_sec')))}</td>"
+                f"<td>{html.escape(str(item.get('playhead_sec')))}</td>"
+                f"<td>{html.escape(str(item.get('available_audio_until_sec')))}</td>"
+                f"<td>{html.escape(str(target.get('start')))}-{html.escape(str(target.get('end')))}s</td>"
+                f"<td>{html.escape(str(item.get('selected_unit_id')))}</td>"
+                f"<td>{html.escape(str(item.get('target_energy')))} / {html.escape(str(item.get('target_bpm')))}</td>"
+                f"<td>{html.escape(str(item.get('speed_scale')))} / {html.escape(str(item.get('score')))}</td>"
+                f"<td>{html.escape(str(guard.get('passed')))} r={html.escape(str(score.get('rhythm_lock')))} t={html.escape(str(score.get('transition_smoothness')))}</td>"
                 "</tr>"
             )
         return "\n".join(rows)
@@ -1085,6 +1111,11 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
       <table>
         <thead><tr><th>step</th><th>unit</th><th>seq</th><th>src beats</th><th>src frames</th><th>target time</th><th>scene frames</th><th>blend in/out</th></tr></thead>
         <tbody>{segment_rows()}</tbody>
+      </table>
+      <h2>Streaming Decisions</h2>
+      <table>
+        <thead><tr><th>step</th><th>decision</th><th>playhead</th><th>available</th><th>target</th><th>unit</th><th>energy/bpm</th><th>speed/score</th><th>guard/scores</th></tr></thead>
+        <tbody>{streaming_rows()}</tbody>
       </table>
       <h2>Transitions</h2>
       <table>

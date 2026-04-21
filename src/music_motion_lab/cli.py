@@ -198,6 +198,56 @@ def build_parser() -> argparse.ArgumentParser:
     finedance_song.add_argument("--output", help="Optional song_event_map output path inside outputs/.")
     finedance_song.add_argument("--phrase-beats", type=int, default=8)
 
+    stream_events = subparsers.add_parser(
+        "simulate-streaming-song-events",
+        help="Simulate endpoint-style streaming song events from a local audio file.",
+    )
+    stream_events.add_argument("--audio", required=True, help="Audio file path to simulate as a stream.")
+    stream_events.add_argument("--song-id", help="Stable song id. Defaults to the audio filename stem.")
+    stream_events.add_argument("--output", help="Optional JSONL output path inside outputs/.")
+    stream_events.add_argument("--initial-buffer-sec", type=float, default=2.0)
+    stream_events.add_argument("--chunk-ms", type=float, default=46.44)
+    stream_events.add_argument("--beats-per-bar", type=int, default=4)
+    stream_events.add_argument("--rolling-window-sec", type=float, default=8.0)
+
+    annotate_units = subparsers.add_parser(
+        "annotate-finedance-motion-units",
+        help="Add M9 streaming retrieval annotations to a FineDance rhythmic SMPL-X motion library.",
+    )
+    annotate_units.add_argument("--input-library", required=True)
+    annotate_units.add_argument("--output", help="Optional annotated library JSON path inside outputs/.")
+
+    stream_plan = subparsers.add_parser(
+        "simulate-streaming-smplx-plan",
+        help="Retrieve FineDance SMPL-X motion units from streaming song events with a 2-second lookahead guard.",
+    )
+    stream_plan.add_argument("--stream-events", required=True)
+    stream_plan.add_argument("--library", required=True)
+    stream_plan.add_argument("--output", help="Optional JSONL stream plan output path inside outputs/.")
+    stream_plan.add_argument("--max-steps", type=int, default=0)
+
+    stream_render = subparsers.add_parser(
+        "render-streaming-smplx-mesh-review",
+        help="Render an M8-style SMPL-X mesh review from an M9 streaming plan JSONL.",
+    )
+    stream_render.add_argument("--stream-plan", required=True)
+    stream_render.add_argument("--audio", required=True)
+    stream_render.add_argument("--output-prefix", help="Output stem used when explicit output paths are omitted.")
+    stream_render.add_argument("--output-video", help="Optional MP4 output path inside outputs/.")
+    stream_render.add_argument("--output-strip", help="Optional strip PNG output path inside outputs/.")
+    stream_render.add_argument("--output-report", help="Optional report JSON output path inside outputs/.")
+    stream_render.add_argument("--output-html", help="Optional HTML review output path inside outputs/.")
+    stream_render.add_argument("--manifest-output", help="Optional generated stitch manifest path inside outputs/.")
+    stream_render.add_argument("--fps", type=int, default=30)
+    stream_render.add_argument("--blend-frames", type=int, default=10)
+    stream_render.add_argument("--force-cache", action="store_true")
+    stream_render.add_argument("--batch-size", type=int, default=128)
+    stream_render.add_argument("--face-stride", type=int, default=30)
+    stream_render.add_argument("--render-frame-stride", type=int, default=2)
+    stream_render.add_argument("--max-render-frames", type=int, default=0)
+    stream_render.add_argument("--transition-smooth-frames", type=int, default=12)
+    stream_render.add_argument("--transition-smooth-passes", type=int, default=2)
+
     return parser
 
 
@@ -431,6 +481,100 @@ def main() -> int:
         )
         write_json(output_path, payload)
         print(output_path)
+        return 0
+
+    if args.command == "simulate-streaming-song-events":
+        from .pipelines.streaming_smplx import build_streaming_song_event_records, write_jsonl
+
+        audio_path = resolve_input_path(config, args.audio)
+        song_id = args.song_id or slugify(audio_path.stem)
+        records = build_streaming_song_event_records(
+            audio_path=audio_path,
+            song_id=song_id,
+            initial_buffer_sec=args.initial_buffer_sec,
+            chunk_ms=args.chunk_ms,
+            beats_per_bar=args.beats_per_bar,
+            rolling_window_sec=args.rolling_window_sec,
+        )
+        output_path = ensure_output_path(config, args.output or f"streaming/{slugify(song_id)}_stream_events.jsonl")
+        write_jsonl(output_path, records)
+        print(output_path)
+        return 0
+
+    if args.command == "annotate-finedance-motion-units":
+        from .pipelines.streaming_smplx import annotate_finedance_motion_units
+
+        input_path = resolve_input_path(config, args.input_library)
+        motion_library = load_json(input_path)
+        payload = annotate_finedance_motion_units(motion_library=motion_library, project_root=config.project_root)
+        default_name = f"motion_libraries/{slugify(str(payload.get('library_id', input_path.stem)))}.json"
+        output_path = ensure_output_path(config, args.output or default_name)
+        write_json(output_path, payload)
+        print(output_path)
+        return 0
+
+    if args.command == "simulate-streaming-smplx-plan":
+        from .pipelines.streaming_smplx import read_jsonl, simulate_streaming_smplx_plan_records, write_jsonl
+
+        stream_events_path = resolve_input_path(config, args.stream_events)
+        stream_events = read_jsonl(stream_events_path)
+        library = load_json(resolve_input_path(config, args.library))
+        records = simulate_streaming_smplx_plan_records(
+            stream_event_records=stream_events,
+            annotated_library=library,
+            stream_events_path=str(stream_events_path),
+            max_steps=args.max_steps,
+        )
+        header = next((record for record in records if record.get("kind") == "stream_plan_header"), {})
+        song_id = str(header.get("song_id", "stream_song") or "stream_song")
+        output_path = ensure_output_path(config, args.output or f"streaming/{slugify(song_id)}_stream_plan.jsonl")
+        write_jsonl(output_path, records)
+        print(output_path)
+        return 0
+
+    if args.command == "render-streaming-smplx-mesh-review":
+        from .pipelines.streaming_smplx import read_jsonl, render_streaming_smplx_mesh_review
+
+        stream_plan_path = resolve_input_path(config, args.stream_plan)
+        stream_plan_records = read_jsonl(stream_plan_path)
+        stream_header = next((record for record in stream_plan_records if record.get("kind") == "stream_plan_header"), {})
+        stream_events_records = None
+        stream_events_raw = stream_header.get("source_stream_events_path")
+        if stream_events_raw:
+            stream_events_path = resolve_input_path(config, str(stream_events_raw))
+            stream_events_records = read_jsonl(stream_events_path)
+        audio_path = resolve_input_path(config, args.audio)
+        output_prefix = slugify(args.output_prefix or f"{stream_header.get('song_id', audio_path.stem)}_streaming")
+        output_video = ensure_output_path(config, args.output_video or f"renders/{output_prefix}_mesh_preview.mp4")
+        output_strip = ensure_output_path(config, args.output_strip or f"renders/{output_prefix}_mesh_strip.png")
+        output_report = ensure_output_path(config, args.output_report or f"reports/{output_prefix}_mesh_report.json")
+        output_html = ensure_output_path(config, args.output_html or f"renders/{output_prefix}_mesh_review.html")
+        manifest_output = ensure_output_path(config, args.manifest_output or f"streaming/{output_prefix}_stitch_manifest.json")
+        report = render_streaming_smplx_mesh_review(
+            stream_plan_records=stream_plan_records,
+            stream_event_records=stream_events_records,
+            project_root=config.project_root,
+            motion_base_assets_root=config.shared_roots.motion_base_assets_root,
+            audio_path=audio_path,
+            output_video=output_video,
+            output_strip=output_strip,
+            output_report=output_report,
+            output_html=output_html,
+            manifest_output=manifest_output,
+            fps=args.fps,
+            blend_frames=args.blend_frames,
+            force_cache=args.force_cache,
+            batch_size=args.batch_size,
+            face_stride=args.face_stride,
+            render_frame_stride=args.render_frame_stride,
+            max_render_frames=args.max_render_frames,
+            transition_smooth_frames=args.transition_smooth_frames,
+            transition_smooth_passes=args.transition_smooth_passes,
+        )
+        print(report["artifacts"]["video"])
+        print(report["artifacts"]["strip"])
+        print(report["artifacts"]["html"])
+        print(report["artifacts"]["report"])
         return 0
 
     if args.command == "build-mesh-preview":
