@@ -89,10 +89,12 @@ class SmplxMeshStitchRendererTests(unittest.TestCase):
         self.assertEqual(len(stitched.transition_reports), 1)
         transition = stitched.transition_reports[0]
         self.assertEqual(transition["gap_frames"], 2)
-        self.assertEqual(transition["blend_frames"], 2)
+        self.assertEqual(transition["blend_frames_requested"], 2)
+        self.assertEqual(transition["blend_frames"], 0)
         self.assertGreater(transition["raw_root_xz_delta"], 0.0)
         self.assertEqual(transition["aligned_root_xz_delta_before_blend"], 0.0)
-        self.assertLess(transition["vertex_delta_after_blend"], transition["vertex_delta_before_blend"])
+        self.assertEqual(transition["aligned_root_xyz_delta_before_blend"], 0.0)
+        self.assertLess(transition["max_temporal_vertex_delta_after_smoothing"], transition["max_temporal_vertex_delta_before_smoothing"])
         self.assertEqual(max(lock["frame_error"] for lock in stitched.rhythm_lock_reports), 0)
 
     def test_load_mesh_cache_roundtrip(self) -> None:
@@ -127,6 +129,7 @@ class SmplxMeshStitchRendererTests(unittest.TestCase):
                 "drum_hit_count": 1,
                 "accent_count": 1,
                 "max_vertex_delta_after_blend": 1.25,
+                "max_temporal_vertex_delta_after_smoothing": 0.7,
                 "max_rhythm_lock_frame_error": 0,
             },
             "artifacts": {"report": "/tmp/report.json"},

@@ -9,6 +9,7 @@ Validate the final FineDance source-SMPL-X mesh stitching path from an M2-2 rhyt
 - Added a true SMPL-X mesh stitch renderer that consumes a stitch manifest, materializes FineDance source mesh caches, aligns root X/Z continuity, bridges timeline gaps, and applies a short vertex/joint crossfade at transitions.
 - Added MP4, strip PNG, JSON report, and HTML review outputs for visual inspection.
 - Added audio-linked HTML review with synchronized playback, beat/downbeat/drum-hit timeline, segment mapping, and transition metrics.
+- Improved transition smoothness by aligning root XYZ continuity, skipping crossfades that increase boundary discontinuity, applying local temporal smoothing around transition windows, and rendering the smoke review at full 30fps.
 - Kept heavy dependencies behind the smoke render command; unit tests use small fake mesh caches and do not require `torch`, `smplx`, `imageio`, or `matplotlib`.
 
 ## Expected Smoke Outputs
@@ -23,6 +24,7 @@ Validate the final FineDance source-SMPL-X mesh stitching path from an M2-2 rhyt
 - Linked music from the song event map.
 - Shows 24 beat markers, 6 downbeat-derived drum-hit markers, and 3 stitched source segments for the smoke window.
 - Lists each segment's FineDance unit id, source sequence, source beat range, source frame range, target time, scene frames, and blend in/out frames.
+- The latest smoke mesh render uses `render_frame_stride=1`, `video_fps=30`, and 12-frame transition smoothing.
 
 ## Notes
 

@@ -269,6 +269,10 @@ def _root_xz_delta(left_root: np.ndarray, right_root: np.ndarray) -> float:
     return float(np.linalg.norm(left_root[[0, 2]] - right_root[[0, 2]]))
 
 
+def _root_xyz_delta(left_root: np.ndarray, right_root: np.ndarray) -> float:
+    return float(np.linalg.norm(left_root - right_root))
+
+
 def _offset_mesh(vertices: np.ndarray, joints: np.ndarray, offset: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return vertices + offset.reshape(1, 1, 3), joints + offset.reshape(1, 1, 3)
 
@@ -318,7 +322,78 @@ def _rhythm_lock_reports(manifest: dict[str, Any], scene_start: int, scene_end: 
     return reports
 
 
-def compose_stitched_mesh_sequence(manifest: dict[str, Any], caches_by_sequence: dict[str, MeshCache]) -> StitchedMeshSequence:
+def _max_temporal_delta(values: np.ndarray) -> float:
+    if values.shape[0] < 2:
+        return 0.0
+    deltas = np.linalg.norm(values[1:] - values[:-1], axis=-1)
+    return float(deltas.mean(axis=tuple(range(1, deltas.ndim))).max())
+
+
+def _smooth_array_window(values: np.ndarray, start_index: int, end_index: int, passes: int, strength: float = 0.72) -> None:
+    if end_index <= start_index or passes <= 0:
+        return
+    start_index = max(0, start_index)
+    end_index = min(values.shape[0] - 1, end_index)
+    if end_index - start_index < 2:
+        return
+    kernel = np.asarray([1.0, 2.0, 3.0, 2.0, 1.0], dtype=np.float32)
+    kernel = kernel / kernel.sum()
+    window = values[start_index : end_index + 1].copy()
+    for _ in range(max(1, int(passes))):
+        padded = np.pad(window, ((2, 2), (0, 0), (0, 0)), mode="edge")
+        averaged = np.zeros_like(window)
+        for kernel_index, weight in enumerate(kernel):
+            averaged += padded[kernel_index : kernel_index + len(window)] * weight
+        window = window * (1.0 - strength) + averaged * strength
+    values[start_index : end_index + 1] = window
+
+
+def _smooth_transition_windows(
+    vertices: np.ndarray,
+    joints: np.ndarray,
+    transition_reports: list[dict[str, Any]],
+    scene_start: int,
+    smooth_frames: int,
+    passes: int,
+) -> None:
+    if smooth_frames <= 0 or passes <= 0:
+        for report in transition_reports:
+            report["smoothing_frames"] = 0
+            report["smoothing_passes"] = 0
+        return
+    for report in transition_reports:
+        outgoing_end = _safe_int(report.get("outgoing_end_frame"))
+        incoming_start = _safe_int(report.get("incoming_start_frame"), _safe_int(report.get("boundary_frame")))
+        window_start = max(0, outgoing_end - scene_start - smooth_frames)
+        window_end = min(vertices.shape[0] - 1, incoming_start - scene_start + smooth_frames)
+        before_vertices = vertices[window_start : window_end + 1].copy()
+        before_joints = joints[window_start : window_end + 1].copy()
+        _smooth_array_window(vertices, window_start, window_end, passes=passes)
+        _smooth_array_window(joints, window_start, window_end, passes=passes)
+        after_vertices = vertices[window_start : window_end + 1]
+        after_joints = joints[window_start : window_end + 1]
+        report.update(
+            {
+                "smoothing_frames": int(smooth_frames),
+                "smoothing_passes": int(passes),
+                "smoothing_window": {
+                    "start_frame": int(scene_start + window_start),
+                    "end_frame": int(scene_start + window_end),
+                },
+                "max_temporal_vertex_delta_before_smoothing": round(_max_temporal_delta(before_vertices), 6),
+                "max_temporal_vertex_delta_after_smoothing": round(_max_temporal_delta(after_vertices), 6),
+                "max_temporal_joint_delta_before_smoothing": round(_max_temporal_delta(before_joints), 6),
+                "max_temporal_joint_delta_after_smoothing": round(_max_temporal_delta(after_joints), 6),
+            }
+        )
+
+
+def compose_stitched_mesh_sequence(
+    manifest: dict[str, Any],
+    caches_by_sequence: dict[str, MeshCache],
+    transition_smooth_frames: int = 12,
+    transition_smooth_passes: int = 2,
+) -> StitchedMeshSequence:
     steps = list(manifest.get("steps", []) or [])
     if not steps:
         raise ValueError("stitch manifest has no steps")
@@ -361,8 +436,7 @@ def compose_stitched_mesh_sequence(manifest: dict[str, Any], caches_by_sequence:
             offset[2] = -raw_entry_root[2]
         else:
             previous_exit_root = previous["aligned_exit_root"]
-            offset[0] = previous_exit_root[0] - raw_entry_root[0]
-            offset[2] = previous_exit_root[2] - raw_entry_root[2]
+            offset[:] = previous_exit_root - raw_entry_root
 
         aligned_vertices, aligned_joints = _offset_mesh(raw_vertices, raw_joints, offset)
         pre_blend_vertices_0 = aligned_vertices[0].copy()
@@ -373,13 +447,22 @@ def compose_stitched_mesh_sequence(manifest: dict[str, Any], caches_by_sequence:
         if previous is not None:
             previous_vertices = previous["aligned_vertices"]
             previous_joints = previous["aligned_joints"]
-            blend_count = min(blend_in, _safe_int(previous["blend_out"]), len(previous_vertices), len(aligned_vertices))
-            for local_index in range(blend_count):
-                alpha = _smoothstep((local_index + 1) / float(blend_count + 1))
-                previous_index = max(0, len(previous_vertices) - blend_count + local_index)
-                aligned_vertices[local_index] = previous_vertices[previous_index] * (1.0 - alpha) + aligned_vertices[local_index] * alpha
-                aligned_joints[local_index] = previous_joints[previous_index] * (1.0 - alpha) + aligned_joints[local_index] * alpha
-
+            requested_blend_count = min(blend_in, _safe_int(previous["blend_out"]), len(previous_vertices), len(aligned_vertices))
+            blend_count = 0
+            if requested_blend_count > 0:
+                candidate_vertices = aligned_vertices.copy()
+                candidate_joints = aligned_joints.copy()
+                for local_index in range(requested_blend_count):
+                    alpha = _smoothstep((local_index + 1) / float(requested_blend_count + 1))
+                    previous_index = max(0, len(previous_vertices) - requested_blend_count + local_index)
+                    candidate_vertices[local_index] = previous_vertices[previous_index] * (1.0 - alpha) + candidate_vertices[local_index] * alpha
+                    candidate_joints[local_index] = previous_joints[previous_index] * (1.0 - alpha) + candidate_joints[local_index] * alpha
+                before_delta = _mean_vertex_delta(previous_vertices[-1], pre_blend_vertices_0)
+                candidate_delta = _mean_vertex_delta(previous_vertices[-1], candidate_vertices[0])
+                if candidate_delta <= before_delta * 1.02 + 1e-6:
+                    aligned_vertices = candidate_vertices
+                    aligned_joints = candidate_joints
+                    blend_count = requested_blend_count
             gap_start = int(previous["scene_frame_end"]) + 1
             gap_end = scene_frame_start - 1
             if gap_end >= gap_start:
@@ -395,13 +478,21 @@ def compose_stitched_mesh_sequence(manifest: dict[str, Any], caches_by_sequence:
                     "index": len(transition_reports),
                     "outgoing_step": int(previous["step_index"]),
                     "incoming_step": _safe_int(step.get("index")),
+                    "outgoing_end_frame": int(previous["scene_frame_end"]),
+                    "incoming_start_frame": int(scene_frame_start),
                     "boundary_frame": scene_frame_start,
                     "gap_frames": max(0, scene_frame_start - int(previous["scene_frame_end"]) - 1),
                     "blend_frames": int(blend_count),
+                    "blend_frames_requested": int(requested_blend_count),
                     "root_offset_xyz": [round(float(value), 6) for value in offset.tolist()],
                     "raw_root_xz_delta": round(_root_xz_delta(previous["raw_exit_root"], raw_entry_root), 6),
+                    "raw_root_xyz_delta": round(_root_xyz_delta(previous["raw_exit_root"], raw_entry_root), 6),
                     "aligned_root_xz_delta_before_blend": round(
                         _root_xz_delta(previous["aligned_exit_root"], pre_blend_joints_0[0]),
+                        6,
+                    ),
+                    "aligned_root_xyz_delta_before_blend": round(
+                        _root_xyz_delta(previous["aligned_exit_root"], pre_blend_joints_0[0]),
                         6,
                     ),
                     "joint_delta_before_blend": round(_mean_vertex_delta(previous["aligned_joints"][-1], pre_blend_joints_0), 6),
@@ -452,6 +543,14 @@ def compose_stitched_mesh_sequence(manifest: dict[str, Any], caches_by_sequence:
     _fill_missing_frames(stitched_vertices, stitched_joints, filled)
     if not bool(filled.all()):
         raise ValueError("unable to fill all stitched mesh frames")
+    _smooth_transition_windows(
+        vertices=stitched_vertices,
+        joints=stitched_joints,
+        transition_reports=transition_reports,
+        scene_start=scene_start,
+        smooth_frames=max(0, int(transition_smooth_frames)),
+        passes=max(0, int(transition_smooth_passes)),
+    )
 
     return StitchedMeshSequence(
         vertices=stitched_vertices,
@@ -509,7 +608,7 @@ def render_stitched_mesh_artifacts(
     output_video: Path,
     output_strip: Path,
     face_stride: int = 12,
-    render_frame_stride: int = 2,
+    render_frame_stride: int = 1,
     max_render_frames: int = 0,
 ) -> dict[str, Any]:
     mpl_config_dir = Path(os.environ.get("MPLCONFIGDIR", "/tmp/music_motion_lab_mplconfig"))
@@ -731,6 +830,8 @@ def build_mesh_stitch_report(
             "drum_hit_count": int(rhythm_mapping["summary"]["drum_hit_count"]),
             "max_joint_delta_after_blend": round(_max_metric(transition_reports, "joint_delta_after_blend"), 6),
             "max_vertex_delta_after_blend": round(_max_metric(transition_reports, "vertex_delta_after_blend"), 6),
+            "max_temporal_joint_delta_after_smoothing": round(_max_metric(transition_reports, "max_temporal_joint_delta_after_smoothing"), 6),
+            "max_temporal_vertex_delta_after_smoothing": round(_max_metric(transition_reports, "max_temporal_vertex_delta_after_smoothing"), 6),
             "max_rhythm_lock_frame_error": int(_max_metric(rhythm_lock_reports, "frame_error")),
             "cache_miss_count": sum(1 for item in cache_summaries if str(item.get("status")) != "hit"),
         },
@@ -764,7 +865,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
 
     def transition_rows() -> str:
         if not transitions:
-            return "<tr><td colspan=\"8\">No transitions.</td></tr>"
+            return "<tr><td colspan=\"9\">No transitions.</td></tr>"
         rows = []
         for item in transitions:
             rows.append(
@@ -773,6 +874,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
                 f"<td>{html.escape(str(item.get('boundary_frame')))}</td>"
                 f"<td>{html.escape(str(item.get('gap_frames')))}</td>"
                 f"<td>{html.escape(str(item.get('blend_frames')))}</td>"
+                f"<td>{html.escape(str(item.get('smoothing_frames', 0)))}</td>"
                 f"<td>{html.escape(str(item.get('raw_root_xz_delta')))}</td>"
                 f"<td>{html.escape(str(item.get('aligned_root_xz_delta_before_blend')))}</td>"
                 f"<td>{html.escape(str(item.get('joint_delta_after_blend')))}</td>"
@@ -976,6 +1078,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
         <div class="metric"><b>{html.escape(str(metrics.get('drum_hit_count')))}</b><span>drum hits mapped</span></div>
         <div class="metric"><b>{html.escape(str(metrics.get('accent_count')))}</b><span>accents in preview</span></div>
         <div class="metric"><b>{html.escape(str(metrics.get('max_vertex_delta_after_blend')))}</b><span>max vertex delta after blend</span></div>
+        <div class="metric"><b>{html.escape(str(metrics.get('max_temporal_vertex_delta_after_smoothing')))}</b><span>max temporal vertex delta after smoothing</span></div>
         <div class="metric"><b>{html.escape(str(metrics.get('max_rhythm_lock_frame_error')))}</b><span>max rhythm frame error</span></div>
       </div>
       <h2>Segments</h2>
@@ -985,7 +1088,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
       </table>
       <h2>Transitions</h2>
       <table>
-        <thead><tr><th>steps</th><th>boundary</th><th>gap</th><th>blend</th><th>raw root</th><th>aligned root</th><th>joint after</th><th>vertex after</th></tr></thead>
+        <thead><tr><th>steps</th><th>boundary</th><th>gap</th><th>blend</th><th>smooth</th><th>raw root</th><th>aligned root</th><th>joint after</th><th>vertex after</th></tr></thead>
         <tbody>{transition_rows()}</tbody>
       </table>
       <h2>Rhythm Locks</h2>
@@ -1117,8 +1220,10 @@ def build_smplx_mesh_stitch_visual_preview(
     force_cache: bool = False,
     batch_size: int = 128,
     face_stride: int = 12,
-    render_frame_stride: int = 2,
+    render_frame_stride: int = 1,
     max_render_frames: int = 0,
+    transition_smooth_frames: int = 12,
+    transition_smooth_passes: int = 2,
 ) -> dict[str, Any]:
     caches, cache_summaries = materialize_mesh_caches(
         manifest=manifest,
@@ -1127,7 +1232,12 @@ def build_smplx_mesh_stitch_visual_preview(
         force=force_cache,
         batch_size=batch_size,
     )
-    stitched = compose_stitched_mesh_sequence(manifest, caches)
+    stitched = compose_stitched_mesh_sequence(
+        manifest,
+        caches,
+        transition_smooth_frames=transition_smooth_frames,
+        transition_smooth_passes=transition_smooth_passes,
+    )
     render_summary = render_stitched_mesh_artifacts(
         stitched=stitched,
         output_video=output_video,

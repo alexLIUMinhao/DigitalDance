@@ -116,8 +116,10 @@ def build_parser() -> argparse.ArgumentParser:
     smplx_mesh_stitch.add_argument("--force-cache", action="store_true", help="Rebuild source mesh caches even if they already exist.")
     smplx_mesh_stitch.add_argument("--batch-size", type=int, default=128)
     smplx_mesh_stitch.add_argument("--face-stride", type=int, default=12)
-    smplx_mesh_stitch.add_argument("--render-frame-stride", type=int, default=2)
+    smplx_mesh_stitch.add_argument("--render-frame-stride", type=int, default=1)
     smplx_mesh_stitch.add_argument("--max-render-frames", type=int, default=0)
+    smplx_mesh_stitch.add_argument("--transition-smooth-frames", type=int, default=12)
+    smplx_mesh_stitch.add_argument("--transition-smooth-passes", type=int, default=2)
 
     mesh_launch = subparsers.add_parser("launch-mesh-preview", help="Launch Blender UI with a true skinned-mesh preview scene.")
     mesh_launch.add_argument("--manifest", required=True)
@@ -531,6 +533,8 @@ def main() -> int:
             face_stride=args.face_stride,
             render_frame_stride=args.render_frame_stride,
             max_render_frames=args.max_render_frames,
+            transition_smooth_frames=args.transition_smooth_frames,
+            transition_smooth_passes=args.transition_smooth_passes,
         )
         print(report["artifacts"]["video"])
         print(report["artifacts"]["strip"])
