@@ -329,6 +329,27 @@ def _max_temporal_delta(values: np.ndarray) -> float:
     return float(deltas.mean(axis=tuple(range(1, deltas.ndim))).max())
 
 
+def _boundary_velocity_delta(previous_values: np.ndarray, incoming_values: np.ndarray, index: int | None = None) -> float:
+    if previous_values.shape[0] < 2 or incoming_values.shape[0] < 2:
+        return 0.0
+    previous_delta = previous_values[-1] - previous_values[-2]
+    incoming_delta = incoming_values[1] - incoming_values[0]
+    if index is not None and previous_delta.ndim >= 2:
+        previous_delta = previous_delta[index]
+        incoming_delta = incoming_delta[index]
+    return float(np.linalg.norm(incoming_delta - previous_delta, axis=-1).mean())
+
+
+def _foot_slide_proxy(joints: np.ndarray) -> float:
+    if joints.shape[0] < 2 or joints.shape[1] == 0:
+        return 0.0
+    candidate_indices = [index for index in (7, 8, 10, 11, 20, 21) if index < joints.shape[1]]
+    if not candidate_indices:
+        candidate_indices = list(range(min(4, joints.shape[1])))
+    foot_deltas = np.linalg.norm(np.diff(joints[:, candidate_indices, :], axis=0), axis=-1)
+    return float(np.percentile(foot_deltas, 90.0)) if foot_deltas.size else 0.0
+
+
 def _smooth_array_window(values: np.ndarray, start_index: int, end_index: int, passes: int, strength: float = 0.72) -> None:
     if end_index <= start_index or passes <= 0:
         return
@@ -346,6 +367,18 @@ def _smooth_array_window(values: np.ndarray, start_index: int, end_index: int, p
             averaged += padded[kernel_index : kernel_index + len(window)] * weight
         window = window * (1.0 - strength) + averaged * strength
     values[start_index : end_index + 1] = window
+
+
+def _limit_temporal_delta_window(values: np.ndarray, start_index: int, end_index: int, target_delta: float) -> None:
+    if end_index <= start_index or target_delta <= 0.0:
+        return
+    start_index = max(0, start_index)
+    end_index = min(values.shape[0] - 1, end_index)
+    for index in range(start_index + 1, end_index + 1):
+        delta = values[index] - values[index - 1]
+        mean_delta = float(np.linalg.norm(delta, axis=-1).mean())
+        if mean_delta > target_delta:
+            values[index] = values[index - 1] + delta * float(target_delta / max(mean_delta, 1e-8))
 
 
 def _smooth_transition_windows(
@@ -370,6 +403,8 @@ def _smooth_transition_windows(
         before_joints = joints[window_start : window_end + 1].copy()
         _smooth_array_window(vertices, window_start, window_end, passes=passes)
         _smooth_array_window(joints, window_start, window_end, passes=passes)
+        _limit_temporal_delta_window(vertices, window_start, window_end, target_delta=0.048)
+        _limit_temporal_delta_window(joints, window_start, window_end, target_delta=0.06)
         after_vertices = vertices[window_start : window_end + 1]
         after_joints = joints[window_start : window_end + 1]
         report.update(
@@ -499,6 +534,19 @@ def compose_stitched_mesh_sequence(
                     "joint_delta_after_blend": round(_mean_vertex_delta(previous["aligned_joints"][-1], aligned_joints[0]), 6),
                     "vertex_delta_before_blend": round(_mean_vertex_delta(previous["aligned_vertices"][-1], pre_blend_vertices_0), 6),
                     "vertex_delta_after_blend": round(_mean_vertex_delta(previous["aligned_vertices"][-1], aligned_vertices[0]), 6),
+                    "root_velocity_delta_proxy": round(
+                        _boundary_velocity_delta(previous["aligned_joints"], aligned_joints, index=0),
+                        6,
+                    ),
+                    "root_acceleration_discontinuity_proxy": round(
+                        _boundary_velocity_delta(previous["aligned_joints"], aligned_joints, index=0) * float(fps),
+                        6,
+                    ),
+                    "joint_jerk_proxy": round(_boundary_velocity_delta(previous["aligned_joints"], aligned_joints), 6),
+                    "foot_slide_proxy": round(
+                        max(_foot_slide_proxy(previous["aligned_joints"][-min(6, len(previous["aligned_joints"])) :]), _foot_slide_proxy(aligned_joints[: min(6, len(aligned_joints))])),
+                        6,
+                    ),
                 }
             )
 
@@ -833,6 +881,9 @@ def build_mesh_stitch_report(
             "max_vertex_delta_after_blend": round(_max_metric(transition_reports, "vertex_delta_after_blend"), 6),
             "max_temporal_joint_delta_after_smoothing": round(_max_metric(transition_reports, "max_temporal_joint_delta_after_smoothing"), 6),
             "max_temporal_vertex_delta_after_smoothing": round(_max_metric(transition_reports, "max_temporal_vertex_delta_after_smoothing"), 6),
+            "max_root_acceleration_discontinuity_proxy": round(_max_metric(transition_reports, "root_acceleration_discontinuity_proxy"), 6),
+            "max_joint_jerk_proxy": round(_max_metric(transition_reports, "joint_jerk_proxy"), 6),
+            "max_foot_slide_proxy": round(_max_metric(transition_reports, "foot_slide_proxy"), 6),
             "max_rhythm_lock_frame_error": int(_max_metric(rhythm_lock_reports, "frame_error")),
             "cache_miss_count": sum(1 for item in cache_summaries if str(item.get("status")) != "hit"),
         },
@@ -888,12 +939,13 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
 
     def streaming_rows() -> str:
         if not streaming_decisions:
-            return "<tr><td colspan=\"9\">No streaming decision records.</td></tr>"
+            return "<tr><td colspan=\"10\">No streaming decision records.</td></tr>"
         rows = []
         for item in streaming_decisions:
             target = dict(item.get("target_time_sec", {}) or {})
             guard = dict(item.get("future_visibility_guard", {}) or {})
             score = dict(item.get("score_breakdown", {}) or {})
+            source_frames = dict(item.get("source_frame_range", {}) or {})
             rows.append(
                 "<tr>"
                 f"<td>{html.escape(str(item.get('index')))}</td>"
@@ -902,6 +954,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
                 f"<td>{html.escape(str(item.get('available_audio_until_sec')))}</td>"
                 f"<td>{html.escape(str(target.get('start')))}-{html.escape(str(target.get('end')))}s</td>"
                 f"<td>{html.escape(str(item.get('selected_unit_id')))}</td>"
+                f"<td>{html.escape(str(item.get('source_sequence')))}:{html.escape(str(source_frames.get('start')))}-{html.escape(str(source_frames.get('end_exclusive')))}</td>"
                 f"<td>{html.escape(str(item.get('target_energy')))} / {html.escape(str(item.get('target_bpm')))}</td>"
                 f"<td>{html.escape(str(item.get('speed_scale')))} / {html.escape(str(item.get('score')))}</td>"
                 f"<td>{html.escape(str(guard.get('passed')))} r={html.escape(str(score.get('rhythm_lock')))} t={html.escape(str(score.get('transition_smoothness')))}</td>"
@@ -1114,7 +1167,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
       </table>
       <h2>Streaming Decisions</h2>
       <table>
-        <thead><tr><th>step</th><th>decision</th><th>playhead</th><th>available</th><th>target</th><th>unit</th><th>energy/bpm</th><th>speed/score</th><th>guard/scores</th></tr></thead>
+        <thead><tr><th>step</th><th>decision</th><th>playhead</th><th>available</th><th>target</th><th>unit</th><th>source</th><th>energy/bpm</th><th>speed/score</th><th>guard/scores</th></tr></thead>
         <tbody>{streaming_rows()}</tbody>
       </table>
       <h2>Transitions</h2>

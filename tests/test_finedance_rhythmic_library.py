@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 
 from music_motion_lab.pipelines.finedance_rhythmic_library import (
+    build_motion_library_coverage_report,
     build_finedance_rhythmic_library_showcase,
     build_finedance_rhythmic_smplx_library,
 )
@@ -124,6 +125,23 @@ class FineDanceRhythmicLibraryTests(unittest.TestCase):
             chainable = [unit for unit in library.units if unit["compatible_next_units"]]
             self.assertTrue(chainable)
             self.assertTrue(chainable[0]["compatible_next_units"][0].startswith("finedance_001_"))
+
+    def test_builds_multi_beat_set_and_coverage_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            raw_root = Path(tmpdir) / "finedance"
+            _write_motion(raw_root, "001")
+
+            library = build_finedance_rhythmic_smplx_library(
+                audio_feature_report=_report(),
+                raw_root=raw_root,
+                unit_beat_set=[2, 4, 8, 16],
+            )
+            durations = {unit["duration_beats"] for unit in library.units}
+
+            self.assertTrue({2, 4, 8, 16}.issubset(durations))
+            report = build_motion_library_coverage_report(library, required_unit_beats=[2, 4, 8, 16])
+            self.assertTrue(report["acceptance"]["has_required_2_4_8_16_units"])
+            self.assertFalse(report["coverage"]["missing_unit_beats"])
 
 
 if __name__ == "__main__":

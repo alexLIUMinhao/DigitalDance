@@ -182,8 +182,11 @@ def build_parser() -> argparse.ArgumentParser:
     rhythmic_library.add_argument("--include-fallback", action="store_true", help="Include non-rhythmic-first FineDance entries too.")
     rhythmic_library.add_argument("--max-sequences", type=int, default=0, help="Optional limit for smoke builds. Use 0 for all selected sequences.")
     rhythmic_library.add_argument("--unit-beats", type=int, default=8)
+    rhythmic_library.add_argument("--unit-beat-set", help="Comma-separated unit durations in beats, e.g. 2,4,8,16.")
     rhythmic_library.add_argument("--accent-unit-beats", type=int, default=4)
     rhythmic_library.add_argument("--max-unit-beats", type=int, default=16)
+    rhythmic_library.add_argument("--coverage-report", action="store_true", help="Also write an M10 coverage report.")
+    rhythmic_library.add_argument("--coverage-output", help="Optional coverage report path inside outputs/.")
 
     finedance_song = subparsers.add_parser(
         "build-finedance-song-event-map",
@@ -216,6 +219,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     annotate_units.add_argument("--input-library", required=True)
     annotate_units.add_argument("--output", help="Optional annotated library JSON path inside outputs/.")
+    annotate_units.add_argument("--contact-mode", choices=["root", "joints"], default="root")
 
     stream_plan = subparsers.add_parser(
         "simulate-streaming-smplx-plan",
@@ -225,6 +229,8 @@ def build_parser() -> argparse.ArgumentParser:
     stream_plan.add_argument("--library", required=True)
     stream_plan.add_argument("--output", help="Optional JSONL stream plan output path inside outputs/.")
     stream_plan.add_argument("--max-steps", type=int, default=0)
+    stream_plan.add_argument("--planner-version", choices=["m9", "m12"], default="m9")
+    stream_plan.add_argument("--tail-policy", choices=["none", "recover"], default="none")
 
     stream_render = subparsers.add_parser(
         "render-streaming-smplx-mesh-review",
@@ -248,6 +254,36 @@ def build_parser() -> argparse.ArgumentParser:
     stream_render.add_argument("--transition-smooth-frames", type=int, default=12)
     stream_render.add_argument("--transition-smooth-passes", type=int, default=2)
 
+    coverage = subparsers.add_parser("evaluate-motion-library-coverage", help="Write an M10 coverage report for a FineDance motion library.")
+    coverage.add_argument("--library", required=True)
+    coverage.add_argument("--output", help="Optional coverage report path inside outputs/.")
+    coverage.add_argument("--unit-beat-set", default="2,4,8,16")
+
+    calibrate = subparsers.add_parser("calibrate-song-event-rail", help="Create a calibrated song event rail from streaming events and optional manual overrides.")
+    calibrate.add_argument("--stream-events", required=True)
+    calibrate.add_argument("--manual-overrides", help="Optional override JSON with beats/downbeats/accents/drum_hits.")
+    calibrate.add_argument("--output", help="Optional calibrated event-map output path inside outputs/.")
+
+    event_eval = subparsers.add_parser("evaluate-streaming-event-rail", help="Evaluate streaming beat/downbeat/drum events against a calibrated reference.")
+    event_eval.add_argument("--stream-events", required=True)
+    event_eval.add_argument("--reference-event-map", help="Optional calibrated event-map JSON. Defaults to self-consistency baseline.")
+    event_eval.add_argument("--output", help="Optional event-rail evaluation report path inside outputs/.")
+    event_eval.add_argument("--tolerance-sec", type=float, default=2.0 / 30.0)
+
+    planner_eval = subparsers.add_parser("evaluate-streaming-smplx-plan", help="Evaluate an M12 streaming SMPL-X plan for speed, gaps, and future-visibility safety.")
+    planner_eval.add_argument("--stream-plan", required=True)
+    planner_eval.add_argument("--output", help="Optional planner evaluation report path inside outputs/.")
+
+    transition_eval = subparsers.add_parser("build-motion-transition-report", help="Write an M13 transition-quality report from a mesh review report.")
+    transition_eval.add_argument("--mesh-report", required=True)
+    transition_eval.add_argument("--output", help="Optional transition report path inside outputs/.")
+
+    runtime_bundle = subparsers.add_parser("export-unity-streaming-runtime-bundle", help="Export an M14 Unity/endpoint runtime bundle contract.")
+    runtime_bundle.add_argument("--library", required=True)
+    runtime_bundle.add_argument("--stream-plan")
+    runtime_bundle.add_argument("--stream-events")
+    runtime_bundle.add_argument("--output-dir", help="Optional output directory inside outputs/.")
+
     return parser
 
 
@@ -257,6 +293,20 @@ def _default_song_output(song_id: str) -> str:
 
 def _default_plan_output(song_id: str) -> str:
     return f"choreography_plans/{slugify(song_id)}_choreography_plan.json"
+
+
+def _parse_int_set(raw_value: str | None) -> list[int] | None:
+    if raw_value is None:
+        return None
+    values: list[int] = []
+    for part in str(raw_value).split(","):
+        stripped = part.strip()
+        if not stripped:
+            continue
+        value = int(stripped)
+        if value > 0 and value not in values:
+            values.append(value)
+    return values or None
 
 
 def _blender_app_bundle_path(blender_path: str) -> Path | None:
@@ -437,6 +487,7 @@ def main() -> int:
 
     if args.command == "build-finedance-rhythmic-library":
         from .pipelines.finedance_rhythmic_library import (
+            build_motion_library_coverage_report,
             build_finedance_rhythmic_library_showcase,
             build_finedance_rhythmic_smplx_library,
         )
@@ -448,6 +499,7 @@ def main() -> int:
             raw_root=raw_root,
             rhythmic_only=not args.include_fallback,
             unit_beats=args.unit_beats,
+            unit_beat_set=_parse_int_set(args.unit_beat_set),
             accent_unit_beats=args.accent_unit_beats,
             max_unit_beats=args.max_unit_beats,
             max_sequences=args.max_sequences,
@@ -463,6 +515,14 @@ def main() -> int:
         write_json(summary_output_path, showcase)
         print(output_path)
         print(summary_output_path)
+        if args.coverage_report:
+            coverage = build_motion_library_coverage_report(payload, required_unit_beats=_parse_int_set(args.unit_beat_set) or [2, 4, 8, 16])
+            coverage_path = ensure_output_path(
+                config,
+                args.coverage_output or "reports/milestone_m10_motion_library_coverage_report.json",
+            )
+            write_json(coverage_path, coverage)
+            print(coverage_path)
         return 0
 
     if args.command == "build-finedance-song-event-map":
@@ -506,7 +566,7 @@ def main() -> int:
 
         input_path = resolve_input_path(config, args.input_library)
         motion_library = load_json(input_path)
-        payload = annotate_finedance_motion_units(motion_library=motion_library, project_root=config.project_root)
+        payload = annotate_finedance_motion_units(motion_library=motion_library, project_root=config.project_root, contact_mode=args.contact_mode)
         default_name = f"motion_libraries/{slugify(str(payload.get('library_id', input_path.stem)))}.json"
         output_path = ensure_output_path(config, args.output or default_name)
         write_json(output_path, payload)
@@ -524,12 +584,84 @@ def main() -> int:
             annotated_library=library,
             stream_events_path=str(stream_events_path),
             max_steps=args.max_steps,
+            planner_version=args.planner_version,
+            tail_policy=args.tail_policy,
         )
         header = next((record for record in records if record.get("kind") == "stream_plan_header"), {})
         song_id = str(header.get("song_id", "stream_song") or "stream_song")
         output_path = ensure_output_path(config, args.output or f"streaming/{slugify(song_id)}_stream_plan.jsonl")
         write_jsonl(output_path, records)
         print(output_path)
+        return 0
+
+    if args.command == "evaluate-motion-library-coverage":
+        from .pipelines.finedance_rhythmic_library import build_motion_library_coverage_report
+
+        library = load_json(resolve_input_path(config, args.library))
+        report = build_motion_library_coverage_report(library, required_unit_beats=_parse_int_set(args.unit_beat_set) or [2, 4, 8, 16])
+        output_path = ensure_output_path(config, args.output or "reports/milestone_m10_motion_library_coverage_report.json")
+        write_json(output_path, report)
+        print(output_path)
+        return 0
+
+    if args.command == "calibrate-song-event-rail":
+        from .pipelines.streaming_smplx import calibrate_song_event_rail, read_jsonl
+
+        stream_events_path = resolve_input_path(config, args.stream_events)
+        stream_events = read_jsonl(stream_events_path)
+        overrides = load_json(resolve_input_path(config, args.manual_overrides)) if args.manual_overrides else None
+        report = calibrate_song_event_rail(stream_event_records=stream_events, manual_overrides=overrides)
+        output_path = ensure_output_path(config, args.output or f"song_event_maps/{slugify(str(report.get('song_id', 'stream_song')))}_calibrated_event_rail.json")
+        write_json(output_path, report)
+        print(output_path)
+        return 0
+
+    if args.command == "evaluate-streaming-event-rail":
+        from .pipelines.streaming_smplx import evaluate_streaming_event_rail, read_jsonl
+
+        stream_events = read_jsonl(resolve_input_path(config, args.stream_events))
+        reference = load_json(resolve_input_path(config, args.reference_event_map)) if args.reference_event_map else None
+        report = evaluate_streaming_event_rail(stream_event_records=stream_events, reference_event_map=reference, tolerance_sec=args.tolerance_sec)
+        output_path = ensure_output_path(config, args.output or "reports/milestone_m11_streaming_event_rail_eval.json")
+        write_json(output_path, report)
+        print(output_path)
+        return 0
+
+    if args.command == "evaluate-streaming-smplx-plan":
+        from .pipelines.streaming_smplx import evaluate_streaming_planner_records, read_jsonl
+
+        stream_plan = read_jsonl(resolve_input_path(config, args.stream_plan))
+        report = evaluate_streaming_planner_records(stream_plan)
+        output_path = ensure_output_path(config, args.output or "reports/milestone_m12_streaming_planner_eval.json")
+        write_json(output_path, report)
+        print(output_path)
+        return 0
+
+    if args.command == "build-motion-transition-report":
+        from .pipelines.streaming_smplx import build_motion_transition_report
+
+        mesh_report = load_json(resolve_input_path(config, args.mesh_report))
+        report = build_motion_transition_report(mesh_report)
+        output_path = ensure_output_path(config, args.output or "reports/milestone_m13_motion_transition_report.json")
+        write_json(output_path, report)
+        print(output_path)
+        return 0
+
+    if args.command == "export-unity-streaming-runtime-bundle":
+        from .pipelines.streaming_smplx import export_unity_streaming_runtime_bundle, read_jsonl
+
+        library = load_json(resolve_input_path(config, args.library))
+        stream_plan = read_jsonl(resolve_input_path(config, args.stream_plan)) if args.stream_plan else None
+        stream_events = read_jsonl(resolve_input_path(config, args.stream_events)) if args.stream_events else None
+        output_dir = ensure_output_path(config, args.output_dir or "runtime_bundles/unity_streaming_smplx_bundle")
+        report = export_unity_streaming_runtime_bundle(
+            output_dir=output_dir,
+            annotated_library=library,
+            stream_plan_records=stream_plan,
+            stream_event_records=stream_events,
+        )
+        print(report["bundle_dir"])
+        print(str(output_dir / "bundle_report.json"))
         return 0
 
     if args.command == "render-streaming-smplx-mesh-review":

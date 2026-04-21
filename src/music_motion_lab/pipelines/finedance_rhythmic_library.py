@@ -19,6 +19,7 @@ DEFAULT_LIBRARY_ID = "finedance_rhythmic_smplx_library_v1"
 DEFAULT_UNIT_BEATS = 8
 DEFAULT_ACCENT_UNIT_BEATS = 4
 DEFAULT_MAX_UNIT_BEATS = 16
+DEFAULT_UNIT_BEAT_SET = (2, 4, 8, 16)
 
 
 def _clamp(value: int, low: int, high: int) -> int:
@@ -96,6 +97,16 @@ def _median_beat_spacing(beats: list[dict[str, Any]]) -> float:
     if not intervals:
         return 60.0 / 120.0
     return float(np.median(np.asarray(intervals, dtype=np.float32)))
+
+
+def normalize_unit_beat_set(unit_beat_set: list[int] | tuple[int, ...] | None, fallback: int = DEFAULT_UNIT_BEATS) -> list[int]:
+    values: list[int] = []
+    for raw_value in list(unit_beat_set or [fallback]):
+        value = int(raw_value)
+        if value <= 0 or value in values:
+            continue
+        values.append(value)
+    return sorted(values) or [int(fallback)]
 
 
 def _beat_time(beats: list[dict[str, Any]], beat_index: int, spacing: float) -> float:
@@ -218,24 +229,31 @@ def _candidate_segments(
     unit_beats: int,
     accent_unit_beats: int,
     max_unit_beats: int,
+    unit_beat_set: list[int] | tuple[int, ...] | None = None,
 ) -> list[dict[str, Any]]:
     if not beats:
         return []
 
     segments: dict[tuple[int, int, str], dict[str, Any]] = {}
+    beat_lengths = [
+        value
+        for value in normalize_unit_beat_set(unit_beat_set, fallback=unit_beats)
+        if value <= max_unit_beats
+    ] or [min(int(unit_beats), int(max_unit_beats))]
     downbeat_indices = [
         _safe_int(beat.get("index"), index)
         for index, beat in enumerate(beats)
         if bool(beat.get("is_downbeat", False))
     ] or [0]
     for beat_index in downbeat_indices:
-        end_beat = beat_index + unit_beats
-        if end_beat <= len(beats) and unit_beats <= max_unit_beats:
-            segments[(beat_index, end_beat, "downbeat_phrase")] = {
-                "start_beat": beat_index,
-                "end_beat_exclusive": end_beat,
-                "source": "downbeat_phrase",
-            }
+        for beat_length in beat_lengths:
+            end_beat = beat_index + beat_length
+            if end_beat <= len(beats):
+                segments[(beat_index, end_beat, f"downbeat_phrase_{beat_length}b")] = {
+                    "start_beat": beat_index,
+                    "end_beat_exclusive": end_beat,
+                    "source": "downbeat_phrase",
+                }
 
     for accent in accent_candidates:
         if _safe_int(accent.get("level"), 0) < 3 and _safe_float(accent.get("confidence")) < 0.78:
@@ -243,14 +261,15 @@ def _candidate_segments(
         source_beat = _safe_int(accent.get("source_beat_index"), -1)
         if source_beat < 0:
             continue
-        start_beat = max(0, source_beat - (source_beat % max(1, accent_unit_beats)))
-        end_beat = start_beat + accent_unit_beats
-        if end_beat <= len(beats):
-            segments[(start_beat, end_beat, "accent_window")] = {
-                "start_beat": start_beat,
-                "end_beat_exclusive": end_beat,
-                "source": "accent_window",
-            }
+        for beat_length in [value for value in beat_lengths if value <= max(1, accent_unit_beats)] or [accent_unit_beats]:
+            start_beat = max(0, source_beat - (source_beat % max(1, beat_length)))
+            end_beat = start_beat + beat_length
+            if end_beat <= len(beats):
+                segments[(start_beat, end_beat, f"accent_window_{beat_length}b")] = {
+                    "start_beat": start_beat,
+                    "end_beat_exclusive": end_beat,
+                    "source": "accent_window",
+                }
 
     return sorted(segments.values(), key=lambda item: (item["start_beat"], item["end_beat_exclusive"], item["source"]))
 
@@ -358,6 +377,7 @@ def build_finedance_rhythmic_smplx_library(
     unit_beats: int = DEFAULT_UNIT_BEATS,
     accent_unit_beats: int = DEFAULT_ACCENT_UNIT_BEATS,
     max_unit_beats: int = DEFAULT_MAX_UNIT_BEATS,
+    unit_beat_set: list[int] | tuple[int, ...] | None = None,
     max_sequences: int = 0,
 ) -> MotionUnitLibrary:
     selected_entries: list[dict[str, Any]] = []
@@ -397,6 +417,7 @@ def build_finedance_rhythmic_smplx_library(
             unit_beats=int(unit_beats),
             accent_unit_beats=int(accent_unit_beats),
             max_unit_beats=int(max_unit_beats),
+            unit_beat_set=unit_beat_set,
         ):
             start_beat = int(segment["start_beat"])
             end_beat = int(segment["end_beat_exclusive"])
@@ -468,7 +489,7 @@ def build_finedance_rhythmic_smplx_library(
     notes = [
         "FineDance rhythmic-first SMPL-X source motion library generated from M2-2 Event Rail audio feature reports.",
         "Units reference raw FineDance motion frames and beat/accent keyframes; mesh vertices are generated later by the SMPL-X stitch preview stage.",
-        f"rhythmic_only={rhythmic_only}; selected_sequences={len(selected_entries)}; skipped_sequences={len(skipped)}.",
+        f"rhythmic_only={rhythmic_only}; selected_sequences={len(selected_entries)}; skipped_sequences={len(skipped)}; unit_beat_set={normalize_unit_beat_set(unit_beat_set, unit_beats)}.",
     ]
     if skipped:
         notes.append(f"Skipped sequence samples: {skipped[:8]}.")
@@ -481,3 +502,84 @@ def build_finedance_rhythmic_smplx_library(
         notes=notes,
         generated_at_utc=utc_now_iso(),
     )
+
+
+def build_motion_library_coverage_report(
+    motion_library: dict[str, Any] | MotionUnitLibrary,
+    required_unit_beats: list[int] | tuple[int, ...] = DEFAULT_UNIT_BEAT_SET,
+) -> dict[str, Any]:
+    payload = motion_library.to_dict() if hasattr(motion_library, "to_dict") else dict(motion_library)
+    units = [dict(unit) for unit in list(payload.get("units", []) or [])]
+    required = normalize_unit_beat_set(required_unit_beats, fallback=DEFAULT_UNIT_BEATS)
+    duration_counts = Counter(_safe_int(unit.get("duration_beats"), 0) for unit in units)
+    sequence_counts = Counter(str(unit.get("source_sequence", "unknown")) for unit in units)
+    energy_counts = Counter(str(unit.get("energy", "unknown")) for unit in units)
+    style_counts: Counter[str] = Counter()
+    segment_source_counts = Counter(str(unit.get("segment_source", "unknown")) for unit in units)
+    contact_count = 0
+    accent_lock_count = 0
+    root_speeds: list[float] = []
+    yaw_values: list[float] = []
+    retime_mins: list[float] = []
+    retime_maxs: list[float] = []
+    for unit in units:
+        style_counts.update(str(tag) for tag in list(unit.get("style_tags", []) or []))
+        contact_count += 1 if unit.get("foot_contact_windows") else 0
+        accent_lock_count += len(list(unit.get("accent_lock_frames", []) or []))
+        root_velocity = dict(unit.get("root_velocity", {}) or {})
+        transition_profile = dict(unit.get("transition_profile", {}) or {})
+        root_speeds.append(
+            _safe_float(root_velocity.get("mean_speed"), _safe_float(transition_profile.get("mean_root_speed")))
+        )
+        yaw_values.append(abs(_safe_float(unit.get("yaw_delta"), _safe_float(transition_profile.get("yaw_delta_deg")))))
+        safe_range = dict(unit.get("safe_retime_range", {}) or {})
+        retime_mins.append(_safe_float(safe_range.get("min"), 0.85))
+        retime_maxs.append(_safe_float(safe_range.get("max"), 1.15))
+    missing_durations = [value for value in required if duration_counts.get(value, 0) == 0]
+    speed_values = np.asarray(root_speeds or [0.0], dtype=np.float32)
+    yaw_array = np.asarray(yaw_values or [0.0], dtype=np.float32)
+    coverage_gaps: list[str] = []
+    if missing_durations:
+        coverage_gaps.append(f"missing_unit_beats:{','.join(str(value) for value in missing_durations)}")
+    if len(sequence_counts) < 3:
+        coverage_gaps.append("sequence_count_below_3")
+    if units and contact_count / max(1, len(units)) < 0.5:
+        coverage_gaps.append("foot_contact_coverage_below_50pct")
+    if len(energy_counts) < 2:
+        coverage_gaps.append("energy_diversity_low")
+    return {
+        "schema_version": 1,
+        "report_id": f"{payload.get('library_id', 'motion_library')}_coverage_report",
+        "library_id": payload.get("library_id"),
+        "generated_at_utc": utc_now_iso(),
+        "counts": {
+            "unit_count": len(units),
+            "sequence_count": len(sequence_counts),
+            "duration_beats": {str(key): int(value) for key, value in sorted(duration_counts.items()) if key > 0},
+            "energy": dict(energy_counts),
+            "style_tags": dict(style_counts.most_common(20)),
+            "segment_source": dict(segment_source_counts),
+        },
+        "coverage": {
+            "required_unit_beats": required,
+            "missing_unit_beats": missing_durations,
+            "foot_contact_unit_ratio": round(float(contact_count / max(1, len(units))), 5),
+            "accent_locks_per_unit": round(float(accent_lock_count / max(1, len(units))), 5),
+            "root_speed_mean": round(float(speed_values.mean()), 5),
+            "root_speed_p90": round(float(np.percentile(speed_values, 90.0)), 5),
+            "yaw_delta_p90": round(float(np.percentile(yaw_array, 90.0)), 5),
+            "safe_retime_min": round(float(min(retime_mins or [0.85])), 5),
+            "safe_retime_max": round(float(max(retime_maxs or [1.15])), 5),
+        },
+        "top_sequences": [{"sequence_id": key, "unit_count": int(value)} for key, value in sequence_counts.most_common(20)],
+        "coverage_gaps": coverage_gaps,
+        "acceptance": {
+            "has_required_2_4_8_16_units": not missing_durations,
+            "has_multi_sequence_coverage": len(sequence_counts) >= 3,
+            "has_contact_annotations": contact_count > 0,
+        },
+        "notes": [
+            "M10 coverage report for FineDance rhythmic-first action-library breadth.",
+            "Speed-scale acceptance is evaluated by streaming planner reports because it depends on target song tempo.",
+        ],
+    }

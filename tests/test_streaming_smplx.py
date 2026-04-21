@@ -7,7 +7,12 @@ import soundfile as sf
 
 from music_motion_lab.pipelines.streaming_smplx import (
     annotate_finedance_motion_units,
+    build_motion_transition_report,
     build_streaming_song_event_records,
+    calibrate_song_event_rail,
+    evaluate_streaming_event_rail,
+    evaluate_streaming_planner_records,
+    export_unity_streaming_runtime_bundle,
     simulate_streaming_smplx_plan_records,
     stream_events_to_song_event_map,
     stream_plan_to_stitch_manifest,
@@ -106,6 +111,7 @@ class StreamingSmplxTests(unittest.TestCase):
             raw_root = Path(tmpdir) / "finedance"
             motion_path = _write_motion(raw_root)
             annotated = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir))
+            joint_annotated = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir), contact_mode="joints")
 
         unit = annotated["units"][0]
         self.assertTrue(annotated["library_id"].endswith("_m9_annotated"))
@@ -125,6 +131,8 @@ class StreamingSmplxTests(unittest.TestCase):
             self.assertIn(key, unit)
         self.assertTrue(unit["count_grid"])
         self.assertGreater(unit["safe_retime_range"]["max"], unit["safe_retime_range"]["min"])
+        self.assertTrue(joint_annotated["library_id"].endswith("_m10_annotated"))
+        self.assertEqual(joint_annotated["units"][0]["annotation_profile"]["contact_mode"], "joints")
 
     def test_streaming_planner_prefers_downbeat_locked_unit_and_keeps_future_guard(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -181,6 +189,66 @@ class StreamingSmplxTests(unittest.TestCase):
                 float(decision["playhead_sec"]) + 2.00001,
             )
         self.assertGreater(decisions[0]["score_breakdown"]["rhythm_lock"], 0.5)
+
+    def test_m12_tail_policy_extends_final_segment_and_evaluator_reports_acceptance(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            motion_path = _write_motion(Path(tmpdir) / "finedance")
+            library = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir), contact_mode="joints")
+        stream_events = [
+            {
+                "kind": "stream_header",
+                "song_id": "tail_demo",
+                "duration_sec": 4.2,
+                "initial_buffer_sec": 2.0,
+                "beats_per_bar": 4,
+                "source_audio_path": "demo.wav",
+            },
+            {
+                "kind": "tick",
+                "tick_index": 0,
+                "playhead_sec": 0.0,
+                "available_audio_until_sec": 2.0,
+                "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.9},
+                "beats": [
+                    {"index": index, "time_sec": index * 0.5, "strength": 0.7, "confidence": 0.9, "is_downbeat": index % 4 == 0}
+                    for index in range(5)
+                ],
+                "downbeats": [{"index": 0, "time_sec": 0.0, "confidence": 0.9, "is_downbeat": True}],
+                "drum_hits": [{"index": 0, "time_sec": 0.0, "strength": 0.95, "kind": "kick"}],
+                "accents": [{"index": 0, "time_sec": 1.0, "strength": 0.8, "kind": "accent_peak"}],
+                "segment_hypotheses": [{"start_time_sec": 0.0, "end_time_sec": 2.0, "duration_beats": 4, "confidence": 0.9}],
+            },
+            {
+                "kind": "tick",
+                "tick_index": 20,
+                "playhead_sec": 2.0,
+                "available_audio_until_sec": 4.0,
+                "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.9},
+                "beats": [
+                    {"index": index, "time_sec": index * 0.5, "strength": 0.7, "confidence": 0.9, "is_downbeat": index % 4 == 0}
+                    for index in range(9)
+                ],
+                "downbeats": [{"index": 1, "time_sec": 2.0, "confidence": 0.9, "is_downbeat": True}],
+                "drum_hits": [{"index": 0, "time_sec": 2.0, "strength": 0.95, "kind": "kick"}],
+                "accents": [{"index": 0, "time_sec": 3.0, "strength": 0.8, "kind": "accent_peak"}],
+                "segment_hypotheses": [{"start_time_sec": 2.0, "end_time_sec": 4.0, "duration_beats": 4, "confidence": 0.9}],
+            },
+        ]
+
+        plan = simulate_streaming_smplx_plan_records(
+            stream_events,
+            library,
+            stream_events_path="/tmp/events.jsonl",
+            planner_version="m12",
+            tail_policy="recover",
+        )
+        decisions = [record for record in plan if record["kind"] == "decision"]
+        evaluation = evaluate_streaming_planner_records(plan)
+
+        self.assertEqual(decisions[-1]["target_time_sec"]["end"], 4.2)
+        self.assertTrue(decisions[-1]["switch_reason"]["tail_extended_to_song_end"])
+        self.assertTrue(evaluation["acceptance"]["no_gaps"])
+        self.assertTrue(evaluation["acceptance"]["non_tail_max_speed_le_1_25"])
 
     def test_stream_plan_to_manifest_is_continuous_and_carries_decisions(self) -> None:
         decisions = [
@@ -254,6 +322,51 @@ class StreamingSmplxTests(unittest.TestCase):
         self.assertEqual(len(event_map["downbeats"]), 1)
         self.assertEqual(len(event_map["drum_hits"]), 1)
         self.assertTrue(event_map["manual_review_required"])
+
+    def test_calibration_event_eval_transition_report_and_runtime_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir) / "bundle"
+            motion_path = _write_motion(Path(tmpdir) / "finedance")
+            library = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir), contact_mode="joints")
+            records = [
+                {"kind": "stream_header", "song_id": "demo", "duration_sec": 1.0, "source_audio_path": "demo.wav", "beats_per_bar": 4},
+                {
+                    "kind": "tick",
+                    "playhead_sec": 0.0,
+                    "available_audio_until_sec": 1.0,
+                    "beats": [{"time_sec": 0.0, "confidence": 0.9, "is_downbeat": True, "strength": 0.8}],
+                    "downbeats": [{"time_sec": 0.0, "confidence": 0.9, "is_downbeat": True}],
+                    "accents": [{"time_sec": 0.5, "strength": 0.7}],
+                    "drum_hits": [{"time_sec": 0.0, "strength": 0.9, "kind": "kick"}],
+                },
+            ]
+            calibrated = calibrate_song_event_rail(records, manual_overrides={"beats": [{"time_sec": 0.0, "confidence": 1.0}]})
+            event_eval = evaluate_streaming_event_rail(records, reference_event_map=calibrated)
+            transition_report = build_motion_transition_report(
+                {
+                    "report_id": "mesh_report",
+                    "song_id": "demo",
+                    "metrics": {
+                        "max_temporal_vertex_delta_after_smoothing": 0.04,
+                        "max_root_acceleration_discontinuity_proxy": 0.1,
+                        "max_joint_jerk_proxy": 0.2,
+                        "max_foot_slide_proxy": 0.01,
+                    },
+                    "transitions": [{"index": 0, "outgoing_step": 0, "incoming_step": 1, "blend_frames": 10}],
+                }
+            )
+            bundle_report = export_unity_streaming_runtime_bundle(
+                output_dir=output_dir,
+                annotated_library=library,
+                stream_event_records=records,
+            )
+            bundle_manifest_exists = (output_dir / "bundle_manifest.json").exists()
+
+        self.assertFalse(calibrated["manual_review_required"])
+        self.assertTrue(event_eval["acceptance"]["future_safe"])
+        self.assertTrue(transition_report["acceptance"]["vertex_delta_le_0_05"])
+        self.assertTrue(bundle_report["acceptance"]["does_not_require_python_smplx_runtime"])
+        self.assertTrue(bundle_manifest_exists)
 
 
 if __name__ == "__main__":

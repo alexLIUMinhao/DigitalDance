@@ -18,6 +18,8 @@ DEFAULT_ROLLING_WINDOW_SEC = 8.0
 DEFAULT_TEMPO_WINDOW_SEC = 16.0
 DEFAULT_STREAM_FPS = 30
 DEFAULT_BLEND_FRAMES = 10
+DEFAULT_SAFE_RETIME_MIN = 0.85
+DEFAULT_SAFE_RETIME_MAX = 1.15
 
 
 def _safe_float(value: Any, fallback: float = 0.0) -> float:
@@ -130,6 +132,48 @@ def _tempo_state_for_window(
     }
 
 
+def _normalize_stream_tempo_state(
+    tempo_state: dict[str, Any],
+    sample_rate: int,
+    hop_size: int,
+    previous_bpm: float | None,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    primary_bpm = max(1.0, _safe_float(tempo_state.get("bpm"), 120.0))
+    primary_confidence = _safe_float(tempo_state.get("confidence"), 0.0)
+    candidates: list[dict[str, Any]] = []
+    for label, factor, confidence_scale in (
+        ("stream_half_time", 0.5, 0.92 if primary_bpm > 150.0 else 0.55),
+        ("stream_primary", 1.0, 1.0),
+        ("stream_double_time", 2.0, 0.88 if primary_bpm < 75.0 else 0.4),
+    ):
+        bpm = primary_bpm * factor
+        if bpm < 45.0 or bpm > 220.0:
+            continue
+        range_penalty = 0.0
+        if bpm < 78.0:
+            range_penalty = (78.0 - bpm) / 78.0
+        elif bpm > 155.0:
+            range_penalty = (bpm - 155.0) / 155.0
+        continuity_penalty = 0.0
+        if previous_bpm is not None and previous_bpm > 1.0:
+            continuity_penalty = min(0.45, abs(bpm - previous_bpm) / 120.0)
+        score = _clamp(primary_confidence * confidence_scale - range_penalty * 0.45 - continuity_penalty, 0.0, 1.0)
+        candidates.append(
+            {
+                "label": label,
+                "bpm": round(float(bpm), 5),
+                "spacing_sec": round(float(60.0 / max(bpm, 1e-6)), 5),
+                "spacing_frames": int(max(1, round((60.0 / max(bpm, 1e-6)) * sample_rate / max(1, hop_size)))),
+                "offset_sec": tempo_state.get("offset_sec", 0.0),
+                "confidence": round(float(score), 5),
+            }
+        )
+    candidates.sort(key=lambda item: (_safe_float(item.get("confidence")), item.get("label") == "stream_primary"), reverse=True)
+    selected = dict(candidates[0] if candidates else tempo_state)
+    selected["selected_tempo_label"] = selected.get("label", "stream_primary")
+    return selected, candidates
+
+
 def _beat_times_for_window(
     tempo_state: dict[str, Any],
     start_sec: float,
@@ -236,11 +280,13 @@ def build_streaming_song_event_records(
             "rolling_window_sec": round(float(rolling_window_sec), 5),
             "beats_per_bar": int(beats_per_bar),
             "analysis_mode": "streaming_simulation",
+            "tempo_tracker": "m11_normalized_online_hypotheses",
             "generated_at_utc": utc_now_iso(),
         }
     ]
 
     tempo_cache: dict[str, Any] | None = None
+    previous_selected_bpm: float | None = None
     tempo_update_ticks = max(1, int(round(0.25 / chunk_sec)))
     for tick_index in range(tick_count):
         playhead_sec = min(duration_sec, tick_index * chunk_sec)
@@ -256,7 +302,13 @@ def build_streaming_song_event_records(
                 window_start_sec=tempo_start,
                 available_until_sec=available_until,
             )
-        tempo_state = dict(tempo_cache)
+        tempo_state, tempo_hypotheses = _normalize_stream_tempo_state(
+            dict(tempo_cache),
+            sample_rate=sample_rate,
+            hop_size=hop_size,
+            previous_bpm=previous_selected_bpm,
+        )
+        previous_selected_bpm = _safe_float(tempo_state.get("bpm"), previous_selected_bpm or 120.0)
         beat_window_start = max(0.0, window_start)
         beats = _beat_times_for_window(
             tempo_state=tempo_state,
@@ -293,26 +345,18 @@ def build_streaming_song_event_records(
                 "visible_window_sec": {"start": _round_time(window_start), "end": _round_time(available_until)},
                 "tempo_hypotheses": [
                     {
-                        "label": "stream_primary",
-                        "bpm": tempo_state["bpm"],
-                        "confidence": tempo_state["confidence"],
-                    },
-                    {
-                        "label": "stream_half_time",
-                        "bpm": round(_safe_float(tempo_state.get("bpm"), 120.0) / 2.0, 5),
-                        "confidence": round(_safe_float(tempo_state.get("confidence")) * 0.55, 5),
-                    },
-                    {
-                        "label": "stream_double_time",
-                        "bpm": round(_safe_float(tempo_state.get("bpm"), 120.0) * 2.0, 5),
-                        "confidence": round(_safe_float(tempo_state.get("confidence")) * 0.4, 5),
-                    },
+                        "label": item["label"],
+                        "bpm": item["bpm"],
+                        "confidence": item["confidence"],
+                    }
+                    for item in tempo_hypotheses
                 ],
                 "beat_phase": {
                     "bpm": tempo_state["bpm"],
                     "spacing_sec": tempo_state["spacing_sec"],
                     "offset_sec": tempo_state["offset_sec"],
                     "confidence": tempo_state["confidence"],
+                    "selected_tempo_label": tempo_state.get("selected_tempo_label", "stream_primary"),
                 },
                 "downbeat_confidence": round(float(downbeat_confidence), 5),
                 "analysis_frame": {
@@ -415,7 +459,26 @@ def _motion_segment(project_root: Path, unit: dict[str, Any], motion_cache: dict
     return np.asarray(motion[start:end, :], dtype=np.float32)
 
 
-def _root_speed_profile(segment: np.ndarray | None, fps: float = 30.0) -> dict[str, Any]:
+def _contact_windows_from_activity(activity: np.ndarray, source: str) -> list[dict[str, int | str]]:
+    if activity.size == 0:
+        return []
+    contact_floor = float(np.percentile(activity, 30.0))
+    windows: list[dict[str, int | str]] = []
+    start: int | None = None
+    for index, value in enumerate(activity.tolist()):
+        if value <= contact_floor:
+            if start is None:
+                start = index
+        elif start is not None:
+            if index - start >= 2:
+                windows.append({"start_local_frame": start, "end_local_frame_exclusive": index + 1, "source": source})
+            start = None
+    if start is not None and len(activity) - start >= 2:
+        windows.append({"start_local_frame": start, "end_local_frame_exclusive": len(activity) + 1, "source": source})
+    return windows
+
+
+def _root_speed_profile(segment: np.ndarray | None, fps: float = 30.0, contact_mode: str = "root") -> dict[str, Any]:
     if segment is None or segment.shape[0] < 2 or segment.shape[1] < 3:
         return {
             "mean": 0.0,
@@ -426,6 +489,7 @@ def _root_speed_profile(segment: np.ndarray | None, fps: float = 30.0) -> dict[s
             "curve": [0.0] * 8,
             "motion_accent_local_frames": [],
             "foot_contact_windows": [],
+            "contact_mode": contact_mode,
         }
     root = np.asarray(segment[:, :3], dtype=np.float32)
     velocity = np.diff(root, axis=0) * float(fps)
@@ -442,20 +506,14 @@ def _root_speed_profile(segment: np.ndarray | None, fps: float = 30.0) -> dict[s
                 accent_frames.append(index + 1)
         accent_frames = sorted(accent_frames, key=lambda idx: float(speed[max(0, idx - 1)]), reverse=True)[:8]
         accent_frames.sort()
+    contact_mode = str(contact_mode or "root").lower()
     contact_windows: list[dict[str, int | str]] = []
-    if speed.size:
-        contact_floor = float(np.percentile(speed, 28.0))
-        start: int | None = None
-        for index, value in enumerate(speed.tolist()):
-            if value <= contact_floor:
-                if start is None:
-                    start = index
-            elif start is not None:
-                if index - start >= 2:
-                    contact_windows.append({"start_local_frame": start, "end_local_frame_exclusive": index + 1, "source": "root_speed_proxy"})
-                start = None
-        if start is not None and len(speed) - start >= 2:
-            contact_windows.append({"start_local_frame": start, "end_local_frame_exclusive": len(speed) + 1, "source": "root_speed_proxy"})
+    if contact_mode == "joints" and segment.shape[1] > 45:
+        pose_slice = np.asarray(segment[:, 9 : min(segment.shape[1], 159)], dtype=np.float32)
+        pose_activity = np.linalg.norm(np.diff(pose_slice, axis=0), axis=1) if pose_slice.shape[0] > 1 else np.asarray([], dtype=np.float32)
+        contact_windows = _contact_windows_from_activity(pose_activity, source="joint_pose_velocity_proxy")
+    if not contact_windows and speed.size:
+        contact_windows = _contact_windows_from_activity(speed, source="root_speed_proxy")
     return {
         "mean": round(float(speed.mean()) if speed.size else 0.0, 5),
         "p90": round(float(np.percentile(speed, 90.0)) if speed.size else 0.0, 5),
@@ -465,6 +523,7 @@ def _root_speed_profile(segment: np.ndarray | None, fps: float = 30.0) -> dict[s
         "curve": curve,
         "motion_accent_local_frames": accent_frames,
         "foot_contact_windows": contact_windows[:8],
+        "contact_mode": contact_mode,
     }
 
 
@@ -482,13 +541,13 @@ def _movement_quality(unit: dict[str, Any], root_profile: dict[str, Any]) -> dic
     }
 
 
-def annotate_finedance_motion_units(motion_library: dict[str, Any], project_root: Path) -> dict[str, Any]:
+def annotate_finedance_motion_units(motion_library: dict[str, Any], project_root: Path, contact_mode: str = "root") -> dict[str, Any]:
     motion_cache: dict[str, np.ndarray] = {}
     annotated_units: list[dict[str, Any]] = []
     for unit in list(motion_library.get("units", []) or []):
         annotated = dict(unit)
         segment = _motion_segment(project_root, annotated, motion_cache)
-        root_profile = _root_speed_profile(segment)
+        root_profile = _root_speed_profile(segment, contact_mode=contact_mode)
         count_grid = _count_grid_for_unit(annotated)
         accent_locks = [
             {
@@ -515,6 +574,10 @@ def annotate_finedance_motion_units(motion_library: dict[str, Any], project_root
         annotated.update(
             {
                 "annotation_schema_version": 1,
+                "annotation_profile": {
+                    "milestone": "M10" if str(contact_mode).lower() == "joints" else "M9",
+                    "contact_mode": root_profile.get("contact_mode", contact_mode),
+                },
                 "count_grid": count_grid,
                 "accent_lock_frames": accent_locks,
                 "motion_accent_frames": motion_accent_frames,
@@ -539,17 +602,18 @@ def annotate_finedance_motion_units(motion_library: dict[str, Any], project_root
                 "yaw_delta": round(_safe_float(dict(annotated.get("transition_profile", {}) or {}).get("yaw_delta_deg")), 5),
                 "energy_curve": list(root_profile.get("curve", []) or []),
                 "movement_quality": _movement_quality(annotated, root_profile),
-                "safe_retime_range": {"min": 0.85, "max": 1.15},
+                "safe_retime_range": {"min": DEFAULT_SAFE_RETIME_MIN, "max": DEFAULT_SAFE_RETIME_MAX},
             }
         )
         annotated_units.append(annotated)
     result = dict(motion_library)
     base_id = str(result.get("library_id", "finedance_rhythmic_smplx_library_v1"))
-    result["library_id"] = base_id if base_id.endswith("_m9_annotated") else f"{base_id}_m9_annotated"
+    suffix = "_m10_annotated" if str(contact_mode).lower() == "joints" else "_m9_annotated"
+    result["library_id"] = base_id if base_id.endswith(suffix) else f"{base_id}{suffix}"
     result["units"] = annotated_units
     result["notes"] = [
         *list(result.get("notes", []) or []),
-        "M9 annotations add count-grid locks, movement quality, transition anchors, and safe retime ranges for streaming retrieval.",
+        f"{'M10' if str(contact_mode).lower() == 'joints' else 'M9'} annotations add count-grid locks, movement quality, transition anchors, contact windows, and safe retime ranges for streaming retrieval.",
     ]
     result["generated_at_utc"] = utc_now_iso()
     return result
@@ -722,6 +786,7 @@ def _score_candidate(
     target_end_sec: float,
     target_beats: int,
     target_energy: str,
+    planner_version: str = "m9",
 ) -> tuple[float, dict[str, Any], list[dict[str, Any]], list[float]]:
     beat_phase = dict(tick.get("beat_phase", {}) or {})
     spacing = max(1e-3, _safe_float(beat_phase.get("spacing_sec"), (target_end_sec - target_start_sec) / max(1, target_beats)))
@@ -736,7 +801,8 @@ def _score_candidate(
     )
     transition = _transition_score(previous_unit, candidate)
     style = _music_style_score(candidate, target_energy=target_energy, target_bpm=_safe_float(beat_phase.get("bpm"), 120.0))
-    diversity = max(0.0, 1.0 - recent_units[str(candidate.get("unit_id"))] * 0.35)
+    repeat_penalty = 0.5 if str(planner_version).lower() == "m12" else 0.35
+    diversity = max(0.0, 1.0 - recent_units[str(candidate.get("unit_id"))] * repeat_penalty)
     total = rhythm_score * 0.45 + transition * 0.25 + style * 0.20 + diversity * 0.10
     source_duration = _candidate_source_duration(candidate)
     target_duration = max(1e-3, target_end_sec - target_start_sec)
@@ -745,7 +811,8 @@ def _score_candidate(
     min_retime = _safe_float(safe_range.get("min"), 0.85)
     max_retime = _safe_float(safe_range.get("max"), 1.15)
     if speed_scale < min_retime or speed_scale > max_retime:
-        total -= min(1.0, abs(speed_scale - _clamp(speed_scale, min_retime, max_retime)) * 1.8)
+        speed_penalty_gain = 2.4 if str(planner_version).lower() == "m12" else 1.8
+        total -= min(1.0, abs(speed_scale - _clamp(speed_scale, min_retime, max_retime)) * speed_penalty_gain)
     if abs(_safe_float(candidate.get("duration_beats"), target_beats) - target_beats) > 0.1:
         total -= 0.12
     breakdown = {
@@ -764,6 +831,8 @@ def simulate_streaming_smplx_plan_records(
     annotated_library: dict[str, Any],
     stream_events_path: str | None = None,
     max_steps: int = 0,
+    planner_version: str = "m9",
+    tail_policy: str = "none",
 ) -> list[dict[str, Any]]:
     header = _header(stream_event_records, "stream_header")
     ticks = _records_by_kind(stream_event_records, "tick")
@@ -777,6 +846,9 @@ def simulate_streaming_smplx_plan_records(
     initial_buffer_sec = _safe_float(header.get("initial_buffer_sec"), DEFAULT_INITIAL_BUFFER_SEC)
     counts = sorted({_safe_int(unit.get("duration_beats"), 0) for unit in units if _safe_int(unit.get("duration_beats"), 0) > 0})
     preferred_beats = 4 if 4 in counts else (2 if 2 in counts else (8 if 8 in counts else counts[0]))
+    planner_version = str(planner_version or "m9").lower()
+    tail_policy = str(tail_policy or "none").lower()
+    planner_name = "streaming_retrieval_v2_phrase_aware" if planner_version == "m12" else "streaming_retrieval_v1"
     records: list[dict[str, Any]] = [
         {
             "schema_version": 1,
@@ -787,7 +859,9 @@ def simulate_streaming_smplx_plan_records(
             "duration_sec": round(float(duration_sec), 5),
             "initial_buffer_sec": round(float(initial_buffer_sec), 5),
             "lookahead_sec": round(float(initial_buffer_sec), 5),
-            "planner": "streaming_retrieval_v1",
+            "planner": planner_name,
+            "planner_version": planner_version,
+            "tail_policy": tail_policy,
             "score_weights": {
                 "rhythm_lock": 0.45,
                 "transition_smoothness": 0.25,
@@ -827,7 +901,24 @@ def simulate_streaming_smplx_plan_records(
             if tempo_confidence >= 0.28
             else min(preferred_beats, 4)
         )
+        if planner_version == "m12":
+            hypotheses = list(scoring_tick.get("segment_hypotheses", []) or [])
+            viable = [
+                item
+                for item in hypotheses
+                if _safe_float(item.get("start_time_sec"), -999.0) <= next_start_sec + spacing * 0.55
+                and _safe_int(item.get("duration_beats"), 0) in counts
+            ]
+            viable.sort(key=lambda item: (_safe_float(item.get("confidence")), _safe_int(item.get("duration_beats")) in {4, 8}), reverse=True)
+            if viable:
+                target_beats = _safe_int(viable[0].get("duration_beats"), target_beats)
         target_end_sec = min(duration_sec, next_start_sec + target_beats * spacing)
+        tail_extended = False
+        if planner_version == "m12" and tail_policy == "recover" and target_end_sec < duration_sec:
+            remaining_after = duration_sec - target_end_sec
+            if remaining_after < max(0.75, spacing * 1.25):
+                target_end_sec = duration_sec
+                tail_extended = True
         if target_end_sec - next_start_sec < 0.35:
             break
         target_energy = _target_energy_for_tick(scoring_tick, next_start_sec, _safe_float(tick.get("available_audio_until_sec"), next_start_sec))
@@ -847,6 +938,7 @@ def simulate_streaming_smplx_plan_records(
                 target_end_sec=target_end_sec,
                 target_beats=target_beats,
                 target_energy=target_energy,
+                planner_version=planner_version,
             )
             scored.append((score, candidate, breakdown, lock_reports, expected_hits))
         scored.sort(key=lambda item: item[0], reverse=True)
@@ -881,11 +973,13 @@ def simulate_streaming_smplx_plan_records(
             "score": score,
             "score_breakdown": breakdown,
             "switch_reason": {
-                "planner": "streaming_retrieval_v1",
+                "planner": planner_name,
                 "fallback": bool(tempo_confidence < 0.28),
                 "target_energy": target_energy,
                 "candidate_energy": selected.get("energy"),
                 "compatible_from_previous": bool(previous_unit and selected.get("unit_id") in previous_unit.get("compatible_next_units", [])),
+                "tail_policy": tail_policy,
+                "tail_extended_to_song_end": bool(tail_extended),
             },
             "expected_accent_hits": expected_hits,
             "rhythm_locks": lock_reports,
@@ -1125,12 +1219,16 @@ def stream_plan_to_stitch_manifest(
                     "playhead_sec": item.get("playhead_sec"),
                     "available_audio_until_sec": item.get("available_audio_until_sec"),
                     "target_time_sec": item.get("target_time_sec"),
+                    "target_beats": item.get("target_beats"),
                     "selected_unit_id": item.get("selected_unit_id"),
+                    "source_sequence": item.get("source_sequence"),
+                    "source_frame_range": item.get("source_frame_range"),
                     "target_bpm": item.get("target_bpm"),
                     "target_energy": item.get("target_energy"),
                     "speed_scale": item.get("speed_scale"),
                     "score": item.get("score"),
                     "score_breakdown": item.get("score_breakdown"),
+                    "switch_reason": item.get("switch_reason"),
                     "future_visibility_guard": item.get("future_visibility_guard"),
                 }
                 for item in decisions
@@ -1209,4 +1307,308 @@ def render_streaming_smplx_mesh_review(
         6,
     )
     write_json(output_report, report)
+    return report
+
+
+def calibrate_song_event_rail(
+    stream_event_records: list[dict[str, Any]],
+    manual_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    event_map = stream_events_to_song_event_map(stream_event_records)
+    overrides = dict(manual_overrides or {})
+    applied: list[str] = []
+    for key in ("beats", "downbeats", "accents", "drum_hits", "phrases", "sections"):
+        if key in overrides:
+            values = [dict(item) for item in list(overrides.get(key) or [])]
+            values.sort(key=lambda item: _safe_float(item.get("time_sec"), _safe_float(item.get("start_time_sec"))))
+            for index, item in enumerate(values):
+                item.setdefault("index", index)
+            event_map[key] = values
+            applied.append(key)
+    if "tempo_hypotheses" in overrides:
+        event_map["tempo_hypotheses"] = list(overrides.get("tempo_hypotheses") or [])
+        applied.append("tempo_hypotheses")
+    event_map["manual_review_required"] = not bool(applied)
+    event_map["override_source"] = overrides.get("override_source")
+    event_map["applied_override_keys"] = applied
+    event_map["calibration_schema_version"] = 1
+    event_map["notes"] = [
+        *list(event_map.get("notes", []) or []),
+        "M11 calibration map; manual override keys replace the corresponding streaming aggregate rails.",
+    ]
+    event_map["generated_at_utc"] = utc_now_iso()
+    return event_map
+
+
+def _event_times(payload: dict[str, Any], key: str) -> list[float]:
+    return sorted(_safe_float(item.get("time_sec")) for item in list(payload.get(key, []) or []))
+
+
+def _match_time_series(detected: list[float], reference: list[float], tolerance_sec: float) -> dict[str, Any]:
+    used: set[int] = set()
+    deltas: list[float] = []
+    for detected_time in detected:
+        best_index = -1
+        best_delta = float("inf")
+        for index, reference_time in enumerate(reference):
+            if index in used:
+                continue
+            delta = abs(detected_time - reference_time)
+            if delta < best_delta:
+                best_delta = delta
+                best_index = index
+        if best_index >= 0 and best_delta <= tolerance_sec:
+            used.add(best_index)
+            deltas.append(best_delta)
+    return {
+        "detected_count": len(detected),
+        "reference_count": len(reference),
+        "matched_count": len(deltas),
+        "precision": round(float(len(deltas) / max(1, len(detected))), 5),
+        "recall": round(float(len(deltas) / max(1, len(reference))), 5),
+        "mae_sec": round(float(np.mean(deltas)) if deltas else 0.0, 6),
+        "max_error_sec": round(float(max(deltas)) if deltas else 0.0, 6),
+    }
+
+
+def evaluate_streaming_event_rail(
+    stream_event_records: list[dict[str, Any]],
+    reference_event_map: dict[str, Any] | None = None,
+    tolerance_sec: float = 2.0 / DEFAULT_STREAM_FPS,
+) -> dict[str, Any]:
+    aggregate = stream_events_to_song_event_map(stream_event_records)
+    reference = dict(reference_event_map or aggregate)
+    ticks = _records_by_kind(stream_event_records, "tick")
+    future_event_violations = 0
+    for tick in ticks:
+        available_until = _safe_float(tick.get("available_audio_until_sec"), 0.0)
+        for key in ("beats", "downbeats", "drum_hits", "accents"):
+            for event in list(tick.get(key, []) or []):
+                if _safe_float(event.get("time_sec")) > available_until + 1e-8:
+                    future_event_violations += 1
+    beat_eval = _match_time_series(_event_times(aggregate, "beats"), _event_times(reference, "beats"), tolerance_sec)
+    downbeat_eval = _match_time_series(_event_times(aggregate, "downbeats"), _event_times(reference, "downbeats"), tolerance_sec)
+    drum_eval = _match_time_series(_event_times(aggregate, "drum_hits"), _event_times(reference, "drum_hits"), tolerance_sec)
+    reference_beat_count = max(1, len(_event_times(reference, "beats")))
+    overcount_ratio = len(_event_times(aggregate, "beats")) / reference_beat_count
+    return {
+        "schema_version": 1,
+        "report_id": f"{aggregate.get('song_id', 'stream_song')}_streaming_event_rail_eval",
+        "song_id": aggregate.get("song_id"),
+        "generated_at_utc": utc_now_iso(),
+        "tolerance_sec": round(float(tolerance_sec), 6),
+        "metrics": {
+            "beat_timing_mae_sec": beat_eval["mae_sec"],
+            "beat_precision": beat_eval["precision"],
+            "beat_recall": beat_eval["recall"],
+            "beat_overcount_ratio": round(float(overcount_ratio), 5),
+            "downbeat_hit_rate": downbeat_eval["recall"],
+            "drum_hit_precision": drum_eval["precision"],
+            "future_event_violations": future_event_violations,
+            "high_confidence_lock_error_frames": round(float(beat_eval["mae_sec"] * DEFAULT_STREAM_FPS), 5),
+        },
+        "beats": beat_eval,
+        "downbeats": downbeat_eval,
+        "drum_hits": drum_eval,
+        "acceptance": {
+            "future_safe": future_event_violations == 0,
+            "high_confidence_lock_error_within_2_frames": beat_eval["mae_sec"] * DEFAULT_STREAM_FPS <= 2.0,
+            "no_obvious_double_time_overcount": overcount_ratio <= 1.35,
+        },
+        "notes": [
+            "M11 streaming event-rail evaluation compares aggregate streaming events against a calibrated reference map when provided.",
+            "When no reference is provided, the aggregate stream rail is used as a self-consistency baseline.",
+        ],
+    }
+
+
+def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]) -> dict[str, Any]:
+    header = _header(stream_plan_records, "stream_plan_header")
+    decisions = _records_by_kind(stream_plan_records, "decision")
+    speeds = [_safe_float(item.get("speed_scale"), 1.0) for item in decisions]
+    gaps: list[dict[str, Any]] = []
+    for previous, current in zip(decisions, decisions[1:]):
+        previous_end = _safe_float(dict(previous.get("target_time_sec", {}) or {}).get("end"))
+        current_start = _safe_float(dict(current.get("target_time_sec", {}) or {}).get("start"))
+        if abs(current_start - previous_end) > 1e-4:
+            gaps.append({"previous_index": previous.get("index"), "current_index": current.get("index"), "gap_sec": round(current_start - previous_end, 6)})
+    non_tail_speeds = speeds[:-1] if len(speeds) > 1 else speeds
+    outside = [value for value in speeds if value < DEFAULT_SAFE_RETIME_MIN or value > DEFAULT_SAFE_RETIME_MAX]
+    non_tail_outside = [value for value in non_tail_speeds if value < DEFAULT_SAFE_RETIME_MIN or value > DEFAULT_SAFE_RETIME_MAX]
+    return {
+        "schema_version": 1,
+        "report_id": f"{header.get('song_id', 'stream_song')}_streaming_planner_eval",
+        "song_id": header.get("song_id"),
+        "planner": header.get("planner"),
+        "planner_version": header.get("planner_version"),
+        "tail_policy": header.get("tail_policy"),
+        "generated_at_utc": utc_now_iso(),
+        "metrics": {
+            "decision_count": len(decisions),
+            "speed_scale_outside_default_range_count": len(outside),
+            "speed_scale_outside_default_range_ratio": round(float(len(outside) / max(1, len(speeds))), 5),
+            "non_tail_speed_scale_outside_default_range_count": len(non_tail_outside),
+            "max_non_tail_speed_scale": round(float(max(non_tail_speeds or [1.0])), 6),
+            "max_speed_scale": round(float(max(speeds or [1.0])), 6),
+            "min_speed_scale": round(float(min(speeds or [1.0])), 6),
+            "future_visibility_violations": sum(1 for item in decisions if not bool(dict(item.get("future_visibility_guard", {}) or {}).get("passed"))),
+            "gap_count": len(gaps),
+        },
+        "gaps": gaps,
+        "acceptance": {
+            "no_future_visibility_violations": all(bool(dict(item.get("future_visibility_guard", {}) or {}).get("passed")) for item in decisions),
+            "no_gaps": not gaps,
+            "speed_outside_ratio_le_10pct": len(outside) / max(1, len(speeds)) <= 0.10,
+            "non_tail_max_speed_le_1_25": max(non_tail_speeds or [1.0]) <= 1.25,
+        },
+    }
+
+
+def build_motion_transition_report(mesh_report: dict[str, Any]) -> dict[str, Any]:
+    transitions = [dict(item) for item in list(mesh_report.get("transitions", []) or [])]
+    metrics = dict(mesh_report.get("metrics", {}) or {})
+    derived_root_accel = max(
+        [
+            _safe_float(item.get("root_acceleration_discontinuity_proxy"), float(np.linalg.norm(np.asarray(item.get("root_offset_xyz", [0.0, 0.0, 0.0]), dtype=np.float32))))
+            for item in transitions
+        ]
+        or [0.0]
+    )
+    derived_joint_jerk = max(
+        [_safe_float(item.get("joint_jerk_proxy"), _safe_float(item.get("joint_delta_after_blend"))) for item in transitions] or [0.0]
+    )
+    derived_foot_slide = max(
+        [_safe_float(item.get("foot_slide_proxy"), _safe_float(item.get("joint_delta_after_blend")) * 0.25) for item in transitions] or [0.0]
+    )
+    metrics.setdefault("max_root_acceleration_discontinuity_proxy", round(float(derived_root_accel), 6))
+    metrics.setdefault("max_joint_jerk_proxy", round(float(derived_joint_jerk), 6))
+    metrics.setdefault("max_foot_slide_proxy", round(float(derived_foot_slide), 6))
+    return {
+        "schema_version": 1,
+        "report_id": f"{mesh_report.get('report_id', 'mesh')}_motion_transition_quality",
+        "source_report_id": mesh_report.get("report_id"),
+        "song_id": mesh_report.get("song_id"),
+        "generated_at_utc": utc_now_iso(),
+        "transition_count": len(transitions),
+        "metrics": {
+            "max_temporal_vertex_delta_after_smoothing": _safe_float(metrics.get("max_temporal_vertex_delta_after_smoothing")),
+            "max_temporal_joint_delta_after_smoothing": _safe_float(metrics.get("max_temporal_joint_delta_after_smoothing")),
+            "max_root_acceleration_discontinuity_proxy": _safe_float(metrics.get("max_root_acceleration_discontinuity_proxy")),
+            "max_joint_jerk_proxy": _safe_float(metrics.get("max_joint_jerk_proxy")),
+            "max_foot_slide_proxy": _safe_float(metrics.get("max_foot_slide_proxy")),
+            "max_vertex_delta_after_blend": _safe_float(metrics.get("max_vertex_delta_after_blend")),
+        },
+        "transitions": [
+            {
+                "index": item.get("index"),
+                "outgoing_step": item.get("outgoing_step"),
+                "incoming_step": item.get("incoming_step"),
+                "blend_frames": item.get("blend_frames"),
+                "root_acceleration_discontinuity_proxy": item.get("root_acceleration_discontinuity_proxy"),
+                "joint_jerk_proxy": item.get("joint_jerk_proxy"),
+                "foot_slide_proxy": item.get("foot_slide_proxy"),
+                "max_temporal_vertex_delta_after_smoothing": item.get("max_temporal_vertex_delta_after_smoothing"),
+            }
+            for item in transitions
+        ],
+        "acceptance": {
+            "vertex_delta_le_0_05": _safe_float(metrics.get("max_temporal_vertex_delta_after_smoothing")) <= 0.05,
+            "has_motion_level_metrics": True,
+        },
+        "notes": [
+            "M13 report exposes motion-level transition proxies in addition to the existing visual vertex smoothing metrics.",
+            "The proxies are review metrics; production foot locking still needs Unity/runtime IK validation.",
+        ],
+    }
+
+
+def export_unity_streaming_runtime_bundle(
+    output_dir: Path,
+    annotated_library: dict[str, Any],
+    stream_plan_records: list[dict[str, Any]] | None = None,
+    stream_event_records: list[dict[str, Any]] | None = None,
+    planner_config: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    units = []
+    for unit in list(annotated_library.get("units", []) or []):
+        source = dict(unit.get("reference_artifacts", {}) or {})
+        units.append(
+            {
+                "unit_id": unit.get("unit_id"),
+                "source_sequence": unit.get("source_sequence"),
+                "source_motion_path": source.get("source_motion_path"),
+                "frame_range": dict(unit.get("frame_range", {}) or {}),
+                "duration_beats": unit.get("duration_beats"),
+                "duration_sec": unit.get("duration_sec"),
+                "energy": unit.get("energy"),
+                "style_tags": list(unit.get("style_tags", []) or []),
+                "safe_retime_range": dict(unit.get("safe_retime_range", {}) or {}),
+                "entry_pose_anchor": dict(unit.get("entry_pose_anchor", {}) or {}),
+                "exit_pose_anchor": dict(unit.get("exit_pose_anchor", {}) or {}),
+                "accent_lock_frames": list(unit.get("accent_lock_frames", []) or []),
+                "foot_contact_windows": list(unit.get("foot_contact_windows", []) or []),
+                "movement_quality": dict(unit.get("movement_quality", {}) or {}),
+            }
+        )
+    compact_library = {
+        "schema_version": 1,
+        "library_id": annotated_library.get("library_id"),
+        "unit_count": len(units),
+        "units": units,
+        "generated_at_utc": utc_now_iso(),
+    }
+    planner_payload = {
+        "schema_version": 1,
+        "planner": "streaming_retrieval_v2_phrase_aware",
+        "initial_buffer_sec": DEFAULT_INITIAL_BUFFER_SEC,
+        "lookahead_sec": DEFAULT_INITIAL_BUFFER_SEC,
+        "safe_retime_range": {"min": DEFAULT_SAFE_RETIME_MIN, "max": DEFAULT_SAFE_RETIME_MAX},
+        "score_weights": {"rhythm_lock": 0.45, "transition_smoothness": 0.25, "style_energy_bpm": 0.20, "diversity": 0.10},
+        **dict(planner_config or {}),
+    }
+    manifest = {
+        "schema_version": 1,
+        "bundle_id": "unity_streaming_smplx_bundle",
+        "library_id": annotated_library.get("library_id"),
+        "generated_at_utc": utc_now_iso(),
+        "files": {
+            "motion_units": "motion_units_compact.json",
+            "planner_config": "planner_config.json",
+            "stream_plan_sample": "stream_plan_sample.jsonl" if stream_plan_records else None,
+            "stream_events_sample": "stream_events_sample.jsonl" if stream_event_records else None,
+        },
+        "runtime_contract": {
+            "mesh_generation": "precomputed_or_cached; endpoint runtime should not invoke Python SMPL-X generation",
+            "streaming_audio": "planner consumes rolling event ticks with at most 2 seconds lookahead",
+            "motion_playback": "Unity should retime units inside safe_retime_range and use root continuity plus runtime IK/contact handling",
+        },
+    }
+    write_json(output_dir / "motion_units_compact.json", compact_library)
+    write_json(output_dir / "planner_config.json", planner_payload)
+    write_json(output_dir / "bundle_manifest.json", manifest)
+    if stream_plan_records is not None:
+        write_jsonl(output_dir / "stream_plan_sample.jsonl", stream_plan_records[:200])
+    if stream_event_records is not None:
+        write_jsonl(output_dir / "stream_events_sample.jsonl", stream_event_records[:200])
+    report = {
+        "schema_version": 1,
+        "report_id": "unity_streaming_smplx_bundle_report",
+        "bundle_dir": str(output_dir),
+        "generated_at_utc": utc_now_iso(),
+        "metrics": {
+            "unit_count": len(units),
+            "stream_plan_sample_records": len(stream_plan_records or []),
+            "stream_event_sample_records": len(stream_event_records or []),
+            "motion_units_json_bytes": int((output_dir / "motion_units_compact.json").stat().st_size),
+            "planner_config_json_bytes": int((output_dir / "planner_config.json").stat().st_size),
+        },
+        "acceptance": {
+            "does_not_require_python_smplx_runtime": True,
+            "has_motion_units": bool(units),
+            "has_planner_config": True,
+        },
+        "files": manifest["files"],
+    }
+    write_json(output_dir / "bundle_report.json", report)
     return report
