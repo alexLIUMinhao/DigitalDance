@@ -725,10 +725,12 @@ def _rhythm_score(
             downbeat_bonus = 0.08
         else:
             downbeat_bonus = 0.0
-        score = _clamp(1.0 - nearest_delta / max(beat_spacing_sec * 0.5, 1e-3) + downbeat_bonus, 0.0, 1.0)
-        score *= 0.72 + 0.28 * _clamp(_safe_float(lock.get("strength"), 0.0), 0.0, 1.0)
         if is_predicted:
-            score *= 0.82
+            score = _clamp(0.45 + downbeat_bonus, 0.0, 1.0)
+            score *= 0.75 + 0.25 * _clamp(_safe_float(lock.get("strength"), 0.0), 0.0, 1.0)
+        else:
+            score = _clamp(1.0 - nearest_delta / max(beat_spacing_sec * 0.35, 1e-3) + downbeat_bonus, 0.0, 1.0)
+            score *= 0.72 + 0.28 * _clamp(_safe_float(lock.get("strength"), 0.0), 0.0, 1.0)
         scores.append(score)
         lock_reports.append(
             {
@@ -803,7 +805,11 @@ def _score_candidate(
     style = _music_style_score(candidate, target_energy=target_energy, target_bpm=_safe_float(beat_phase.get("bpm"), 120.0))
     repeat_penalty = 0.5 if str(planner_version).lower() == "m12" else 0.35
     diversity = max(0.0, 1.0 - recent_units[str(candidate.get("unit_id"))] * repeat_penalty)
-    total = rhythm_score * 0.45 + transition * 0.25 + style * 0.20 + diversity * 0.10
+    is_m12 = str(planner_version).lower() == "m12"
+    if is_m12:
+        total = rhythm_score * 0.55 + transition * 0.30 + style * 0.10 + diversity * 0.05
+    else:
+        total = rhythm_score * 0.45 + transition * 0.25 + style * 0.20 + diversity * 0.10
     source_duration = _candidate_source_duration(candidate)
     target_duration = max(1e-3, target_end_sec - target_start_sec)
     speed_scale = source_duration / target_duration
@@ -811,10 +817,15 @@ def _score_candidate(
     min_retime = _safe_float(safe_range.get("min"), 0.85)
     max_retime = _safe_float(safe_range.get("max"), 1.15)
     if speed_scale < min_retime or speed_scale > max_retime:
-        speed_penalty_gain = 2.4 if str(planner_version).lower() == "m12" else 1.8
+        speed_penalty_gain = 2.4 if is_m12 else 1.8
         total -= min(1.0, abs(speed_scale - _clamp(speed_scale, min_retime, max_retime)) * speed_penalty_gain)
     if abs(_safe_float(candidate.get("duration_beats"), target_beats) - target_beats) > 0.1:
         total -= 0.12
+    if is_m12:
+        if rhythm_score < 0.35:
+            total -= 0.25
+        if transition < 0.45:
+            total -= 0.18
     breakdown = {
         "rhythm_lock": round(float(rhythm_score), 5),
         "transition_smoothness": round(float(transition), 5),
@@ -871,10 +882,10 @@ def simulate_streaming_smplx_plan_records(
             "initial_hold_sec": round(float(initial_hold_sec), 5),
             "source_sequence_allowlist": sorted(allowed_sequences),
             "score_weights": {
-                "rhythm_lock": 0.45,
-                "transition_smoothness": 0.25,
-                "style_energy_bpm": 0.20,
-                "diversity": 0.10,
+                "rhythm_lock": 0.55 if planner_version == "m12" else 0.45,
+                "transition_smoothness": 0.30 if planner_version == "m12" else 0.25,
+                "style_energy_bpm": 0.10 if planner_version == "m12" else 0.20,
+                "diversity": 0.05 if planner_version == "m12" else 0.10,
             },
             "generated_at_utc": utc_now_iso(),
         }

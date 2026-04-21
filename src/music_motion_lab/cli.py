@@ -185,6 +185,7 @@ def build_parser() -> argparse.ArgumentParser:
     rhythmic_library.add_argument("--unit-beat-set", help="Comma-separated unit durations in beats, e.g. 2,4,8,16.")
     rhythmic_library.add_argument("--accent-unit-beats", type=int, default=4)
     rhythmic_library.add_argument("--max-unit-beats", type=int, default=16)
+    rhythmic_library.add_argument("--min-source-sec", type=float, default=10.0, help="Drop units that start within the first N seconds of each FineDance source sequence.")
     rhythmic_library.add_argument("--coverage-report", action="store_true", help="Also write an M10 coverage report.")
     rhythmic_library.add_argument("--coverage-output", help="Optional coverage report path inside outputs/.")
 
@@ -505,6 +506,7 @@ def main() -> int:
             accent_unit_beats=args.accent_unit_beats,
             max_unit_beats=args.max_unit_beats,
             max_sequences=args.max_sequences,
+            min_source_sec=args.min_source_sec,
         )
         payload = library.to_dict()
         showcase = build_finedance_rhythmic_library_showcase(library)

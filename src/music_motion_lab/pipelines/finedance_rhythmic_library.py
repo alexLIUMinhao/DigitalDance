@@ -379,6 +379,7 @@ def build_finedance_rhythmic_smplx_library(
     max_unit_beats: int = DEFAULT_MAX_UNIT_BEATS,
     unit_beat_set: list[int] | tuple[int, ...] | None = None,
     max_sequences: int = 0,
+    min_source_sec: float = 0.0,
 ) -> MotionUnitLibrary:
     selected_entries: list[dict[str, Any]] = []
     for entry in list(audio_feature_report.get("entries", [])):
@@ -391,6 +392,7 @@ def build_finedance_rhythmic_smplx_library(
 
     units: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
+    min_source_frame = max(0, int(round(float(min_source_sec) * max(float(fps), 1.0))))
     for entry in selected_entries:
         sequence_id = str(entry.get("sequence_id", "") or "")
         if not sequence_id:
@@ -425,6 +427,8 @@ def build_finedance_rhythmic_smplx_library(
             end_time = _beat_time(beats, end_beat, spacing)
             start_frame = _frame_for_time(start_time, fps=fps, frame_count=frame_count)
             end_frame = min(frame_count, max(start_frame + 2, int(math.ceil(end_time * fps))))
+            if start_frame < min_source_frame:
+                continue
             if end_frame - start_frame < max(8, int(round(0.35 * fps))):
                 continue
 
@@ -489,7 +493,7 @@ def build_finedance_rhythmic_smplx_library(
     notes = [
         "FineDance rhythmic-first SMPL-X source motion library generated from M2-2 Event Rail audio feature reports.",
         "Units reference raw FineDance motion frames and beat/accent keyframes; mesh vertices are generated later by the SMPL-X stitch preview stage.",
-        f"rhythmic_only={rhythmic_only}; selected_sequences={len(selected_entries)}; skipped_sequences={len(skipped)}; unit_beat_set={normalize_unit_beat_set(unit_beat_set, unit_beats)}.",
+        f"rhythmic_only={rhythmic_only}; selected_sequences={len(selected_entries)}; skipped_sequences={len(skipped)}; unit_beat_set={normalize_unit_beat_set(unit_beat_set, unit_beats)}; min_source_sec={float(min_source_sec):.2f}.",
     ]
     if skipped:
         notes.append(f"Skipped sequence samples: {skipped[:8]}.")

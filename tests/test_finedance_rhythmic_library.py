@@ -93,6 +93,20 @@ class FineDanceRhythmicLibraryTests(unittest.TestCase):
             self.assertEqual(first["rhythm_profile"]["source_profile"], "rhythmic_first")
             self.assertIn("source_motion_path", first["reference_artifacts"])
 
+    def test_can_drop_early_source_seconds_from_all_sequences(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            raw_root = Path(tmpdir) / "finedance"
+            _write_motion(raw_root, "001", frame_count=900)
+
+            library = build_finedance_rhythmic_smplx_library(
+                audio_feature_report=_report(),
+                raw_root=raw_root,
+                min_source_sec=2.0,
+            )
+
+            self.assertTrue(library.units)
+            self.assertTrue(all(int(unit["frame_range"]["start"]) >= 60 for unit in library.units))
+
     def test_include_fallback_and_showcase_counts(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             raw_root = Path(tmpdir) / "finedance"
