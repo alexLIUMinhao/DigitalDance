@@ -483,6 +483,76 @@ class StreamingSmplxTests(unittest.TestCase):
         )
         self.assertGreaterEqual(evaluation["metrics"]["non_tail_speed_hard_reject_count"], 1)
 
+    def test_m17_limits_consecutive_same_motion_unit_to_three_when_alternative_exists(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            motion_path = _write_motion(Path(tmpdir) / "finedance")
+            library = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir), contact_mode="joints")
+        good = next(unit for unit in library["units"] if unit["unit_id"] == "finedance_001_good")
+        alternative = dict(good)
+        alternative["unit_id"] = "finedance_001_alt"
+        for unit in library["units"]:
+            unit["compatible_next_units"] = ["finedance_001_good", "finedance_001_alt"]
+        alternative["compatible_next_units"] = ["finedance_001_good", "finedance_001_alt"]
+        library["units"].append(alternative)
+
+        beats = [
+            {"index": index, "time_sec": index * 0.5, "strength": 0.8, "confidence": 0.95, "is_downbeat": index % 4 == 0}
+            for index in range(27)
+        ]
+        stream_events = [
+            {
+                "kind": "stream_header",
+                "song_id": "m17_repeat_demo",
+                "duration_sec": 12.2,
+                "initial_buffer_sec": 2.0,
+                "lookahead_sec": 2.0,
+                "lookfront_sec": 1.0,
+                "total_future_sec": 3.0,
+                "beats_per_bar": 4,
+            }
+        ]
+        for tick_index, playhead_sec in enumerate([0.0, 1.0, 3.0, 5.0, 7.0, 9.0]):
+            available_until = playhead_sec + 3.0
+            visible_beats = [beat for beat in beats if beat["time_sec"] <= available_until + 1e-8]
+            stream_events.append(
+                {
+                    "kind": "tick",
+                    "tick_index": tick_index,
+                    "playhead_sec": playhead_sec,
+                    "available_audio_until_sec": available_until,
+                    "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.95},
+                    "beats": visible_beats,
+                    "downbeats": [beat for beat in visible_beats if beat["is_downbeat"]],
+                    "drum_hits": [{"index": index, "time_sec": beat["time_sec"], "strength": 0.95, "kind": "kick"} for index, beat in enumerate(visible_beats[::2])],
+                    "accents": [{"index": index, "time_sec": beat["time_sec"], "strength": 0.85, "kind": "accent_peak"} for index, beat in enumerate(visible_beats[1::2])],
+                }
+            )
+
+        plan = simulate_streaming_smplx_plan_records(
+            stream_events,
+            library,
+            planner_version="m17",
+            initial_hold_sec=0.0,
+            max_steps=6,
+        )
+        decisions = [record for record in plan if record["kind"] == "decision"]
+        selected_ids = [decision["selected_unit_id"] for decision in decisions]
+        max_run = 0
+        current_id = None
+        current_run = 0
+        for unit_id in selected_ids:
+            if unit_id == current_id:
+                current_run += 1
+            else:
+                current_id = unit_id
+                current_run = 1
+            max_run = max(max_run, current_run)
+        evaluation = evaluate_streaming_planner_records(plan)
+
+        self.assertLessEqual(max_run, 3)
+        self.assertLessEqual(evaluation["metrics"]["max_consecutive_motion_unit_run"], 3)
+        self.assertIn("repeat_unit_hard_reject_count", evaluation["metrics"])
+
     def test_stream_plan_to_manifest_is_continuous_and_carries_decisions(self) -> None:
         decisions = [
             {

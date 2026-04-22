@@ -6,6 +6,8 @@ import numpy as np
 
 from music_motion_lab.pipelines.smplx_mesh_stitch_renderer import (
     MeshCache,
+    _bounds_for_preview,
+    _display_vertices,
     build_mesh_stitch_review_html,
     build_rhythm_mapping,
     compose_stitched_mesh_sequence,
@@ -116,6 +118,17 @@ class SmplxMeshStitchRendererTests(unittest.TestCase):
         self.assertEqual(loaded.sequence_id, "001")
         self.assertEqual(loaded.frame_to_cache_index[7], 7)
         self.assertEqual(loaded.faces.shape, (2, 3))
+
+    def test_display_vertices_keep_actor_centered_for_camera_review(self) -> None:
+        cache = _fake_cache()
+
+        displayed = _display_vertices(cache.vertices, cache.joints)
+        bounds_min, bounds_max = _bounds_for_preview(displayed)
+
+        self.assertTrue(np.allclose(displayed[:, 0, :2], 0.0, atol=1e-6))
+        self.assertLess(abs(float(bounds_min[0] + bounds_max[0])), 1e-5)
+        self.assertLess(abs(float(bounds_min[1] + bounds_max[1])), 1e-5)
+        self.assertLess(float(bounds_max[0] - bounds_min[0]), 2.5)
 
     def test_review_html_links_video_strip_and_metrics(self) -> None:
         report = {

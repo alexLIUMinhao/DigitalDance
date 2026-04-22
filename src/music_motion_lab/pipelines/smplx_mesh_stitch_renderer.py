@@ -717,22 +717,33 @@ def compose_stitched_mesh_sequence(
     )
 
 
-def _display_vertices(vertices: np.ndarray) -> np.ndarray:
+def _display_vertices(vertices: np.ndarray, joints: np.ndarray | None = None) -> np.ndarray:
     displayed = vertices[..., [0, 2, 1]].copy()
-    mins = displayed.min(axis=(0, 1))
-    maxs = displayed.max(axis=(0, 1))
-    center = (mins + maxs) * 0.5
-    displayed[..., 0] -= center[0]
-    displayed[..., 1] -= center[1]
+    if joints is not None and joints.ndim >= 3 and joints.shape[0] == displayed.shape[0] and joints.shape[1] > 0:
+        root = joints[:, 0, :][..., [0, 2, 1]].astype(np.float32, copy=False)
+        displayed[..., 0] -= root[:, None, 0]
+        displayed[..., 1] -= root[:, None, 1]
+    else:
+        mins = displayed.min(axis=(0, 1))
+        maxs = displayed.max(axis=(0, 1))
+        center = (mins + maxs) * 0.5
+        displayed[..., 0] -= center[0]
+        displayed[..., 1] -= center[1]
     return displayed
 
 
 def _bounds_for_preview(vertices: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     mins = vertices.min(axis=(0, 1))
     maxs = vertices.max(axis=(0, 1))
-    span = np.maximum(maxs - mins, 1e-3)
-    pad = span * 0.1 + 0.03
-    return mins - pad, maxs + pad
+    vertical_span = max(float(maxs[2] - mins[2]), 1e-3)
+    horizontal_values = np.abs(vertices[..., :2]).reshape(-1)
+    horizontal_radius = float(np.percentile(horizontal_values, 99.7)) if horizontal_values.size else 0.65
+    horizontal_radius = max(horizontal_radius * 1.08 + 0.05, vertical_span * 0.32, 0.65)
+    vertical_pad = vertical_span * 0.06 + 0.03
+    return (
+        np.asarray([-horizontal_radius, -horizontal_radius, float(mins[2]) - vertical_pad], dtype=np.float32),
+        np.asarray([horizontal_radius, horizontal_radius, float(maxs[2]) + vertical_pad], dtype=np.float32),
+    )
 
 
 def _draw_mesh(ax: Any, vertices: np.ndarray, faces: np.ndarray, bounds_min: np.ndarray, bounds_max: np.ndarray, title: str) -> None:
@@ -783,7 +794,7 @@ def render_stitched_mesh_artifacts(
     if len(render_indices) == 0:
         render_indices = np.asarray([0], dtype=np.int32)
 
-    sampled_vertices = _display_vertices(stitched.vertices[render_indices])
+    sampled_vertices = _display_vertices(stitched.vertices[render_indices], stitched.joints[render_indices])
     sampled_faces = stitched.faces[:: max(1, int(face_stride))]
     bounds_min, bounds_max = _bounds_for_preview(sampled_vertices)
 
@@ -823,6 +834,8 @@ def render_stitched_mesh_artifacts(
         "video_fps": int(video_fps),
         "face_stride": int(max(1, int(face_stride))),
         "sampled_face_count": int(len(sampled_faces)),
+        "camera_mode": "pelvis_centered_close_review",
+        "camera_horizontal_radius": round(float(max(abs(bounds_min[0]), abs(bounds_max[0]))), 6),
     }
 
 

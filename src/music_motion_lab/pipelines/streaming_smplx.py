@@ -48,6 +48,7 @@ M17_TEMPO_STABLE_SWITCH_TICKS = 3
 M17_EVENT_CONFIDENCE_FLOOR = 0.58
 M17_INITIAL_BOUNDARY_CONFIDENCE_FLOOR = 0.48
 M17_MAX_INITIAL_IDLE_EXTENSION_SEC = 1.0
+M17_MAX_CONSECUTIVE_SAME_UNIT = 3
 
 
 def _safe_float(value: Any, fallback: float = 0.0) -> float:
@@ -1062,6 +1063,25 @@ def _m17_recovery_rank(
     return (same_unit, same_sequence, rhythm, transition, speed_closeness + score * 0.001)
 
 
+def _max_consecutive_motion_unit_run(decisions: list[dict[str, Any]]) -> int:
+    max_run = 0
+    current_id: str | None = None
+    current_run = 0
+    for decision in decisions:
+        if str(decision.get("pose_source") or "finedance_motion_unit") != "finedance_motion_unit":
+            current_id = None
+            current_run = 0
+            continue
+        unit_id = str(decision.get("selected_unit_id") or "")
+        if unit_id and unit_id == current_id:
+            current_run += 1
+        else:
+            current_id = unit_id
+            current_run = 1 if unit_id else 0
+        max_run = max(max_run, current_run)
+    return max_run
+
+
 def _initial_pose_source(initial_pose_mode: str) -> str:
     mode = str(initial_pose_mode or DEFAULT_INITIAL_POSE_MODE).lower()
     if mode == "freeze_first":
@@ -1318,6 +1338,7 @@ def simulate_streaming_smplx_plan_records(
     next_start_sec = initial_hold_sec
     previous_unit: dict[str, Any] | None = None
     current_sequence_run = 0
+    current_unit_run = 0
     recent_units: Counter[str] = Counter()
     step_index = 0
 
@@ -1513,6 +1534,13 @@ def simulate_streaming_smplx_plan_records(
             if is_m17 and not tail_extended and (speed_scale < M17_NON_TAIL_SPEED_MIN or speed_scale > M17_NON_TAIL_SPEED_MAX):
                 reject_reasons.append("non_tail_speed_outside_0_92_1_08")
             if (
+                is_m17
+                and previous_unit is not None
+                and current_unit_run >= M17_MAX_CONSECUTIVE_SAME_UNIT
+                and str(previous_unit.get("unit_id")) == str(candidate.get("unit_id"))
+            ):
+                reject_reasons.append("same_unit_run_limit_3")
+            if (
                 is_m15
                 and previous_unit is not None
                 and str(previous_unit.get("source_sequence")) != str(candidate.get("source_sequence"))
@@ -1559,12 +1587,17 @@ def simulate_streaming_smplx_plan_records(
         if previous_unit is not None and (is_m15 or is_m17):
             previous_unit_id = str(previous_unit.get("unit_id"))
             previous_sequence = str(previous_unit.get("source_sequence"))
+            repeat_limit_active = bool(is_m17 and current_unit_run >= M17_MAX_CONSECUTIVE_SAME_UNIT)
             same_unit_recovery = [item for item in effective_scored if str(item[1].get("unit_id")) == previous_unit_id]
             same_sequence_recovery = [item for item in effective_scored if str(item[1].get("source_sequence")) == previous_sequence]
-            if is_m17 and same_unit_recovery:
+            if is_m17 and same_unit_recovery and not repeat_limit_active:
                 effective_scored = same_unit_recovery + [item for item in effective_scored if item not in same_unit_recovery]
             if same_sequence_recovery:
                 effective_scored = same_sequence_recovery + [item for item in effective_scored if item not in same_sequence_recovery]
+            if repeat_limit_active:
+                non_same_unit = [item for item in effective_scored if str(item[1].get("unit_id")) != previous_unit_id]
+                if non_same_unit:
+                    effective_scored = non_same_unit + [item for item in effective_scored if item not in non_same_unit]
 
         if not effective_scored:
             break
@@ -1601,6 +1634,9 @@ def simulate_streaming_smplx_plan_records(
         available_until = _safe_float(tick.get("available_audio_until_sec"), 0.0)
         playhead = _safe_float(tick.get("playhead_sec"), 0.0)
         guard_passed = available_until <= playhead + total_future_sec + 1e-5 and next_start_sec <= available_until + 1e-5
+        previous_unit_id = str(previous_unit.get("unit_id")) if previous_unit is not None else None
+        selected_unit_id = str(selected.get("unit_id"))
+        selected_unit_run = current_unit_run + 1 if previous_unit_id == selected_unit_id else 1
         low_confidence_continuation = bool(
             is_m17
             and tempo_confidence < M17_LOW_CONFIDENCE_THRESHOLD
@@ -1651,6 +1687,9 @@ def simulate_streaming_smplx_plan_records(
                 "tail_policy": tail_policy,
                 "tail_extended_to_song_end": bool(tail_extended),
                 "same_sequence_as_previous": bool(previous_unit and previous_unit.get("source_sequence") == selected.get("source_sequence")),
+                "same_unit_as_previous": bool(previous_unit_id == selected_unit_id),
+                "same_unit_run": int(selected_unit_run),
+                "same_unit_run_limit": int(M17_MAX_CONSECUTIVE_SAME_UNIT) if is_m17 else None,
                 "low_confidence_continuation": low_confidence_continuation,
                 "tempo_confidence": round(float(tempo_confidence), 5),
             },
@@ -1663,6 +1702,7 @@ def simulate_streaming_smplx_plan_records(
         selected_sequence = str(selected.get("source_sequence"))
         previous_sequence = str(previous_unit.get("source_sequence")) if previous_unit is not None else None
         current_sequence_run = current_sequence_run + 1 if previous_sequence == selected_sequence else 1
+        current_unit_run = selected_unit_run
         previous_unit = selected
         recent_units.update([str(selected.get("unit_id"))])
         next_start_sec = target_end_sec
@@ -2137,6 +2177,10 @@ def render_streaming_smplx_mesh_review(
         or "transition_smoothness_below_0_55" in list(item.get("reasons", []) or [])
         or "cross_sequence_transition_below_0_62" in list(item.get("reasons", []) or [])
     )
+    report["metrics"]["repeat_unit_hard_reject_count"] = sum(
+        1 for item in rejected_candidates if "same_unit_run_limit_3" in list(item.get("reasons", []) or [])
+    )
+    report["metrics"]["max_consecutive_motion_unit_run"] = _max_consecutive_motion_unit_run(decisions)
     report["metrics"]["low_confidence_continuation_count"] = sum(
         1 for item in decisions if bool(dict(item.get("switch_reason", {}) or {}).get("low_confidence_continuation"))
     )
@@ -2319,6 +2363,7 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
         or "transition_smoothness_below_0_55" in list(item.get("reasons", []) or [])
     )
     transition_reject_count += sum(1 for item in rejected_candidates if "cross_sequence_transition_below_0_62" in list(item.get("reasons", []) or []))
+    repeat_reject_count = sum(1 for item in rejected_candidates if "same_unit_run_limit_3" in list(item.get("reasons", []) or []))
     cross_sequence_transition_count = sum(
         1
         for previous, current in zip(decisions, decisions[1:])
@@ -2356,6 +2401,8 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
             "rhythm_hard_reject_count": rhythm_reject_count,
             "non_tail_speed_hard_reject_count": non_tail_speed_reject_count,
             "transition_hard_reject_count": transition_reject_count,
+            "repeat_unit_hard_reject_count": repeat_reject_count,
+            "max_consecutive_motion_unit_run": _max_consecutive_motion_unit_run(decisions),
             "cross_sequence_transition_count": cross_sequence_transition_count,
             "low_confidence_continuation_count": sum(
                 1 for item in decisions if bool(dict(item.get("switch_reason", {}) or {}).get("low_confidence_continuation"))
@@ -2370,6 +2417,7 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
             "no_gaps": not gaps,
             "speed_outside_ratio_le_10pct": len(outside) / max(1, len(speeds)) <= 0.10,
             "non_tail_max_speed_le_1_25": max(non_tail_speeds or [1.0]) <= 1.25,
+            "max_consecutive_motion_unit_run_le_3": _max_consecutive_motion_unit_run(decisions) <= M17_MAX_CONSECUTIVE_SAME_UNIT,
         },
     }
 
