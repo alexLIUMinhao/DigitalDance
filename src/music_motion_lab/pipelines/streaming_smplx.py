@@ -1671,6 +1671,12 @@ def simulate_streaming_smplx_plan_records(
     if initial_hold_sec > 0.0:
         decisions = [record for record in records if record.get("kind") == "decision"]
         insert_at = next((index for index, record in enumerate(records) if record.get("kind") == "decision"), len(records))
+        first_decision_start_sec = (
+            _safe_float(dict(decisions[0].get("target_time_sec", {}) or {}).get("start"))
+            if decisions
+            else initial_hold_sec
+        )
+        initial_hold_end_sec = max(initial_hold_sec, first_decision_start_sec)
         if initial_pose_mode == "freeze_first" and decisions:
             first_decision = decisions[0]
             first_range = dict(first_decision.get("source_frame_range", {}) or {})
@@ -1693,7 +1699,7 @@ def simulate_streaming_smplx_plan_records(
                         "used_audio_until_sec": first_guard.get("used_audio_until_sec", round(float(total_future_sec), 5)),
                         "passed": True,
                     },
-                    "target_time_sec": {"start": 0.0, "end": _round_time(initial_hold_sec)},
+                    "target_time_sec": {"start": 0.0, "end": _round_time(initial_hold_end_sec)},
                     "target_beats": 0,
                     "target_bpm": first_decision.get("target_bpm"),
                     "target_energy": "hold",
@@ -1721,7 +1727,7 @@ def simulate_streaming_smplx_plan_records(
                         "planner": planner_name,
                         "planner_version": planner_version,
                         "mode": "initial_hold",
-                        "hold_until_sec": _round_time(initial_hold_sec),
+                        "hold_until_sec": _round_time(initial_hold_end_sec),
                     },
                     "expected_accent_hits": [],
                     "rhythm_locks": [],
@@ -1738,7 +1744,7 @@ def simulate_streaming_smplx_plan_records(
                     planner_version=planner_version,
                     initial_pose_mode=initial_pose_mode,
                     start_sec=0.0,
-                    end_sec=initial_hold_sec,
+                    end_sec=initial_hold_end_sec,
                     playhead_sec=0.0,
                     available_audio_until_sec=min(duration_sec, total_future_sec),
                     planning_lookahead_sec=planning_lookahead_sec,
@@ -1749,7 +1755,7 @@ def simulate_streaming_smplx_plan_records(
                     target_bpm=120.0,
                     target_energy="neutral_idle",
                     switch_mode="initial_upright_hold",
-                    extra_switch_reason={"hold_until_sec": _round_time(initial_hold_sec)},
+                    extra_switch_reason={"hold_until_sec": _round_time(initial_hold_end_sec)},
                 ),
             )
         for new_index, decision in enumerate(record for record in records if record.get("kind") == "decision"):

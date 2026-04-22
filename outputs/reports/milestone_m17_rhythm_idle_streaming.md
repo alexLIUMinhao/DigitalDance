@@ -67,9 +67,9 @@
   - `fx2`: `first_dance_start_sec=6.0`, `low_confidence_continuation_count=29`, `cross_sequence_transition_count=6`, `max_non_tail_speed_scale=2.09706`
   - `fx3`: `first_dance_start_sec=6.0`, `low_confidence_continuation_count=28`, `cross_sequence_transition_count=6`, `max_non_tail_speed_scale=1.90032`
 - `audio3`
-  - `fx1`: `first_dance_start_sec=5.02403`, `low_confidence_continuation_count=2`, `cross_sequence_transition_count=6`, `max_non_tail_speed_scale=1.1379`
-  - `fx2`: `first_dance_start_sec=5.02403`, `low_confidence_continuation_count=2`, `cross_sequence_transition_count=7`, `max_non_tail_speed_scale=1.1379`
-  - `fx3`: `first_dance_start_sec=5.02403`, `low_confidence_continuation_count=2`, `cross_sequence_transition_count=10`, `max_non_tail_speed_scale=1.1379`
+  - `fx1`: `first_dance_start_sec=5.02403`, `initial_upright_hold_sec=5.02403`, `gap_count=0`, `low_confidence_continuation_count=2`, `cross_sequence_transition_count=6`, `max_non_tail_speed_scale=1.1379`
+  - `fx2`: `first_dance_start_sec=5.02403`, `initial_upright_hold_sec=5.02403`, `gap_count=0`, `low_confidence_continuation_count=2`, `cross_sequence_transition_count=7`, `max_non_tail_speed_scale=1.1379`
+  - `fx3`: `first_dance_start_sec=5.02403`, `initial_upright_hold_sec=5.02403`, `gap_count=0`, `low_confidence_continuation_count=2`, `cross_sequence_transition_count=10`, `max_non_tail_speed_scale=1.1379`
 - `audio4`
   - `fx1`: `first_dance_start_sec=6.0`, `low_confidence_continuation_count=13`, `cross_sequence_transition_count=7`, `max_non_tail_speed_scale=1.18964`
   - `fx2`: `first_dance_start_sec=6.0`, `low_confidence_continuation_count=13`, `cross_sequence_transition_count=7`, `max_non_tail_speed_scale=1.18964`
@@ -80,6 +80,7 @@
 - First dance no longer starts at `33s+`; the bounded initial idle fix brought the first dance start back to roughly `5-6s`.
 - The M17 batch now renders a true synthetic neutral idle instead of freezing the first dance source frame.
 - Variant-specific cache collisions were removed.
+- The tiny `audio3` handoff gap (`5.0s -> 5.02403s`) was fixed by extending the synthetic initial hold to the first credible dance boundary.
 
 ## What Is Still Not Good Enough
 
