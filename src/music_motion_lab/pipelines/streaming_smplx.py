@@ -50,6 +50,7 @@ M17_INITIAL_BOUNDARY_CONFIDENCE_FLOOR = 0.48
 M17_MAX_INITIAL_IDLE_EXTENSION_SEC = 1.0
 M17_IDEAL_MAX_CONSECUTIVE_SAME_UNIT = 2
 M17_MAX_CONSECUTIVE_SAME_UNIT = 3
+M17_MAX_TOTAL_SAME_UNIT_USES = 5
 
 
 def _safe_float(value: Any, fallback: float = 0.0) -> float:
@@ -1083,6 +1084,27 @@ def _max_consecutive_motion_unit_run(decisions: list[dict[str, Any]]) -> int:
     return max_run
 
 
+def _motion_unit_usage_counts(decisions: list[dict[str, Any]]) -> Counter[str]:
+    counts: Counter[str] = Counter()
+    for decision in decisions:
+        if str(decision.get("pose_source") or "finedance_motion_unit") != "finedance_motion_unit":
+            continue
+        unit_id = str(decision.get("selected_unit_id") or "")
+        if unit_id:
+            counts.update([unit_id])
+    return counts
+
+
+def _max_total_motion_unit_uses(decisions: list[dict[str, Any]]) -> int:
+    counts = _motion_unit_usage_counts(decisions)
+    return max(counts.values() or [0])
+
+
+def _top_motion_unit_usage(decisions: list[dict[str, Any]], limit: int = 5) -> list[dict[str, Any]]:
+    counts = _motion_unit_usage_counts(decisions)
+    return [{"unit_id": unit_id, "use_count": int(count)} for unit_id, count in counts.most_common(max(0, int(limit)))]
+
+
 def _initial_pose_source(initial_pose_mode: str) -> str:
     mode = str(initial_pose_mode or DEFAULT_INITIAL_POSE_MODE).lower()
     if mode == "freeze_first":
@@ -1543,6 +1565,8 @@ def simulate_streaming_smplx_plan_records(
                     reject_reasons.append("same_unit_run_limit_3")
                 elif current_unit_run >= M17_IDEAL_MAX_CONSECUTIVE_SAME_UNIT:
                     reject_reasons.append("same_unit_preferred_limit_2")
+            if is_m17 and recent_units[str(candidate.get("unit_id"))] >= M17_MAX_TOTAL_SAME_UNIT_USES:
+                reject_reasons.append("same_unit_total_limit_5")
             if (
                 is_m15
                 and previous_unit is not None
@@ -1564,9 +1588,22 @@ def simulate_streaming_smplx_plan_records(
             valid_scored.append((score, candidate, breakdown, lock_reports, expected_hits))
 
         effective_scored = valid_scored or scored
+        if is_m17 and effective_scored:
+            total_usage_filtered = [
+                item
+                for item in effective_scored
+                if recent_units[str(item[1].get("unit_id"))] < M17_MAX_TOTAL_SAME_UNIT_USES
+            ]
+            if total_usage_filtered:
+                effective_scored = total_usage_filtered
         if is_m17 and not valid_scored and scored:
+            recovery_pool = [
+                item
+                for item in scored
+                if recent_units[str(item[1].get("unit_id"))] < M17_MAX_TOTAL_SAME_UNIT_USES
+            ] or scored
             effective_scored = sorted(
-                scored,
+                recovery_pool,
                 key=lambda item: _m17_recovery_rank(
                     score=item[0],
                     candidate=item[1],
@@ -1695,6 +1732,8 @@ def simulate_streaming_smplx_plan_records(
                 "same_unit_run": int(selected_unit_run),
                 "same_unit_ideal_run_limit": int(M17_IDEAL_MAX_CONSECUTIVE_SAME_UNIT) if is_m17 else None,
                 "same_unit_hard_run_limit": int(M17_MAX_CONSECUTIVE_SAME_UNIT) if is_m17 else None,
+                "same_unit_total_use_count": int(recent_units[selected_unit_id] + 1),
+                "same_unit_total_use_limit": int(M17_MAX_TOTAL_SAME_UNIT_USES) if is_m17 else None,
                 "low_confidence_continuation": low_confidence_continuation,
                 "tempo_confidence": round(float(tempo_confidence), 5),
             },
@@ -2188,7 +2227,12 @@ def render_streaming_smplx_mesh_review(
     report["metrics"]["repeat_unit_preferred_reject_count"] = sum(
         1 for item in rejected_candidates if "same_unit_preferred_limit_2" in list(item.get("reasons", []) or [])
     )
+    report["metrics"]["repeat_unit_total_hard_reject_count"] = sum(
+        1 for item in rejected_candidates if "same_unit_total_limit_5" in list(item.get("reasons", []) or [])
+    )
     report["metrics"]["max_consecutive_motion_unit_run"] = _max_consecutive_motion_unit_run(decisions)
+    report["metrics"]["max_total_motion_unit_uses"] = _max_total_motion_unit_uses(decisions)
+    report["metrics"]["top_motion_unit_usage"] = _top_motion_unit_usage(decisions)
     report["metrics"]["low_confidence_continuation_count"] = sum(
         1 for item in decisions if bool(dict(item.get("switch_reason", {}) or {}).get("low_confidence_continuation"))
     )
@@ -2373,6 +2417,7 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
     transition_reject_count += sum(1 for item in rejected_candidates if "cross_sequence_transition_below_0_62" in list(item.get("reasons", []) or []))
     repeat_reject_count = sum(1 for item in rejected_candidates if "same_unit_run_limit_3" in list(item.get("reasons", []) or []))
     repeat_preferred_reject_count = sum(1 for item in rejected_candidates if "same_unit_preferred_limit_2" in list(item.get("reasons", []) or []))
+    repeat_total_reject_count = sum(1 for item in rejected_candidates if "same_unit_total_limit_5" in list(item.get("reasons", []) or []))
     cross_sequence_transition_count = sum(
         1
         for previous, current in zip(decisions, decisions[1:])
@@ -2412,7 +2457,10 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
             "transition_hard_reject_count": transition_reject_count,
             "repeat_unit_hard_reject_count": repeat_reject_count,
             "repeat_unit_preferred_reject_count": repeat_preferred_reject_count,
+            "repeat_unit_total_hard_reject_count": repeat_total_reject_count,
             "max_consecutive_motion_unit_run": _max_consecutive_motion_unit_run(decisions),
+            "max_total_motion_unit_uses": _max_total_motion_unit_uses(decisions),
+            "top_motion_unit_usage": _top_motion_unit_usage(decisions),
             "cross_sequence_transition_count": cross_sequence_transition_count,
             "low_confidence_continuation_count": sum(
                 1 for item in decisions if bool(dict(item.get("switch_reason", {}) or {}).get("low_confidence_continuation"))
@@ -2429,6 +2477,7 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
             "non_tail_max_speed_le_1_25": max(non_tail_speeds or [1.0]) <= 1.25,
             "max_consecutive_motion_unit_run_le_2": _max_consecutive_motion_unit_run(decisions) <= M17_IDEAL_MAX_CONSECUTIVE_SAME_UNIT,
             "max_consecutive_motion_unit_run_le_3": _max_consecutive_motion_unit_run(decisions) <= M17_MAX_CONSECUTIVE_SAME_UNIT,
+            "max_total_motion_unit_uses_le_5": _max_total_motion_unit_uses(decisions) <= M17_MAX_TOTAL_SAME_UNIT_USES,
         },
     }
 

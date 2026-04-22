@@ -553,7 +553,10 @@ class StreamingSmplxTests(unittest.TestCase):
         self.assertLessEqual(evaluation["metrics"]["max_consecutive_motion_unit_run"], 2)
         self.assertIn("repeat_unit_hard_reject_count", evaluation["metrics"])
         self.assertIn("repeat_unit_preferred_reject_count", evaluation["metrics"])
+        self.assertIn("repeat_unit_total_hard_reject_count", evaluation["metrics"])
+        self.assertIn("max_total_motion_unit_uses", evaluation["metrics"])
         self.assertTrue(evaluation["acceptance"]["max_consecutive_motion_unit_run_le_2"])
+        self.assertTrue(evaluation["acceptance"]["max_total_motion_unit_uses_le_5"])
 
     def test_stream_plan_to_manifest_is_continuous_and_carries_decisions(self) -> None:
         decisions = [

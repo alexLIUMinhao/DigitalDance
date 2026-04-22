@@ -16,12 +16,17 @@ This patch keeps the M17 any-song streaming baseline, then fixes two visual revi
 - `src/music_motion_lab/pipelines/streaming_smplx.py`
   - Added `M17_IDEAL_MAX_CONSECUTIVE_SAME_UNIT = 2`.
   - Added `M17_MAX_CONSECUTIVE_SAME_UNIT = 3`.
+  - Added `M17_MAX_TOTAL_SAME_UNIT_USES = 5`.
   - Added a `same_unit_preferred_limit_2` rejection path so the planner actively prefers changing motion after two consecutive same-unit uses.
   - Added a `same_unit_run_limit_3` rejection path when the same motion unit has already run three times.
+  - Added a `same_unit_total_limit_5` rejection path so one exact motion unit cannot dominate the full song.
   - Added planner/render metrics:
     - `max_consecutive_motion_unit_run`
+    - `max_total_motion_unit_uses`
     - `repeat_unit_preferred_reject_count`
     - `repeat_unit_hard_reject_count`
+    - `repeat_unit_total_hard_reject_count`
+    - `top_motion_unit_usage`
 - `tests/test_streaming_smplx.py`
   - Added coverage for the M17 same-unit repeat cap.
 - `tests/test_smplx_mesh_stitch_renderer.py`
@@ -75,6 +80,37 @@ This patch keeps the M17 any-song streaming baseline, then fixes two visual revi
 - `audio2`: `max_consecutive_motion_unit_run=2`, `repeat_unit_preferred_reject_count=0`, `repeat_unit_hard_reject_count=0`, `gap_count=0`, `future_visibility_violations=0`, `camera_horizontal_radius=2.149893`
 - `audio3`: `max_consecutive_motion_unit_run=2`, `repeat_unit_preferred_reject_count=1`, `repeat_unit_hard_reject_count=0`, `gap_count=0`, `future_visibility_violations=0`, `camera_horizontal_radius=0.997034`
 - `audio4`: `max_consecutive_motion_unit_run=2`, `repeat_unit_preferred_reject_count=4`, `repeat_unit_hard_reject_count=0`, `gap_count=0`, `future_visibility_violations=0`, `camera_horizontal_radius=1.366718`
+
+## Audio0-Audio4 Repeat12 Total5 Center Outputs
+
+- `audio0`
+  - HTML: `outputs/renders/unity_audio0_m17_repeat12_total5_center_mesh_review.html`
+  - Planner report: `outputs/reports/unity_audio0_m17_repeat12_total5_center_planner_eval.json`
+  - Mesh report: `outputs/reports/unity_audio0_m17_repeat12_total5_center_mesh_report.json`
+- `audio1`
+  - HTML: `outputs/renders/unity_audio1_m17_repeat12_total5_center_mesh_review.html`
+  - Planner report: `outputs/reports/unity_audio1_m17_repeat12_total5_center_planner_eval.json`
+  - Mesh report: `outputs/reports/unity_audio1_m17_repeat12_total5_center_mesh_report.json`
+- `audio2`
+  - HTML: `outputs/renders/unity_audio2_m17_repeat12_total5_center_mesh_review.html`
+  - Planner report: `outputs/reports/unity_audio2_m17_repeat12_total5_center_planner_eval.json`
+  - Mesh report: `outputs/reports/unity_audio2_m17_repeat12_total5_center_mesh_report.json`
+- `audio3`
+  - HTML: `outputs/renders/unity_audio3_m17_repeat12_total5_center_mesh_review.html`
+  - Planner report: `outputs/reports/unity_audio3_m17_repeat12_total5_center_planner_eval.json`
+  - Mesh report: `outputs/reports/unity_audio3_m17_repeat12_total5_center_mesh_report.json`
+- `audio4`
+  - HTML: `outputs/renders/unity_audio4_m17_repeat12_total5_center_mesh_review.html`
+  - Planner report: `outputs/reports/unity_audio4_m17_repeat12_total5_center_planner_eval.json`
+  - Mesh report: `outputs/reports/unity_audio4_m17_repeat12_total5_center_mesh_report.json`
+
+## Audio0-Audio4 Total5 Metrics
+
+- `audio0`: `max_consecutive_motion_unit_run=2`, `max_total_motion_unit_uses=5`, `repeat_unit_total_hard_reject_count=2`, `gap_count=0`, `future_visibility_violations=0`, `camera_horizontal_radius=1.005738`
+- `audio1`: `max_consecutive_motion_unit_run=2`, `max_total_motion_unit_uses=5`, `repeat_unit_total_hard_reject_count=6`, `gap_count=0`, `future_visibility_violations=0`, `camera_horizontal_radius=0.764794`
+- `audio2`: `max_consecutive_motion_unit_run=2`, `max_total_motion_unit_uses=5`, `repeat_unit_total_hard_reject_count=14`, `gap_count=0`, `future_visibility_violations=0`, `camera_horizontal_radius=1.751178`
+- `audio3`: `max_consecutive_motion_unit_run=2`, `max_total_motion_unit_uses=5`, `repeat_unit_total_hard_reject_count=7`, `gap_count=0`, `future_visibility_violations=0`, `camera_horizontal_radius=0.850853`
+- `audio4`: `max_consecutive_motion_unit_run=2`, `max_total_motion_unit_uses=5`, `repeat_unit_total_hard_reject_count=5`, `gap_count=0`, `future_visibility_violations=0`, `camera_horizontal_radius=1.126195`
 
 ## Verification
 
