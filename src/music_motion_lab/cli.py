@@ -232,12 +232,16 @@ def build_parser() -> argparse.ArgumentParser:
     stream_plan.add_argument("--library", required=True)
     stream_plan.add_argument("--output", help="Optional JSONL stream plan output path inside outputs/.")
     stream_plan.add_argument("--max-steps", type=int, default=0)
-    stream_plan.add_argument("--planner-version", choices=["m9", "m12", "m15", "m17"], default="m17")
+    stream_plan.add_argument("--planner-version", choices=["m9", "m12", "m15", "m17", "m18"], default="m18")
     stream_plan.add_argument("--tail-policy", choices=["none", "recover"], default="none")
     stream_plan.add_argument("--source-sequence-allowlist", help="Comma-separated FineDance source sequence ids for visually coherent planning.")
     stream_plan.add_argument("--initial-hold-sec", type=float, default=5.0, help="Hold an initial pose before starting retrieval.")
     stream_plan.add_argument("--initial-pose-mode", choices=["freeze_first", "neutral_rest", "neutral_idle"], default="neutral_idle")
     stream_plan.add_argument("--cohort-size", type=int, default=10, help="How many source songs to keep in the M15 style cohort before unit-level retrieval.")
+    stream_plan.add_argument("--ending-hold-sec", type=float, default=5.0, help="Hold the ending window for gradual neutral recover.")
+    stream_plan.add_argument("--ending-policy", choices=["none", "gradual_recover"], default="gradual_recover")
+    stream_plan.add_argument("--speed-retime-policy", choices=["none", "conservative_lock"], default="conservative_lock")
+    stream_plan.add_argument("--state-machine-policy", choices=["none", "hybrid"], default="hybrid")
 
     stream_render = subparsers.add_parser(
         "render-streaming-smplx-mesh-review",
@@ -600,6 +604,10 @@ def main() -> int:
             initial_hold_sec=args.initial_hold_sec,
             initial_pose_mode=args.initial_pose_mode,
             cohort_size=args.cohort_size,
+            ending_hold_sec=args.ending_hold_sec,
+            ending_policy=args.ending_policy,
+            speed_retime_policy=args.speed_retime_policy,
+            state_machine_policy=args.state_machine_policy,
         )
         header = next((record for record in records if record.get("kind") == "stream_plan_header"), {})
         song_id = str(header.get("song_id", "stream_song") or "stream_song")

@@ -131,6 +131,8 @@ class StreamingSmplxTests(unittest.TestCase):
         self.assertLessEqual(ticks[0]["available_audio_until_sec"], 3.0)
         for tick in ticks:
             available = float(tick["available_audio_until_sec"])
+            self.assertIn("music_state", tick)
+            self.assertIn(tick["music_state"]["energy_level"], {"low", "mid", "high"})
             self.assertLessEqual(float(tick["lookahead_sec"]), 2.00001)
             self.assertLessEqual(float(tick["lookfront_sec"]), 1.00001)
             self.assertLessEqual(float(tick["total_future_sec"]), 3.00001)
@@ -333,6 +335,100 @@ class StreamingSmplxTests(unittest.TestCase):
         self.assertGreaterEqual(evaluation["metrics"]["low_confidence_continuation_count"], 1)
         self.assertEqual(evaluation["metrics"]["initial_upright_hold_sec"], 5.0)
         self.assertGreaterEqual(evaluation["metrics"]["first_dance_start_sec"], 5.0)
+
+    def test_m18_inserts_outro_recover_state_and_keeps_repeat_speed_contracts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            motion_path = _write_motion(Path(tmpdir) / "finedance")
+            library = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir), contact_mode="joints")
+        beats = [
+            {"index": index, "time_sec": index * 0.5, "strength": 0.8, "confidence": 0.95, "is_downbeat": index % 4 == 0}
+            for index in range(27)
+        ]
+        stream_events = [
+            {
+                "kind": "stream_header",
+                "song_id": "m18_demo",
+                "duration_sec": 12.2,
+                "initial_buffer_sec": 2.0,
+                "lookahead_sec": 2.0,
+                "lookfront_sec": 1.0,
+                "total_future_sec": 3.0,
+                "beats_per_bar": 4,
+            }
+        ]
+        for tick_index, playhead_sec in enumerate([0.0, 2.0, 4.0, 6.0, 8.0, 10.0]):
+            available_until = min(12.2, playhead_sec + 3.0)
+            visible_beats = [beat for beat in beats if beat["time_sec"] <= available_until + 1e-8]
+            stream_events.append(
+                {
+                    "kind": "tick",
+                    "tick_index": tick_index,
+                    "playhead_sec": playhead_sec,
+                    "available_audio_until_sec": available_until,
+                    "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.95},
+                    "music_state": {
+                        "energy_level": "mid",
+                        "accent_density": "mid",
+                        "beat_confidence": 0.95,
+                        "phrase_phase": {"count": int(playhead_sec / 0.5) % 4 + 1, "is_reliable": True},
+                        "melodic_motion_proxy": 0.35,
+                    },
+                    "beats": visible_beats,
+                    "downbeats": [beat for beat in visible_beats if beat["is_downbeat"]],
+                    "drum_hits": [{"index": index, "time_sec": beat["time_sec"], "strength": 0.95, "kind": "kick"} for index, beat in enumerate(visible_beats[::2])],
+                    "accents": [{"index": index, "time_sec": beat["time_sec"], "strength": 0.85, "kind": "accent_peak"} for index, beat in enumerate(visible_beats[1::2])],
+                    "segment_hypotheses": [
+                        {"start_time_sec": beat["time_sec"], "end_time_sec": beat["time_sec"] + 2.0, "duration_beats": 4, "confidence": 0.9}
+                        for beat in visible_beats
+                        if beat["is_downbeat"]
+                    ],
+                }
+            )
+
+        plan = simulate_streaming_smplx_plan_records(
+            stream_events,
+            library,
+            planner_version="m18",
+            initial_hold_sec=5.0,
+            initial_pose_mode="neutral_idle",
+            ending_hold_sec=5.0,
+            ending_policy="gradual_recover",
+            speed_retime_policy="conservative_lock",
+            state_machine_policy="hybrid",
+        )
+        repeated_plan = simulate_streaming_smplx_plan_records(
+            stream_events,
+            library,
+            planner_version="m18",
+            initial_hold_sec=5.0,
+            initial_pose_mode="neutral_idle",
+            ending_hold_sec=5.0,
+            ending_policy="gradual_recover",
+            speed_retime_policy="conservative_lock",
+            state_machine_policy="hybrid",
+        )
+        decisions = [record for record in plan if record["kind"] == "decision"]
+        repeated_decisions = [record for record in repeated_plan if record["kind"] == "decision"]
+        evaluation = evaluate_streaming_planner_records(plan)
+        manifest = stream_plan_to_stitch_manifest(plan, fps=30, blend_frames=10)
+        signature = [(item["pose_source"], item["target_time_sec"], item.get("choreography_state")) for item in decisions]
+        repeated_signature = [(item["pose_source"], item["target_time_sec"], item.get("choreography_state")) for item in repeated_decisions]
+
+        self.assertEqual(plan[0]["planner_version"], "m18")
+        self.assertEqual(plan[0]["ending_policy"], "gradual_recover")
+        self.assertEqual(signature, repeated_signature)
+        self.assertEqual(decisions[0]["switch_reason"]["mode"], "initial_upright_hold")
+        self.assertEqual(decisions[-1]["pose_source"], "smplx_neutral_idle")
+        self.assertEqual(evaluation["metrics"]["final_pose_source"], "smplx_neutral_idle")
+        self.assertGreaterEqual(evaluation["metrics"]["outro_recover_sec"], 5.0)
+        self.assertTrue(evaluation["acceptance"]["no_future_visibility_violations"])
+        self.assertTrue(evaluation["acceptance"]["no_gaps"])
+        self.assertTrue(evaluation["acceptance"]["non_tail_max_speed_le_1_15"])
+        self.assertTrue(evaluation["acceptance"]["max_consecutive_motion_unit_run_le_2"])
+        self.assertTrue(evaluation["acceptance"]["max_total_motion_unit_uses_le_5"])
+        self.assertTrue(any(item["pose_source"] == "smplx_neutral_recover" for item in decisions))
+        self.assertTrue(any(step.get("recover", {}).get("mode") == "gradual_to_neutral" for step in manifest["steps"]))
+        self.assertTrue(all(float(item["available_audio_until_sec"]) <= float(item["playhead_sec"]) + 3.00001 for item in decisions))
 
     def test_m12_tail_policy_extends_final_segment_and_evaluator_reports_acceptance(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

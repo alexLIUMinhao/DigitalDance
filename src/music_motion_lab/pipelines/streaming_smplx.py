@@ -27,6 +27,7 @@ DEFAULT_INITIAL_POSE_MODE = "neutral_idle"
 SYNTHETIC_NEUTRAL_IDLE_SOURCE = "smplx_neutral_idle"
 SYNTHETIC_FREEZE_FIRST_SOURCE = "smplx_freeze_first"
 SYNTHETIC_NEUTRAL_REST_SOURCE = "smplx_neutral_rest"
+SYNTHETIC_NEUTRAL_RECOVER_SOURCE = "smplx_neutral_recover"
 SYNTHETIC_SOURCE_SEQUENCE = "__synthetic__"
 M15_LOW_CONFIDENCE_THRESHOLD = 0.38
 M15_MIN_SEQUENCE_DWELL_STEPS = 2
@@ -51,6 +52,14 @@ M17_MAX_INITIAL_IDLE_EXTENSION_SEC = 1.0
 M17_IDEAL_MAX_CONSECUTIVE_SAME_UNIT = 2
 M17_MAX_CONSECUTIVE_SAME_UNIT = 3
 M17_MAX_TOTAL_SAME_UNIT_USES = 5
+M18_DEFAULT_ENDING_HOLD_SEC = 5.0
+M18_FINAL_NEUTRAL_HOLD_SEC = 1.0
+M18_PREFERRED_RETIME_MIN = 0.90
+M18_PREFERRED_RETIME_MAX = 1.10
+M18_HARD_RETIME_MIN = 0.85
+M18_HARD_RETIME_MAX = 1.15
+M18_RHYTHM_HARD_MIN = 0.55
+M18_TRANSITION_HARD_MIN = 0.55
 
 
 def _safe_float(value: Any, fallback: float = 0.0) -> float:
@@ -244,7 +253,7 @@ def _normalize_stream_tempo_state(
 
 def _planner_score_weights(planner_version: str) -> dict[str, float]:
     version = str(planner_version or "m9").lower()
-    if version == "m17":
+    if version in {"m17", "m18"}:
         return {
             "rhythm_lock": 0.60,
             "transition_smoothness": 0.25,
@@ -279,6 +288,8 @@ def _planner_score_weights(planner_version: str) -> dict[str, float]:
 
 def _planner_name(planner_version: str) -> str:
     version = str(planner_version or "m9").lower()
+    if version == "m18":
+        return "streaming_retrieval_v5_hybrid_state_retime_outro"
     if version == "m17":
         return "streaming_retrieval_v4_any_song_rhythm_stable"
     if version == "m15":
@@ -353,6 +364,80 @@ def _peak_events(
     return events
 
 
+def _music_state_for_visible_window(
+    *,
+    frame_times: np.ndarray,
+    onset: np.ndarray,
+    low: np.ndarray,
+    low_mid: np.ndarray,
+    high: np.ndarray,
+    onset_peaks: list[int],
+    low_peaks: list[int],
+    high_peaks: list[int],
+    playhead_sec: float,
+    window_start_sec: float,
+    available_until_sec: float,
+    tempo_state: dict[str, Any],
+    downbeat_confidence: float,
+    beats_per_bar: int,
+) -> dict[str, Any]:
+    start_index = _nearest_frame_index(frame_times, window_start_sec)
+    end_index = _nearest_frame_index(frame_times, available_until_sec)
+    if end_index < start_index:
+        start_index, end_index = end_index, start_index
+    window_duration = max(1e-3, available_until_sec - window_start_sec)
+    visible_onset_peaks = _indices_in_window(frame_times, onset_peaks, window_start_sec, available_until_sec)
+    visible_low_peaks = _indices_in_window(frame_times, low_peaks, window_start_sec, available_until_sec)
+    visible_high_peaks = _indices_in_window(frame_times, high_peaks, window_start_sec, available_until_sec)
+    accent_density_value = _clamp(
+        (len(visible_onset_peaks) * 0.55 + len(visible_low_peaks) * 0.35 + len(visible_high_peaks) * 0.35)
+        / max(1.0, window_duration * 4.0),
+        0.0,
+        1.0,
+    )
+    current_onset = _frame_value(onset, frame_times, playhead_sec)
+    current_low = _frame_value(low, frame_times, playhead_sec)
+    current_high = _frame_value(high, frame_times, playhead_sec)
+    energy_value = _clamp(current_low * 0.45 + current_onset * 0.35 + current_high * 0.20 + accent_density_value * 0.25, 0.0, 1.0)
+    if energy_value >= 0.66:
+        energy_level = "high"
+    elif energy_value <= 0.30:
+        energy_level = "low"
+    else:
+        energy_level = "mid"
+    if accent_density_value >= 0.58:
+        accent_density = "high"
+    elif accent_density_value <= 0.24:
+        accent_density = "low"
+    else:
+        accent_density = "mid"
+    low_mid_window = low_mid[start_index : end_index + 1] if low_mid.size else np.asarray([], dtype=np.float32)
+    high_window = high[start_index : end_index + 1] if high.size else np.asarray([], dtype=np.float32)
+    low_mid_motion = float(np.mean(np.abs(np.diff(low_mid_window)))) if low_mid_window.size > 1 else 0.0
+    high_motion = float(np.mean(np.abs(np.diff(high_window)))) if high_window.size > 1 else 0.0
+    melodic_motion_proxy = _clamp(low_mid_motion * 0.70 + high_motion * 0.30, 0.0, 1.0)
+    spacing = max(1e-3, _safe_float(tempo_state.get("spacing_sec"), 0.5))
+    offset = _safe_float(tempo_state.get("offset_sec"))
+    beat_position = max(0.0, (playhead_sec - offset) / spacing)
+    count = int(math.floor(beat_position)) % max(1, beats_per_bar) + 1
+    beat_phase_fraction = beat_position - math.floor(beat_position)
+    phrase_phase = {
+        "count": count,
+        "beat_phase_fraction": round(float(beat_phase_fraction), 5),
+        "is_reliable": bool(_safe_float(tempo_state.get("confidence"), 0.0) >= M17_LOW_CONFIDENCE_THRESHOLD),
+        "downbeat_confidence": round(float(downbeat_confidence), 5),
+    }
+    return {
+        "energy_level": energy_level,
+        "energy_value": round(float(energy_value), 5),
+        "accent_density": accent_density,
+        "accent_density_value": round(float(accent_density_value), 5),
+        "beat_confidence": round(float(_safe_float(tempo_state.get("confidence"), 0.0)), 5),
+        "phrase_phase": phrase_phase,
+        "melodic_motion_proxy": round(float(melodic_motion_proxy), 5),
+    }
+
+
 def build_streaming_song_event_records(
     audio_path: Path,
     song_id: str,
@@ -371,6 +456,7 @@ def build_streaming_song_event_records(
     frame_times = np.asarray(analysis["frame_times_sec"], dtype=np.float32)
     onset = np.asarray(analysis["onset_envelope"], dtype=np.float32)
     low = np.asarray(analysis["low_band_envelope"], dtype=np.float32)
+    low_mid = np.asarray(analysis.get("low_mid_envelope", []), dtype=np.float32)
     high = np.asarray(analysis["high_attack_envelope"], dtype=np.float32)
     duration_sec = float(analysis["duration_sec"])
     hop_size = int(analysis["hop_size"])
@@ -458,7 +544,24 @@ def build_streaming_song_event_records(
         downbeat_confidence = max([_safe_float(item.get("confidence")) for item in downbeats] or [0.0])
         current_onset = _frame_value(onset, frame_times, playhead_sec)
         current_low = _frame_value(low, frame_times, playhead_sec)
+        current_low_mid = _frame_value(low_mid, frame_times, playhead_sec)
         current_high = _frame_value(high, frame_times, playhead_sec)
+        music_state = _music_state_for_visible_window(
+            frame_times=frame_times,
+            onset=onset,
+            low=low,
+            low_mid=low_mid,
+            high=high,
+            onset_peaks=onset_peaks,
+            low_peaks=low_peaks,
+            high_peaks=high_peaks,
+            playhead_sec=playhead_sec,
+            window_start_sec=window_start,
+            available_until_sec=available_until,
+            tempo_state=tempo_state,
+            downbeat_confidence=downbeat_confidence,
+            beats_per_bar=beats_per_bar,
+        )
         records.append(
             {
                 "schema_version": 1,
@@ -492,8 +595,10 @@ def build_streaming_song_event_records(
                 "analysis_frame": {
                     "onset": round(float(current_onset), 5),
                     "low_band": round(float(current_low), 5),
+                    "low_mid": round(float(current_low_mid), 5),
                     "high_attack": round(float(current_high), 5),
                 },
+                "music_state": music_state,
                 "beats": beats,
                 "downbeats": downbeats,
                 "drum_hits": drum_hits,
@@ -816,6 +921,84 @@ def _target_style_profile_for_tick(
     }
 
 
+def _m18_energy_to_target(energy_level: str) -> str:
+    value = str(energy_level or "mid").lower()
+    if value == "high":
+        return "high_energy"
+    if value == "low":
+        return "low_energy"
+    return "mid_energy"
+
+
+def _choreography_state_for_tick(
+    *,
+    tick: dict[str, Any],
+    start_sec: float,
+    visible_end_sec: float,
+    previous_state: str | None,
+    previous_unit: dict[str, Any] | None,
+) -> tuple[str, dict[str, Any]]:
+    music_state = dict(tick.get("music_state", {}) or {})
+    beat_confidence = _safe_float(music_state.get("beat_confidence"), _safe_float(dict(tick.get("beat_phase", {}) or {}).get("confidence")))
+    energy_level = str(music_state.get("energy_level") or "mid")
+    window_end = min(visible_end_sec, start_sec + 1.25)
+    downbeats = _events_in_time_window(tick, "downbeats", start_sec, window_end)
+    drums = _events_in_time_window(tick, "drum_hits", start_sec, window_end)
+    accents = _events_in_time_window(tick, "accents", start_sec, window_end)
+    strong_events = [
+        event
+        for event in [*downbeats, *drums, *accents]
+        if _safe_float(event.get("confidence"), _safe_float(event.get("strength"))) >= M17_EVENT_CONFIDENCE_FLOOR
+    ]
+    near_strong_events = [
+        event
+        for event in strong_events
+        if abs(_safe_float(event.get("time_sec"), start_sec) - start_sec) <= 0.18
+    ]
+    reason = {
+        "policy": "hybrid",
+        "beat_confidence": round(float(beat_confidence), 5),
+        "energy_level": energy_level,
+        "visible_strong_event_count": len(strong_events),
+        "previous_state": previous_state,
+    }
+    if beat_confidence >= M17_LOW_CONFIDENCE_THRESHOLD and near_strong_events:
+        reason["reason"] = "strong_visible_accent_at_boundary"
+        return "accent_hit", reason
+    if beat_confidence >= M17_LOW_CONFIDENCE_THRESHOLD and strong_events:
+        reason["reason"] = "strong_visible_accent_ahead"
+        return "accent_prepare", reason
+    previous_energy = str(dict(previous_unit or {}).get("energy", "") or "")
+    target_energy = _m18_energy_to_target(energy_level)
+    phrase = dict(music_state.get("phrase_phase", {}) or {})
+    count = _safe_int(phrase.get("count"), 0)
+    if previous_unit is not None and previous_energy and previous_energy != target_energy and count in {3, 4}:
+        reason["reason"] = "weak_count_energy_change"
+        return "transition", reason
+    reason["reason"] = "steady_groove"
+    return f"groove_{energy_level if energy_level in {'low', 'mid', 'high'} else 'mid'}", reason
+
+
+def _state_adjusted_style_profile(style_profile: dict[str, Any], choreography_state: str, tick: dict[str, Any]) -> dict[str, Any]:
+    adjusted = dict(style_profile)
+    state = str(choreography_state or "")
+    music_state = dict(tick.get("music_state", {}) or {})
+    energy_level = str(music_state.get("energy_level") or "").lower()
+    if energy_level in {"low", "mid", "high"}:
+        adjusted["energy"] = _m18_energy_to_target(energy_level)
+    if state in {"accent_prepare", "accent_hit", "groove_high"}:
+        adjusted["attack"] = "sharp"
+    elif state == "groove_low":
+        adjusted["attack"] = "smooth"
+    if state == "groove_high":
+        adjusted["size"] = "large_motion"
+    elif state == "groove_low":
+        adjusted["size"] = "small_motion"
+    elif state == "transition":
+        adjusted["size"] = "medium_motion"
+    return adjusted
+
+
 def _sequence_profiles(units: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     profiles: dict[str, dict[str, Any]] = {}
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -919,7 +1102,8 @@ def _rhythm_score(
         if _safe_float(lock.get("beat_offset")) <= float(target_beats) + 1e-8
     ] or [{"beat_offset": 0, "role": "count_1_downbeat", "count": 1}]
     version = str(planner_version or "m9").lower()
-    is_m17 = version == "m17"
+    is_m18 = version == "m18"
+    is_m17 = version in {"m17", "m18"}
     beats = list(tick.get("beats", []) or [])
     downbeats = list(tick.get("downbeats", []) or [])
     drums = list(tick.get("drum_hits", []) or [])
@@ -958,7 +1142,10 @@ def _rhythm_score(
         best_visible_score = 0.0
         nearest_delta = beat_spacing_sec
         best_event_kind = "predicted"
-        visible_tolerance = max(beat_spacing_sec * (0.28 if is_m17 else 0.35), 1e-3)
+        if is_m18:
+            visible_tolerance = max(min(beat_spacing_sec * 0.18, 2.0 / DEFAULT_STREAM_FPS), 1e-3)
+        else:
+            visible_tolerance = max(beat_spacing_sec * (0.28 if is_m17 else 0.35), 1e-3)
         for event, priority_weight in prioritized_events:
             event_time = _safe_float(event.get("time_sec"), 99999.0)
             if event_time > visible_until_sec + 1e-8:
@@ -1034,6 +1221,79 @@ def _choose_target_beats(units: list[dict[str, Any]], spacing_sec: float, prefer
             best_penalty = option_penalty
             best_option = target_beats
     return int(best_option)
+
+
+def _choose_conservative_target_beats(
+    units: list[dict[str, Any]],
+    spacing_sec: float,
+    preferred_beats: int,
+    counts: list[int],
+) -> tuple[int, float, dict[str, Any]]:
+    options: list[int] = []
+    for value in (preferred_beats, 4, 2, 8, 16):
+        if value > 0 and value in counts and value not in options:
+            options.append(value)
+    if not options:
+        options = [preferred_beats]
+    best_option = options[0]
+    best_spacing = float(spacing_sec)
+    best_rank = (-1.0, -1.0, -999.0, -999.0)
+    option_reports: list[dict[str, Any]] = []
+    for target_beats in options:
+        exact = [unit for unit in units if _safe_int(unit.get("duration_beats"), 0) == target_beats]
+        pool = exact or units
+        source_durations = [_candidate_source_duration(unit) for unit in pool]
+        raw_target_duration = max(1e-3, float(target_beats) * spacing_sec)
+        raw_median_speed = float(np.median(np.asarray(source_durations or [raw_target_duration], dtype=np.float32))) / raw_target_duration
+        adjusted_spacing = float(spacing_sec)
+        spacing_adjusted = False
+        if raw_median_speed > M18_PREFERRED_RETIME_MAX:
+            ideal_duration = float(np.median(np.asarray(source_durations or [raw_target_duration], dtype=np.float32)))
+            adjusted_spacing = min(float(spacing_sec) * 3.5, max(float(spacing_sec), ideal_duration / max(1, target_beats)))
+            spacing_adjusted = adjusted_spacing > float(spacing_sec) + 1e-8
+        elif raw_median_speed < M18_PREFERRED_RETIME_MIN:
+            ideal_duration = float(np.median(np.asarray(source_durations or [raw_target_duration], dtype=np.float32)))
+            adjusted_spacing = max(float(spacing_sec) * 0.65, min(float(spacing_sec), ideal_duration / max(1, target_beats)))
+            spacing_adjusted = adjusted_spacing < float(spacing_sec) - 1e-8
+        target_duration = max(1e-3, float(target_beats) * adjusted_spacing)
+        speeds = [duration / target_duration for duration in source_durations]
+        preferred_hits = [speed for speed in speeds if M18_PREFERRED_RETIME_MIN <= speed <= M18_PREFERRED_RETIME_MAX]
+        hard_hits = [speed for speed in speeds if M18_HARD_RETIME_MIN <= speed <= M18_HARD_RETIME_MAX]
+        preferred_ratio = len(preferred_hits) / max(1, len(speeds))
+        hard_ratio = len(hard_hits) / max(1, len(speeds))
+        best_speed_delta = min([abs(speed - 1.0) for speed in speeds] or [999.0])
+        closeness = 1.0 - min(abs(float(target_beats) - float(preferred_beats)) / 16.0, 1.0)
+        rank = (preferred_ratio, hard_ratio, -best_speed_delta, closeness)
+        option_reports.append(
+            {
+                "target_beats": int(target_beats),
+                "candidate_count": len(pool),
+                "raw_spacing_sec": round(float(spacing_sec), 5),
+                "selected_spacing_sec": round(float(adjusted_spacing), 5),
+                "spacing_adjusted": bool(spacing_adjusted),
+                "raw_median_speed_scale": round(float(raw_median_speed), 5),
+                "best_speed_delta_from_1": round(float(best_speed_delta), 5),
+                "preferred_speed_ratio": round(float(preferred_ratio), 5),
+                "hard_speed_ratio": round(float(hard_ratio), 5),
+            }
+        )
+        if rank > best_rank:
+            best_rank = rank
+            best_option = int(target_beats)
+            best_spacing = float(adjusted_spacing)
+    selected_report = next((item for item in option_reports if _safe_int(item.get("target_beats")) == best_option), {})
+    return best_option, best_spacing, {
+        "policy": "conservative_lock",
+        "preferred_range": [M18_PREFERRED_RETIME_MIN, M18_PREFERRED_RETIME_MAX],
+        "hard_range": [M18_HARD_RETIME_MIN, M18_HARD_RETIME_MAX],
+        "preferred_beats": int(preferred_beats),
+        "selected_beats": int(best_option),
+        "raw_spacing_sec": round(float(spacing_sec), 5),
+        "selected_spacing_sec": round(float(best_spacing), 5),
+        "spacing_adjusted": bool(_safe_float(selected_report.get("spacing_adjusted")) or abs(best_spacing - float(spacing_sec)) > 1e-8),
+        "retime_adjusted": bool(best_option != preferred_beats or abs(best_spacing - float(spacing_sec)) > 1e-8),
+        "options": option_reports,
+    }
 
 
 def _m15_recovery_rank(
@@ -1160,8 +1420,12 @@ def _synthetic_idle_decision(
     target_energy: str,
     switch_mode: str,
     extra_switch_reason: dict[str, Any] | None = None,
+    pose_source_override: str | None = None,
+    choreography_state: str | None = None,
+    music_state: dict[str, Any] | None = None,
+    state_machine: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    pose_source = _initial_pose_source(initial_pose_mode)
+    pose_source = str(pose_source_override or _initial_pose_source(initial_pose_mode))
     return {
         "schema_version": 1,
         "kind": "decision",
@@ -1181,6 +1445,9 @@ def _synthetic_idle_decision(
         "target_beats": 0,
         "target_bpm": round(float(target_bpm), 5),
         "target_energy": target_energy,
+        "choreography_state": choreography_state or ("recover_outro" if switch_mode == "recover_outro" else ("intro_idle" if switch_mode in {"initial_upright_hold", "low_confidence_upright_idle", "final_neutral_hold"} else "synthetic")),
+        "music_state": dict(music_state or {}),
+        "state_machine": dict(state_machine or {}),
         "selected_unit_id": f"{pose_source}_{slugify(f'{start_sec:.2f}_{end_sec:.2f}')}",
         "source_sequence": SYNTHETIC_SOURCE_SEQUENCE,
         "selected_from_sequence": SYNTHETIC_SOURCE_SEQUENCE,
@@ -1193,6 +1460,7 @@ def _synthetic_idle_decision(
         "speed_scale": 1.0,
         "score": 1.0,
         "pose_source": pose_source,
+        "final_pose_source": SYNTHETIC_NEUTRAL_IDLE_SOURCE if pose_source == SYNTHETIC_NEUTRAL_RECOVER_SOURCE else pose_source,
         "initial_pose_mode": str(initial_pose_mode or DEFAULT_INITIAL_POSE_MODE),
         "score_breakdown": {
             "rhythm_lock": 1.0,
@@ -1210,6 +1478,8 @@ def _synthetic_idle_decision(
             "same_sequence_as_previous": False,
             **dict(extra_switch_reason or {}),
         },
+        "retime_policy": "none",
+        "retime_reason": {},
         "expected_accent_hits": [],
         "rhythm_locks": [],
         "reference_artifacts": {},
@@ -1227,6 +1497,7 @@ def _score_candidate(
     target_beats: int,
     target_style_profile: dict[str, Any],
     planner_version: str = "m9",
+    choreography_state: str | None = None,
 ) -> tuple[float, dict[str, Any], list[dict[str, Any]], list[float]]:
     version = str(planner_version or "m9").lower()
     beat_phase = dict(tick.get("beat_phase", {}) or {})
@@ -1243,11 +1514,12 @@ def _score_candidate(
     )
     transition = _transition_score(previous_unit, candidate)
     style = _music_style_score(candidate, target_style_profile=target_style_profile, target_bpm=_safe_float(beat_phase.get("bpm"), 120.0))
-    repeat_penalty = 0.5 if version in {"m12", "m15"} else (0.65 if version == "m17" else 0.35)
+    repeat_penalty = 0.5 if version in {"m12", "m15"} else (0.65 if version in {"m17", "m18"} else 0.35)
     diversity = max(0.0, 1.0 - recent_units[str(candidate.get("unit_id"))] * repeat_penalty)
     is_m12 = version == "m12"
     is_m15 = version == "m15"
-    is_m17 = version == "m17"
+    is_m17 = version in {"m17", "m18"}
+    is_m18 = version == "m18"
     weights = _planner_score_weights(version)
     total = (
         rhythm_score * weights["rhythm_lock"]
@@ -1262,8 +1534,11 @@ def _score_candidate(
     safe_range = dict(candidate.get("safe_retime_range", {}) or {})
     min_retime = _safe_float(safe_range.get("min"), 0.85)
     max_retime = _safe_float(safe_range.get("max"), 1.15)
+    if is_m18:
+        min_retime = max(min_retime, M18_PREFERRED_RETIME_MIN)
+        max_retime = min(max_retime, M18_PREFERRED_RETIME_MAX)
     if speed_scale < min_retime or speed_scale > max_retime:
-        speed_penalty_gain = 2.8 if is_m17 else (2.4 if is_m12 else 1.8)
+        speed_penalty_gain = 3.2 if is_m18 else (2.8 if is_m17 else (2.4 if is_m12 else 1.8))
         total -= min(1.0, abs(speed_scale - _clamp(speed_scale, min_retime, max_retime)) * speed_penalty_gain)
     if abs(_safe_float(candidate.get("duration_beats"), target_beats) - target_beats) > 0.1:
         total -= 0.12
@@ -1286,6 +1561,22 @@ def _score_candidate(
         "speed_scale": round(float(speed_scale), 5),
         "source_quality_weight": round(float(_safe_float(candidate.get("source_song_quality_weight"), 0.65)), 5),
     }
+    state = str(choreography_state or "")
+    if is_m18 and state in {"accent_prepare", "accent_hit"}:
+        accent_locks = [
+            lock
+            for lock in list(candidate.get("accent_lock_frames", []) or [])
+            if str(lock.get("role")) in {"count_1_downbeat", "count_3_backbeat"} or _safe_float(lock.get("strength")) >= 0.60
+        ]
+        accent_bonus = 0.055 if accent_locks else -0.075
+        total += accent_bonus
+        breakdown["state_machine_accent_bias"] = round(float(accent_bonus), 5)
+        breakdown["weighted_total"] = round(float(total), 5)
+    elif is_m18 and state == "transition":
+        transition_bonus = 0.035 if transition >= M18_TRANSITION_HARD_MIN else -0.055
+        total += transition_bonus
+        breakdown["state_machine_transition_bias"] = round(float(transition_bonus), 5)
+        breakdown["weighted_total"] = round(float(total), 5)
     return round(float(total), 5), breakdown, lock_reports, expected_hits
 
 
@@ -1300,6 +1591,10 @@ def simulate_streaming_smplx_plan_records(
     initial_hold_sec: float = 0.0,
     initial_pose_mode: str = DEFAULT_INITIAL_POSE_MODE,
     cohort_size: int = DEFAULT_M15_COHORT_SIZE,
+    ending_hold_sec: float = 0.0,
+    ending_policy: str = "none",
+    speed_retime_policy: str = "none",
+    state_machine_policy: str = "none",
 ) -> list[dict[str, Any]]:
     header = _header(stream_event_records, "stream_header")
     ticks = _records_by_kind(stream_event_records, "tick")
@@ -1326,13 +1621,49 @@ def simulate_streaming_smplx_plan_records(
     planner_version = str(planner_version or "m9").lower()
     is_m12 = planner_version == "m12"
     is_m15 = planner_version == "m15"
-    is_m17 = planner_version == "m17"
+    is_m18 = planner_version == "m18"
+    is_m17_exact = planner_version == "m17"
+    is_m17 = is_m17_exact or is_m18
     tail_policy = str(tail_policy or "none").lower()
     initial_pose_mode = str(initial_pose_mode or DEFAULT_INITIAL_POSE_MODE).lower()
     cohort_size = max(1, int(cohort_size or DEFAULT_M15_COHORT_SIZE))
     initial_hold_sec = _clamp(_safe_float(initial_hold_sec), 0.0, max(0.0, duration_sec - 0.35))
+    ending_policy = str(ending_policy or ("gradual_recover" if is_m18 else "none")).lower()
+    speed_retime_policy = str(speed_retime_policy or ("conservative_lock" if is_m18 else "none")).lower()
+    state_machine_policy = str(state_machine_policy or ("hybrid" if is_m18 else "none")).lower()
+    ending_hold_sec = _safe_float(ending_hold_sec, M18_DEFAULT_ENDING_HOLD_SEC if is_m18 else 0.0)
+    if is_m18 and ending_policy == "none":
+        ending_policy = "gradual_recover"
+    if is_m18 and ending_hold_sec <= 0.0:
+        ending_hold_sec = M18_DEFAULT_ENDING_HOLD_SEC
+    ending_hold_sec = _clamp(ending_hold_sec, 0.0, max(0.0, duration_sec - initial_hold_sec - 0.35))
     planner_name = _planner_name(planner_version)
     score_weights = _planner_score_weights(planner_version)
+    outro_recover_start_sec = duration_sec
+    outro_neutral_arrival_sec = duration_sec
+    final_neutral_hold_sec = 0.0
+    if is_m18 and ending_policy == "gradual_recover" and ending_hold_sec > 0.0:
+        nominal_outro_start = max(initial_hold_sec, duration_sec - ending_hold_sec)
+        boundary_tick = _find_tick_for_decision(ticks, max(0.0, nominal_outro_start - total_future_sec))
+        visible_until = _safe_float(boundary_tick.get("available_audio_until_sec"), nominal_outro_start)
+        boundary_candidates = [
+            item
+            for item in _planner_boundary_events(
+                boundary_tick,
+                start_sec=max(initial_hold_sec, nominal_outro_start - 0.75),
+                available_until_sec=min(nominal_outro_start, visible_until),
+                confidence_floor=M17_INITIAL_BOUNDARY_CONFIDENCE_FLOOR,
+            )
+            if _safe_float(item.get("time_sec"), nominal_outro_start) <= nominal_outro_start + 1e-8
+        ]
+        if boundary_candidates:
+            chosen_boundary = min(boundary_candidates, key=lambda item: abs(_safe_float(item.get("time_sec")) - nominal_outro_start))
+            outro_recover_start_sec = _safe_float(chosen_boundary.get("time_sec"), nominal_outro_start)
+        else:
+            outro_recover_start_sec = nominal_outro_start
+        final_neutral_hold_sec = min(M18_FINAL_NEUTRAL_HOLD_SEC, max(0.5, duration_sec - outro_recover_start_sec))
+        outro_neutral_arrival_sec = max(outro_recover_start_sec + 0.35, duration_sec - final_neutral_hold_sec)
+    dance_until_sec = outro_recover_start_sec if is_m18 and ending_policy == "gradual_recover" else duration_sec
 
     records: list[dict[str, Any]] = [
         {
@@ -1351,6 +1682,13 @@ def simulate_streaming_smplx_plan_records(
             "tail_policy": tail_policy,
             "initial_hold_sec": round(float(initial_hold_sec), 5),
             "initial_pose_mode": initial_pose_mode,
+            "ending_hold_sec": round(float(ending_hold_sec), 5),
+            "ending_policy": ending_policy,
+            "speed_retime_policy": speed_retime_policy,
+            "state_machine_policy": state_machine_policy,
+            "outro_recover_start_sec": round(float(outro_recover_start_sec), 5),
+            "outro_neutral_arrival_sec": round(float(outro_neutral_arrival_sec), 5),
+            "final_neutral_hold_sec": round(float(final_neutral_hold_sec), 5),
             "cohort_size": int(cohort_size),
             "source_sequence_allowlist": sorted(allowed_sequences),
             "score_weights": score_weights,
@@ -1362,10 +1700,11 @@ def simulate_streaming_smplx_plan_records(
     previous_unit: dict[str, Any] | None = None
     current_sequence_run = 0
     current_unit_run = 0
+    previous_choreography_state: str | None = None
     recent_units: Counter[str] = Counter()
     step_index = 0
 
-    while next_start_sec < duration_sec - 0.20:
+    while next_start_sec < dance_until_sec - 0.20:
         if max_steps > 0 and step_index >= max_steps:
             break
 
@@ -1389,6 +1728,8 @@ def simulate_streaming_smplx_plan_records(
             scoring_tick = tick
         visible_until_sec = _safe_float(tick.get("available_audio_until_sec"), next_start_sec)
         playhead = _safe_float(tick.get("playhead_sec"), 0.0)
+        if is_m18 and dance_until_sec - next_start_sec < max(1.0, spacing * 2.0):
+            break
 
         if is_m17 and previous_unit is None and next_start_sec >= initial_hold_sec - 1e-8:
             visible_boundaries = _planner_boundary_events(
@@ -1412,12 +1753,12 @@ def simulate_streaming_smplx_plan_records(
                 playhead = _safe_float(tick.get("playhead_sec"), playhead)
             elif can_extend_initial_idle and (tempo_confidence < M17_LOW_CONFIDENCE_THRESHOLD or next_start_sec >= visible_until_sec - 1e-8):
                 idle_end_sec = min(
-                    duration_sec,
+                    dance_until_sec,
                     initial_hold_sec + M17_MAX_INITIAL_IDLE_EXTENSION_SEC,
                     max(next_start_sec + max(0.5, spacing), visible_until_sec),
                 )
                 if idle_end_sec <= next_start_sec + 1e-3:
-                    idle_end_sec = min(duration_sec, next_start_sec + max(0.5, spacing))
+                    idle_end_sec = min(dance_until_sec, next_start_sec + max(0.5, spacing))
                 records.append(
                     _synthetic_idle_decision(
                         index=step_index,
@@ -1451,6 +1792,7 @@ def simulate_streaming_smplx_plan_records(
             if tempo_confidence >= 0.28
             else min(preferred_beats, 4)
         )
+        retime_reason: dict[str, Any] = {"policy": speed_retime_policy, "retime_adjusted": False}
         if is_m12 or is_m15 or is_m17:
             hypotheses = list(scoring_tick.get("segment_hypotheses", []) or [])
             viable = [
@@ -1469,17 +1811,37 @@ def simulate_streaming_smplx_plan_records(
                 steady_options = [count for count in counts if count >= M17_LOW_CONFIDENCE_FALLBACK_BEATS]
                 target_beats = min(steady_options, key=lambda count: abs(count - M17_LOW_CONFIDENCE_FALLBACK_BEATS)) if steady_options else max(counts)
             if tail_policy == "recover":
-                remaining_total = duration_sec - next_start_sec
+                remaining_total = dance_until_sec - next_start_sec
                 if remaining_total < target_beats * spacing * 0.75:
                     tail_options = [count for count in counts if count <= target_beats] or counts
                     target_beats = min(tail_options, key=lambda count: abs(count * spacing - remaining_total))
+            if is_m18 and speed_retime_policy == "conservative_lock" and tempo_confidence >= 0.28:
+                target_beats, adjusted_spacing, retime_reason = _choose_conservative_target_beats(
+                    units=units,
+                    spacing_sec=spacing,
+                    preferred_beats=target_beats,
+                    counts=counts,
+                )
+                if abs(adjusted_spacing - spacing) > 1e-8:
+                    spacing = max(0.18, float(adjusted_spacing))
+                    effective_bpm = 60.0 / max(spacing, 1e-6)
+                    scoring_tick = dict(scoring_tick)
+                    scoring_tick["beat_phase"] = {
+                        **dict(scoring_tick.get("beat_phase", {}) or {}),
+                        "bpm": round(float(effective_bpm), 5),
+                        "spacing_sec": round(float(spacing), 5),
+                        "confidence": tempo_confidence,
+                        "retime_spacing_adjusted": True,
+                    }
+            if is_m18 and dance_until_sec - next_start_sec < target_beats * spacing * 0.75:
+                break
 
-        target_end_sec = min(duration_sec, next_start_sec + target_beats * spacing)
+        target_end_sec = min(dance_until_sec, next_start_sec + target_beats * spacing)
         tail_extended = False
-        if (is_m12 or is_m15 or is_m17) and tail_policy == "recover" and target_end_sec < duration_sec:
-            remaining_after = duration_sec - target_end_sec
+        if (is_m12 or is_m15 or is_m17) and tail_policy == "recover" and target_end_sec < dance_until_sec:
+            remaining_after = dance_until_sec - target_end_sec
             if remaining_after < max(0.75, spacing * 1.25):
-                target_end_sec = duration_sec
+                target_end_sec = dance_until_sec
                 tail_extended = True
         if target_end_sec - next_start_sec < 0.35:
             break
@@ -1490,6 +1852,17 @@ def simulate_streaming_smplx_plan_records(
             visible_end_sec=visible_until_sec,
             previous_unit=previous_unit,
         )
+        choreography_state = "legacy_retrieval"
+        state_machine: dict[str, Any] = {"policy": state_machine_policy}
+        if is_m18 and state_machine_policy == "hybrid":
+            choreography_state, state_machine = _choreography_state_for_tick(
+                tick=scoring_tick,
+                start_sec=next_start_sec,
+                visible_end_sec=visible_until_sec,
+                previous_state=previous_choreography_state,
+                previous_unit=previous_unit,
+            )
+            target_style_profile = _state_adjusted_style_profile(target_style_profile, choreography_state, scoring_tick)
         target_energy = str(target_style_profile.get("energy", "mid_energy"))
 
         cohort_source_sequences: list[str] = []
@@ -1535,6 +1908,7 @@ def simulate_streaming_smplx_plan_records(
                     target_beats=target_beats,
                     target_style_profile=target_style_profile,
                     planner_version=planner_version,
+                    choreography_state=choreography_state,
                 )
             scored.append((score, candidate, breakdown, lock_reports, expected_hits))
         scored.sort(key=lambda item: item[0], reverse=True)
@@ -1554,7 +1928,9 @@ def simulate_streaming_smplx_plan_records(
                 reject_reasons.append("transition_smoothness_below_0_55")
             if is_m15 and not tail_extended and (speed_scale < M15_NON_TAIL_SPEED_MIN or speed_scale > M15_NON_TAIL_SPEED_MAX):
                 reject_reasons.append("non_tail_speed_outside_0_90_1_10")
-            if is_m17 and not tail_extended and (speed_scale < M17_NON_TAIL_SPEED_MIN or speed_scale > M17_NON_TAIL_SPEED_MAX):
+            if is_m18 and not tail_extended and (speed_scale < M18_HARD_RETIME_MIN or speed_scale > M18_HARD_RETIME_MAX):
+                reject_reasons.append("non_tail_speed_outside_0_85_1_15")
+            elif is_m17_exact and not tail_extended and (speed_scale < M17_NON_TAIL_SPEED_MIN or speed_scale > M17_NON_TAIL_SPEED_MAX):
                 reject_reasons.append("non_tail_speed_outside_0_92_1_08")
             if (
                 is_m17
@@ -1574,6 +1950,16 @@ def simulate_streaming_smplx_plan_records(
                 and _safe_float(breakdown.get("transition_smoothness")) < M15_CROSS_SEQUENCE_TRANSITION_FLOOR
             ):
                 reject_reasons.append("cross_sequence_transition_below_0_62")
+            if (
+                is_m18
+                and previous_unit is not None
+                and str(previous_unit.get("source_sequence")) != str(candidate.get("source_sequence"))
+                and (
+                    _safe_float(breakdown.get("rhythm_lock")) < M18_RHYTHM_HARD_MIN
+                    or _safe_float(breakdown.get("transition_smoothness")) < M18_TRANSITION_HARD_MIN
+                )
+            ):
+                reject_reasons.append("m18_cross_sequence_requires_rhythm_transition")
             if reject_reasons:
                 hard_rejects.append(
                     {
@@ -1602,6 +1988,14 @@ def simulate_streaming_smplx_plan_records(
                 for item in scored
                 if recent_units[str(item[1].get("unit_id"))] < M17_MAX_TOTAL_SAME_UNIT_USES
             ] or scored
+            if is_m18:
+                hard_speed_recovery_pool = [
+                    item
+                    for item in recovery_pool
+                    if M18_HARD_RETIME_MIN <= _safe_float(item[2].get("speed_scale"), 1.0) <= M18_HARD_RETIME_MAX
+                ]
+                if hard_speed_recovery_pool:
+                    recovery_pool = hard_speed_recovery_pool
             effective_scored = sorted(
                 recovery_pool,
                 key=lambda item: _m17_recovery_rank(
@@ -1703,6 +2097,9 @@ def simulate_streaming_smplx_plan_records(
             "target_beats": int(target_beats),
             "target_bpm": round(float(effective_bpm), 5),
             "target_energy": target_energy,
+            "choreography_state": choreography_state,
+            "music_state": dict(scoring_tick.get("music_state", {}) or {}),
+            "state_machine": state_machine,
             "selected_unit_id": selected.get("unit_id"),
             "source_sequence": selected.get("source_sequence"),
             "selected_from_sequence": selected.get("source_sequence"),
@@ -1717,10 +2114,14 @@ def simulate_streaming_smplx_plan_records(
             "speed_scale": breakdown["speed_scale"],
             "score": score,
             "score_breakdown": breakdown,
+            "retime_policy": speed_retime_policy,
+            "retime_reason": retime_reason,
             "switch_reason": {
                 "planner": planner_name,
                 "planner_version": planner_version,
                 "mode": "retrieval",
+                "state_machine_policy": state_machine_policy,
+                "choreography_state": choreography_state,
                 "fallback": bool((tempo_confidence < (M17_LOW_CONFIDENCE_THRESHOLD if is_m17 else 0.28)) or not valid_scored),
                 "target_energy": target_energy,
                 "candidate_energy": selected.get("energy"),
@@ -1736,6 +2137,7 @@ def simulate_streaming_smplx_plan_records(
                 "same_unit_total_use_limit": int(M17_MAX_TOTAL_SAME_UNIT_USES) if is_m17 else None,
                 "low_confidence_continuation": low_confidence_continuation,
                 "tempo_confidence": round(float(tempo_confidence), 5),
+                "retime_adjusted": bool(retime_reason.get("retime_adjusted")),
             },
             "expected_accent_hits": expected_hits,
             "rhythm_locks": lock_reports,
@@ -1748,9 +2150,96 @@ def simulate_streaming_smplx_plan_records(
         current_sequence_run = current_sequence_run + 1 if previous_sequence == selected_sequence else 1
         current_unit_run = selected_unit_run
         previous_unit = selected
+        previous_choreography_state = choreography_state
         recent_units.update([str(selected.get("unit_id"))])
         next_start_sec = target_end_sec
         step_index += 1
+
+    if is_m18 and ending_policy == "gradual_recover" and outro_recover_start_sec < duration_sec - 1e-3:
+        recover_start_sec = min(outro_recover_start_sec, next_start_sec) if next_start_sec < outro_recover_start_sec - 1e-4 else outro_recover_start_sec
+        recover_start_sec = max(0.0, min(recover_start_sec, duration_sec - 0.35))
+        recover_decision_time = max(0.0, recover_start_sec - total_future_sec)
+        recover_tick = _find_tick_for_decision(ticks, recover_decision_time)
+        recover_beat_phase = dict(recover_tick.get("beat_phase", {}) or {})
+        recover_bpm = _safe_float(recover_beat_phase.get("bpm"), 120.0)
+        recover_playhead = _safe_float(recover_tick.get("playhead_sec"), recover_decision_time)
+        recover_available = _safe_float(recover_tick.get("available_audio_until_sec"), min(duration_sec, recover_playhead + total_future_sec))
+        neutral_arrival = min(max(outro_neutral_arrival_sec, recover_start_sec + 0.35), duration_sec)
+        if neutral_arrival < duration_sec - 1e-3 and neutral_arrival > recover_start_sec + 1e-3:
+            records.append(
+                _synthetic_idle_decision(
+                    index=step_index,
+                    planner_name=planner_name,
+                    planner_version=planner_version,
+                    initial_pose_mode=initial_pose_mode,
+                    start_sec=recover_start_sec,
+                    end_sec=neutral_arrival,
+                    playhead_sec=recover_playhead,
+                    available_audio_until_sec=recover_available,
+                    planning_lookahead_sec=planning_lookahead_sec,
+                    lookfront_sec=lookfront_sec,
+                    total_future_sec=total_future_sec,
+                    decision_tick_index=_safe_int(recover_tick.get("tick_index")),
+                    decision_time_sec=recover_decision_time,
+                    target_bpm=recover_bpm,
+                    target_energy="neutral_idle",
+                    switch_mode="recover_outro",
+                    pose_source_override=SYNTHETIC_NEUTRAL_RECOVER_SOURCE,
+                    choreography_state="recover_outro",
+                    music_state=dict(recover_tick.get("music_state", {}) or {}),
+                    state_machine={
+                        "policy": state_machine_policy,
+                        "state": "recover_outro",
+                        "previous_state": previous_choreography_state,
+                        "reason": "song_end_gradual_recover",
+                    },
+                    extra_switch_reason={
+                        "ending_policy": ending_policy,
+                        "outro_recover_start_sec": _round_time(recover_start_sec),
+                        "outro_neutral_arrival_sec": _round_time(neutral_arrival),
+                        "final_neutral_hold_sec": _round_time(duration_sec - neutral_arrival),
+                    },
+                )
+            )
+            step_index += 1
+        if neutral_arrival < duration_sec - 1e-3:
+            records.append(
+                _synthetic_idle_decision(
+                    index=step_index,
+                    planner_name=planner_name,
+                    planner_version=planner_version,
+                    initial_pose_mode=initial_pose_mode,
+                    start_sec=neutral_arrival,
+                    end_sec=duration_sec,
+                    playhead_sec=recover_playhead,
+                    available_audio_until_sec=recover_available,
+                    planning_lookahead_sec=planning_lookahead_sec,
+                    lookfront_sec=lookfront_sec,
+                    total_future_sec=total_future_sec,
+                    decision_tick_index=_safe_int(recover_tick.get("tick_index")),
+                    decision_time_sec=max(0.0, neutral_arrival - total_future_sec),
+                    target_bpm=recover_bpm,
+                    target_energy="neutral_idle",
+                    switch_mode="final_neutral_hold",
+                    pose_source_override=SYNTHETIC_NEUTRAL_IDLE_SOURCE,
+                    choreography_state="recover_outro",
+                    music_state=dict(recover_tick.get("music_state", {}) or {}),
+                    state_machine={
+                        "policy": state_machine_policy,
+                        "state": "recover_outro",
+                        "previous_state": "recover_outro",
+                        "reason": "final_neutral_hold",
+                    },
+                    extra_switch_reason={
+                        "ending_policy": ending_policy,
+                        "outro_recover_start_sec": _round_time(recover_start_sec),
+                        "outro_neutral_arrival_sec": _round_time(neutral_arrival),
+                        "final_neutral_hold_sec": _round_time(duration_sec - neutral_arrival),
+                    },
+                )
+            )
+            step_index += 1
+        next_start_sec = duration_sec
 
     if initial_hold_sec > 0.0:
         decisions = [record for record in records if record.get("kind") == "decision"]
@@ -1976,6 +2465,8 @@ def stream_plan_to_stitch_manifest(
             "planner_version": header.get("planner_version"),
             "cohort_size": header.get("cohort_size"),
             "initial_hold_sec": header.get("initial_hold_sec"),
+            "ending_hold_sec": header.get("ending_hold_sec"),
+            "ending_policy": header.get("ending_policy"),
             "decision_signature": [
                 {
                     "unit_id": item.get("selected_unit_id"),
@@ -2009,6 +2500,7 @@ def stream_plan_to_stitch_manifest(
         is_synthetic_pose = pose_source in {
             SYNTHETIC_NEUTRAL_IDLE_SOURCE,
             SYNTHETIC_NEUTRAL_REST_SOURCE,
+            SYNTHETIC_NEUTRAL_RECOVER_SOURCE,
         }
         source_motion_path = str(decision.get("source_motion_path") or dict(decision.get("reference_artifacts", {}) or {}).get("source_motion_path") or "")
         if not source_motion_path and not is_synthetic_pose:
@@ -2038,6 +2530,7 @@ def stream_plan_to_stitch_manifest(
             "source_sequence": source_sequence,
             "source_motion_path": source_motion_path or None,
             "pose_source": pose_source,
+            "final_pose_source": decision.get("final_pose_source"),
             "initial_pose_mode": decision.get("initial_pose_mode"),
             "source_frame_start": source_start,
             "source_frame_end_exclusive": source_end,
@@ -2047,6 +2540,12 @@ def stream_plan_to_stitch_manifest(
             "start_time_sec": _round_time(start_time),
             "end_time_sec": _round_time(end_time),
             "speed_scale": _safe_float(decision.get("speed_scale"), 1.0),
+            "choreography_state": decision.get("choreography_state"),
+            "music_state": dict(decision.get("music_state", {}) or {}),
+            "state_machine": dict(decision.get("state_machine", {}) or {}),
+            "retime_policy": decision.get("retime_policy"),
+            "retime_reason": dict(decision.get("retime_reason", {}) or {}),
+            "switch_reason": dict(decision.get("switch_reason", {}) or {}),
             "blend_in_frames": min(blend_frames if previous_step is not None else 0, max(0, (scene_end - scene_start) // 3)),
             "blend_out_frames": min(blend_frames if index < len(decisions) - 1 else 0, max(0, (scene_end - scene_start) // 3)),
             "rhythm_locks": rhythm_locks,
@@ -2063,9 +2562,20 @@ def stream_plan_to_stitch_manifest(
                 "score": decision.get("score"),
                 "score_breakdown": dict(decision.get("score_breakdown", {}) or {}),
                 "target_energy": decision.get("target_energy"),
+                "choreography_state": decision.get("choreography_state"),
+                "music_state": dict(decision.get("music_state", {}) or {}),
+                "state_machine": dict(decision.get("state_machine", {}) or {}),
+                "retime_policy": decision.get("retime_policy"),
+                "retime_reason": dict(decision.get("retime_reason", {}) or {}),
                 "future_visibility_guard": dict(decision.get("future_visibility_guard", {}) or {}),
             },
         }
+        if pose_source == SYNTHETIC_NEUTRAL_RECOVER_SOURCE:
+            step["recover"] = {
+                "mode": "gradual_to_neutral",
+                "final_pose_source": SYNTHETIC_NEUTRAL_IDLE_SOURCE,
+                "neutral_arrival_scene_frame": int(round(_safe_float(dict(decision.get("switch_reason", {}) or {}).get("outro_neutral_arrival_sec"), end_time) * fps)) + 1,
+            }
         if previous_step is not None:
             transitions.append(
                 {
@@ -2116,6 +2626,7 @@ def stream_plan_to_stitch_manifest(
                     "selected_unit_id": item.get("selected_unit_id"),
                     "pose_source": item.get("pose_source"),
                     "initial_pose_mode": item.get("initial_pose_mode"),
+                    "final_pose_source": item.get("final_pose_source"),
                     "source_sequence": item.get("source_sequence"),
                     "selected_from_sequence": item.get("selected_from_sequence"),
                     "selected_from_tier": item.get("selected_from_tier"),
@@ -2124,9 +2635,14 @@ def stream_plan_to_stitch_manifest(
                     "source_frame_range": item.get("source_frame_range"),
                     "target_bpm": item.get("target_bpm"),
                     "target_energy": item.get("target_energy"),
+                    "choreography_state": item.get("choreography_state"),
+                    "music_state": item.get("music_state"),
+                    "state_machine": item.get("state_machine"),
                     "speed_scale": item.get("speed_scale"),
                     "score": item.get("score"),
                     "score_breakdown": item.get("score_breakdown"),
+                    "retime_policy": item.get("retime_policy"),
+                    "retime_reason": item.get("retime_reason"),
                     "switch_reason": item.get("switch_reason"),
                     "future_visibility_guard": item.get("future_visibility_guard"),
                     "rejected_top_candidates": item.get("rejected_top_candidates"),
@@ -2212,6 +2728,8 @@ def render_streaming_smplx_mesh_review(
         for item in rejected_candidates
         if "non_tail_speed_outside_0_90_1_10" in list(item.get("reasons", []) or [])
         or "non_tail_speed_outside_0_92_1_08" in list(item.get("reasons", []) or [])
+        or "non_tail_speed_outside_0_85_1_15" in list(item.get("reasons", []) or [])
+        or "non_tail_speed_outside_0_85_1_15" in list(item.get("reasons", []) or [])
     )
     report["metrics"]["transition_hard_reject_count"] = sum(
         1
@@ -2220,6 +2738,7 @@ def render_streaming_smplx_mesh_review(
         or "transition_smoothness_below_0_50" in list(item.get("reasons", []) or [])
         or "transition_smoothness_below_0_55" in list(item.get("reasons", []) or [])
         or "cross_sequence_transition_below_0_62" in list(item.get("reasons", []) or [])
+        or "m18_cross_sequence_requires_rhythm_transition" in list(item.get("reasons", []) or [])
     )
     report["metrics"]["repeat_unit_hard_reject_count"] = sum(
         1 for item in rejected_candidates if "same_unit_run_limit_3" in list(item.get("reasons", []) or [])
@@ -2263,6 +2782,28 @@ def render_streaming_smplx_mesh_review(
             or [0.0]
         ),
         6,
+    )
+    planner_eval = evaluate_streaming_planner_records(stream_plan_records)
+    report["planner_evaluation"] = planner_eval
+    for key, value in dict(planner_eval.get("metrics", {}) or {}).items():
+        report["metrics"].setdefault(key, value)
+    report["metrics"].update(
+        {
+            key: value
+            for key, value in dict(planner_eval.get("metrics", {}) or {}).items()
+            if key
+            in {
+                "outro_recover_start_sec",
+                "outro_neutral_arrival_sec",
+                "final_neutral_hold_sec",
+                "outro_recover_sec",
+                "final_pose_source",
+                "retime_policy",
+                "retime_adjustment_count",
+                "max_retime_speed_scale",
+                "high_confidence_lock_error_frames",
+            }
+        }
     )
     write_json(output_report, report)
     return report
@@ -2415,6 +2956,7 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
         or "transition_smoothness_below_0_55" in list(item.get("reasons", []) or [])
     )
     transition_reject_count += sum(1 for item in rejected_candidates if "cross_sequence_transition_below_0_62" in list(item.get("reasons", []) or []))
+    transition_reject_count += sum(1 for item in rejected_candidates if "m18_cross_sequence_requires_rhythm_transition" in list(item.get("reasons", []) or []))
     repeat_reject_count = sum(1 for item in rejected_candidates if "same_unit_run_limit_3" in list(item.get("reasons", []) or []))
     repeat_preferred_reject_count = sum(1 for item in rejected_candidates if "same_unit_preferred_limit_2" in list(item.get("reasons", []) or []))
     repeat_total_reject_count = sum(1 for item in rejected_candidates if "same_unit_total_limit_5" in list(item.get("reasons", []) or []))
@@ -2434,6 +2976,43 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
         for item in decisions
         if str(item.get("pose_source") or "finedance_motion_unit") == "finedance_motion_unit"
     ]
+    recover_steps = [
+        item
+        for item in decisions
+        if str(dict(item.get("switch_reason", {}) or {}).get("mode")) in {"recover_outro", "final_neutral_hold"}
+    ]
+    recover_start_candidates = [
+        _safe_float(dict(item.get("target_time_sec", {}) or {}).get("start"))
+        for item in recover_steps
+    ]
+    recover_start_sec = min(recover_start_candidates) if recover_start_candidates else _safe_float(header.get("outro_recover_start_sec"), 0.0)
+    neutral_arrival_candidates = [
+        _safe_float(dict(item.get("target_time_sec", {}) or {}).get("start"))
+        for item in decisions
+        if str(dict(item.get("switch_reason", {}) or {}).get("mode")) == "final_neutral_hold"
+    ]
+    neutral_arrival_sec = (
+        min(neutral_arrival_candidates)
+        if neutral_arrival_candidates
+        else _safe_float(header.get("outro_neutral_arrival_sec"), _safe_float(header.get("duration_sec"), 0.0))
+    )
+    final_neutral_hold_sec = sum(
+        _safe_float(dict(item.get("target_time_sec", {}) or {}).get("end"))
+        - _safe_float(dict(item.get("target_time_sec", {}) or {}).get("start"))
+        for item in decisions
+        if str(dict(item.get("switch_reason", {}) or {}).get("mode")) == "final_neutral_hold"
+    )
+    final_decision = decisions[-1] if decisions else {}
+    final_pose_source = str(final_decision.get("final_pose_source") or final_decision.get("pose_source") or "")
+    retime_adjustment_count = sum(1 for item in decisions if bool(dict(item.get("retime_reason", {}) or {}).get("retime_adjusted")))
+    visible_lock_errors = [
+        abs(_safe_float(lock.get("nearest_visible_event_delta_sec"))) * DEFAULT_STREAM_FPS
+        for decision in decisions
+        for lock in list(decision.get("rhythm_locks", []) or [])
+        if bool(lock.get("visible_at_decision")) and _safe_float(lock.get("score"), 0.0) >= 0.60
+    ]
+    duration_for_outro = _safe_float(header.get("duration_sec"), _safe_float(header.get("duration_sec"), 0.0))
+    outro_recover_sec = max(0.0, duration_for_outro - recover_start_sec) if recover_steps else 0.0
     return {
         "schema_version": 1,
         "report_id": f"{header.get('song_id', 'stream_song')}_streaming_planner_eval",
@@ -2467,6 +3046,15 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
             ),
             "initial_upright_hold_sec": round(float(initial_upright_hold_sec), 5),
             "first_dance_start_sec": round(float(min(first_dance_start_candidates) if first_dance_start_candidates else 0.0), 5),
+            "outro_recover_start_sec": round(float(recover_start_sec), 5),
+            "outro_neutral_arrival_sec": round(float(neutral_arrival_sec), 5),
+            "final_neutral_hold_sec": round(float(final_neutral_hold_sec), 5),
+            "outro_recover_sec": round(float(outro_recover_sec), 5),
+            "final_pose_source": final_pose_source,
+            "retime_policy": str(header.get("speed_retime_policy") or "none"),
+            "retime_adjustment_count": int(retime_adjustment_count),
+            "max_retime_speed_scale": round(float(max(speeds or [1.0])), 6),
+            "high_confidence_lock_error_frames": round(float(max(visible_lock_errors or [0.0])), 5),
         },
         "cohort_source_sequences": sorted({str(sequence_id) for decision in decisions for sequence_id in list(decision.get("cohort_source_sequences", []) or [])}),
         "gaps": gaps,
@@ -2475,9 +3063,13 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
             "no_gaps": not gaps,
             "speed_outside_ratio_le_10pct": len(outside) / max(1, len(speeds)) <= 0.10,
             "non_tail_max_speed_le_1_25": max(non_tail_speeds or [1.0]) <= 1.25,
+            "non_tail_max_speed_le_1_15": max(non_tail_speeds or [1.0]) <= 1.15,
             "max_consecutive_motion_unit_run_le_2": _max_consecutive_motion_unit_run(decisions) <= M17_IDEAL_MAX_CONSECUTIVE_SAME_UNIT,
             "max_consecutive_motion_unit_run_le_3": _max_consecutive_motion_unit_run(decisions) <= M17_MAX_CONSECUTIVE_SAME_UNIT,
             "max_total_motion_unit_uses_le_5": _max_total_motion_unit_uses(decisions) <= M17_MAX_TOTAL_SAME_UNIT_USES,
+            "outro_recover_sec_gte_5": outro_recover_sec >= M18_DEFAULT_ENDING_HOLD_SEC - 1e-4 if str(header.get("planner_version")) == "m18" else True,
+            "final_pose_source_is_neutral_idle": final_pose_source == SYNTHETIC_NEUTRAL_IDLE_SOURCE if str(header.get("planner_version")) == "m18" else True,
+            "high_confidence_lock_error_within_2_frames": max(visible_lock_errors or [0.0]) <= 2.0,
         },
     }
 

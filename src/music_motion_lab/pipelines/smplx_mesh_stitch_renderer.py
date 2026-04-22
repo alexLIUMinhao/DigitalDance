@@ -194,7 +194,7 @@ def synthesize_smplx_pose_frames(
     left_hand_pose = np.zeros((frame_count, 45), dtype=np.float32)
     right_hand_pose = np.zeros((frame_count, 45), dtype=np.float32)
 
-    if str(pose_source or "smplx_neutral_idle") == "smplx_neutral_idle":
+    if str(pose_source or "smplx_neutral_idle") in {"smplx_neutral_idle", "smplx_neutral_recover"}:
         breath = np.sin(time_axis * np.pi * 0.75).astype(np.float32)
         sway = np.sin(time_axis * np.pi * 0.45 + 0.35).astype(np.float32)
         transl[:, 1] = breath * 0.008
@@ -320,7 +320,7 @@ def _sample_step_geometry(
     scene_start = _safe_int(step.get("scene_frame_start"), 1)
     scene_end = max(scene_start, _safe_int(step.get("scene_frame_end"), scene_start))
     frame_count = scene_end - scene_start + 1
-    if pose_source in {"smplx_neutral_idle", "smplx_neutral_rest"}:
+    if pose_source in {"smplx_neutral_idle", "smplx_neutral_rest", "smplx_neutral_recover"}:
         if motion_base_assets_root is None:
             raise ValueError("motion_base_assets_root is required for synthetic SMPL-X pose generation")
         synthetic_key = (pose_source, frame_count, int(fps))
@@ -548,6 +548,7 @@ def compose_stitched_mesh_sequence(
 
     for step_index, step in enumerate(steps):
         sequence_id = str(step.get("source_sequence", "unknown") or "unknown")
+        pose_source = str(step.get("pose_source") or "finedance_motion_unit")
         if step_index == 0:
             raw_vertices, raw_joints, step_faces, source_frames = first_vertices.copy(), first_joints.copy(), faces, first_source_frames.copy()
         else:
@@ -581,10 +582,20 @@ def compose_stitched_mesh_sequence(
         pre_blend_joints_0 = aligned_joints[0].copy()
         blend_in = max(0, _safe_int(step.get("blend_in_frames")))
         blend_out = max(0, _safe_int(step.get("blend_out_frames")))
+        recover_blend_count = 0
 
         if previous is not None:
             previous_vertices = previous["aligned_vertices"]
             previous_joints = previous["aligned_joints"]
+            if pose_source == "smplx_neutral_recover":
+                recover_blend_count = min(len(aligned_vertices), max(1, len(aligned_vertices) - int(fps)))
+                if recover_blend_count > 1:
+                    previous_anchor_vertices = previous_vertices[-1].copy()
+                    previous_anchor_joints = previous_joints[-1].copy()
+                    for local_index in range(recover_blend_count):
+                        alpha = _smoothstep((local_index + 1) / float(recover_blend_count))
+                        aligned_vertices[local_index] = previous_anchor_vertices * (1.0 - alpha) + aligned_vertices[local_index] * alpha
+                        aligned_joints[local_index] = previous_anchor_joints * (1.0 - alpha) + aligned_joints[local_index] * alpha
             requested_blend_count = min(blend_in, _safe_int(previous["blend_out"]), len(previous_vertices), len(aligned_vertices))
             blend_count = 0
             if requested_blend_count > 0:
@@ -621,6 +632,7 @@ def compose_stitched_mesh_sequence(
                     "boundary_frame": scene_frame_start,
                     "gap_frames": max(0, scene_frame_start - int(previous["scene_frame_end"]) - 1),
                     "blend_frames": int(blend_count),
+                    "recover_blend_frames": int(recover_blend_count),
                     "blend_frames_requested": int(requested_blend_count),
                     "root_offset_xyz": [round(float(value), 6) for value in offset.tolist()],
                     "raw_root_xz_delta": round(_root_xz_delta(previous["raw_exit_root"], raw_entry_root), 6),
@@ -672,6 +684,7 @@ def compose_stitched_mesh_sequence(
                 "unit_id": step.get("unit_id"),
                 "source_sequence": sequence_id,
                 "pose_source": step.get("pose_source"),
+                "recover_blend_frames": int(recover_blend_count),
                 "scene_frame_start": scene_frame_start,
                 "scene_frame_end": scene_frame_end,
                 "source_frame_start": int(source_frames[0]),
@@ -915,6 +928,11 @@ def build_rhythm_mapping(manifest: dict[str, Any], song_event_map: dict[str, Any
                 },
                 "source_beat_range": dict(step.get("source_beat_range", {}) or {}),
                 "speed_scale": _safe_float(step.get("speed_scale"), 1.0),
+                "choreography_state": step.get("choreography_state"),
+                "music_state": dict(step.get("music_state", {}) or {}),
+                "retime_policy": step.get("retime_policy"),
+                "retime_reason": dict(step.get("retime_reason", {}) or {}),
+                "switch_reason": dict(step.get("switch_reason", {}) or {}),
                 "transition_score": _safe_float(step.get("transition_score")),
                 "blend": {
                     "in_frames": _safe_int(step.get("blend_in_frames")),
@@ -1057,7 +1075,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
 
     def streaming_rows() -> str:
         if not streaming_decisions:
-            return "<tr><td colspan=\"13\">No streaming decision records.</td></tr>"
+            return "<tr><td colspan=\"15\">No streaming decision records.</td></tr>"
         rows = []
         for item in streaming_decisions:
             target = dict(item.get("target_time_sec", {}) or {})
@@ -1066,6 +1084,8 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
             source_frames = dict(item.get("source_frame_range", {}) or {})
             rejected = list(item.get("rejected_top_candidates", []) or [])
             pose_source = str(item.get("pose_source") or "finedance_motion_unit")
+            state = str(item.get("choreography_state") or dict(item.get("switch_reason", {}) or {}).get("choreography_state") or "-")
+            retime = dict(item.get("retime_reason", {}) or {})
             reject_summary = " | ".join(
                 f"{entry.get('source_sequence')}:{entry.get('unit_id')} => {','.join(list(entry.get('reasons', []) or []))}"
                 for entry in rejected[:2]
@@ -1081,6 +1101,8 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
                 f"<td>{html.escape(str(item.get('source_sequence')))}:{html.escape(str(source_frames.get('start')))}-{html.escape(str(source_frames.get('end_exclusive')))} [{html.escape(pose_source)}]</td>"
                 f"<td>{html.escape(str(item.get('selected_from_tier')))}</td>"
                 f"<td>{html.escape(','.join(list(item.get('cohort_source_sequences', []) or [])[:8]))}</td>"
+                f"<td>{html.escape(state)}</td>"
+                f"<td>{html.escape(str(item.get('retime_policy') or '-'))}:{html.escape(str(retime.get('selected_beats', '-')))}b</td>"
                 f"<td>{html.escape(str(item.get('target_energy')))} / {html.escape(str(item.get('target_bpm')))}</td>"
                 f"<td>{html.escape(str(item.get('speed_scale')))} / {html.escape(str(item.get('score')))}</td>"
                 f"<td>{html.escape(str(guard.get('passed')))} r={html.escape(str(score.get('rhythm_lock')))} t={html.escape(str(score.get('transition_smoothness')))}</td>"
@@ -1294,7 +1316,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
       </table>
       <h2>Streaming Decisions</h2>
       <table>
-        <thead><tr><th>step</th><th>decision</th><th>playhead</th><th>available</th><th>target</th><th>unit</th><th>source</th><th>tier</th><th>cohort songs</th><th>energy/bpm</th><th>speed/score</th><th>guard/scores</th><th>top rejects</th></tr></thead>
+        <thead><tr><th>step</th><th>decision</th><th>playhead</th><th>available</th><th>target</th><th>unit</th><th>source</th><th>tier</th><th>cohort songs</th><th>state</th><th>retime</th><th>energy/bpm</th><th>speed/score</th><th>guard/scores</th><th>top rejects</th></tr></thead>
         <tbody>{streaming_rows()}</tbody>
       </table>
       <h2>Transitions</h2>
@@ -1324,6 +1346,16 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
     function xFor(time) {{
       return Math.max(0, Math.min(canvas.width, ((Number(time) - start) / (end - start)) * canvas.width));
     }}
+    function colorForState(state, index) {{
+      const key = String(state || "");
+      if (key === "intro_idle" || key === "recover_outro") return "rgba(244,201,93,0.26)";
+      if (key === "accent_hit") return "rgba(255,123,99,0.34)";
+      if (key === "accent_prepare") return "rgba(255,123,99,0.22)";
+      if (key === "groove_high") return "rgba(116,185,255,0.34)";
+      if (key === "groove_low") return "rgba(123,216,143,0.20)";
+      if (key === "transition") return "rgba(187,167,255,0.30)";
+      return Number(index || 0) % 2 ? "rgba(116,185,255,0.26)" : "rgba(123,216,143,0.22)";
+    }}
     function draw() {{
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = "#11161a";
@@ -1332,11 +1364,12 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
         const local = segment.target_time_sec || {{}};
         const x0 = xFor(local.start);
         const x1 = xFor(local.end);
-        ctx.fillStyle = Number(segment.index || 0) % 2 ? "rgba(116,185,255,0.26)" : "rgba(123,216,143,0.22)";
+        ctx.fillStyle = colorForState(segment.choreography_state, segment.index);
         ctx.fillRect(x0, 14, Math.max(2, x1 - x0), 34);
         ctx.fillStyle = "#f3f1ea";
         ctx.font = "12px system-ui, sans-serif";
         ctx.fillText("step " + segment.index, x0 + 6, 35);
+        if (segment.choreography_state) ctx.fillText(String(segment.choreography_state), x0 + 6, 47);
       }}
       for (const beat of rhythmData.beats || []) {{
         const x = xFor(beat.time_sec);
