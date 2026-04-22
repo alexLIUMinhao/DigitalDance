@@ -104,6 +104,15 @@ def _smplx_model_path(motion_base_assets_root: Path) -> Path:
     raise FileNotFoundError("missing SMPL-X model: expected SMPLX_NEUTRAL.npz under motion-base-assets/models")
 
 
+def _load_smplx_model(motion_base_assets_root: Path) -> tuple[Any, Any]:
+    import torch
+    from smplx import SMPLX
+
+    model_path = _smplx_model_path(motion_base_assets_root)
+    model = SMPLX(str(model_path), use_pca=False, flat_hand_mean=True).eval()
+    return model, torch
+
+
 def load_finedance_smplx_mesh_frames(
     source_motion_path: Path,
     frame_ranges: list[dict[str, int]],
@@ -137,11 +146,7 @@ def load_finedance_smplx_mesh_frames(
     motion_slice = np.concatenate(selected_motion, axis=0)
     source_frame_indices = np.concatenate(selected_frames, axis=0)
 
-    import torch
-    from smplx import SMPLX
-
-    model_path = _smplx_model_path(motion_base_assets_root)
-    model = SMPLX(str(model_path), use_pca=False, flat_hand_mean=True).eval()
+    model, torch = _load_smplx_model(motion_base_assets_root)
     motion_tensor = torch.from_numpy(motion_slice)
     vertices_batches: list[np.ndarray] = []
     joints_batches: list[np.ndarray] = []
@@ -171,6 +176,54 @@ def load_finedance_smplx_mesh_frames(
     joints = np.concatenate(joints_batches, axis=0)
     faces = np.asarray(model.faces, dtype=np.int32)
     return vertices, joints, faces, source_frame_indices
+
+
+def synthesize_smplx_pose_frames(
+    *,
+    pose_source: str,
+    frame_count: int,
+    motion_base_assets_root: Path,
+    fps: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    model, torch = _load_smplx_model(motion_base_assets_root)
+    frame_count = max(1, int(frame_count))
+    time_axis = np.linspace(0.0, max(0.0, frame_count - 1) / max(1, fps), num=frame_count, dtype=np.float32)
+    transl = np.zeros((frame_count, 3), dtype=np.float32)
+    global_orient = np.zeros((frame_count, 3), dtype=np.float32)
+    body_pose = np.zeros((frame_count, 63), dtype=np.float32)
+    left_hand_pose = np.zeros((frame_count, 45), dtype=np.float32)
+    right_hand_pose = np.zeros((frame_count, 45), dtype=np.float32)
+
+    if str(pose_source or "smplx_neutral_idle") == "smplx_neutral_idle":
+        breath = np.sin(time_axis * np.pi * 0.75).astype(np.float32)
+        sway = np.sin(time_axis * np.pi * 0.45 + 0.35).astype(np.float32)
+        transl[:, 1] = breath * 0.008
+        body_pose[:, 0] = sway * 0.022
+        body_pose[:, 3] = breath * 0.016
+    elif str(pose_source) == "smplx_neutral_rest":
+        transl[:, 1] = 0.0
+
+    zeros_10 = torch.zeros((frame_count, 10), dtype=torch.float32)
+    zeros_3 = torch.zeros((frame_count, 3), dtype=torch.float32)
+    with torch.no_grad():
+        output = model(
+            betas=zeros_10,
+            transl=torch.from_numpy(transl),
+            global_orient=torch.from_numpy(global_orient),
+            body_pose=torch.from_numpy(body_pose),
+            jaw_pose=zeros_3,
+            leye_pose=zeros_3,
+            reye_pose=zeros_3,
+            left_hand_pose=torch.from_numpy(left_hand_pose),
+            right_hand_pose=torch.from_numpy(right_hand_pose),
+            expression=zeros_10,
+        )
+    return (
+        output.vertices.detach().cpu().numpy().astype(np.float32, copy=False),
+        output.joints.detach().cpu().numpy().astype(np.float32, copy=False),
+        np.asarray(model.faces, dtype=np.int32),
+        np.arange(frame_count, dtype=np.int32),
+    )
 
 
 def load_mesh_cache(cache_path: Path) -> MeshCache:
@@ -254,6 +307,45 @@ def _sample_step_from_cache(step: dict[str, Any], cache: MeshCache) -> tuple[np.
         raise KeyError(f"cache {cache.path} missing source frames for step {step.get('index')}: {preview}")
     cache_indices = np.asarray([lookup[int(frame)] for frame in source_frames.tolist()], dtype=np.int32)
     return cache.vertices[cache_indices].copy(), cache.joints[cache_indices].copy(), source_frames
+
+
+def _sample_step_geometry(
+    step: dict[str, Any],
+    caches_by_sequence: dict[str, MeshCache],
+    motion_base_assets_root: Path | None,
+    fps: int,
+    synthetic_cache: dict[tuple[str, int, int], tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    pose_source = str(step.get("pose_source") or "finedance_motion_unit")
+    scene_start = _safe_int(step.get("scene_frame_start"), 1)
+    scene_end = max(scene_start, _safe_int(step.get("scene_frame_end"), scene_start))
+    frame_count = scene_end - scene_start + 1
+    if pose_source in {"smplx_neutral_idle", "smplx_neutral_rest"}:
+        if motion_base_assets_root is None:
+            raise ValueError("motion_base_assets_root is required for synthetic SMPL-X pose generation")
+        synthetic_key = (pose_source, frame_count, int(fps))
+        if synthetic_key not in synthetic_cache:
+            synthetic_cache[synthetic_key] = synthesize_smplx_pose_frames(
+                pose_source=pose_source,
+                frame_count=frame_count,
+                motion_base_assets_root=motion_base_assets_root,
+                fps=fps,
+            )
+        vertices, joints, faces, source_frames = synthetic_cache[synthetic_key]
+        return vertices.copy(), joints.copy(), faces, source_frames.copy()
+    sequence_id = str(step.get("source_sequence", "unknown") or "unknown")
+    if sequence_id not in caches_by_sequence:
+        raise KeyError(f"missing mesh cache for source sequence {sequence_id}")
+    cache = caches_by_sequence[sequence_id]
+    if pose_source == "smplx_freeze_first":
+        vertices, joints, source_frames = _sample_step_from_cache(step, cache)
+        if len(vertices) > 1:
+            vertices = np.repeat(vertices[:1], frame_count, axis=0)
+            joints = np.repeat(joints[:1], frame_count, axis=0)
+            source_frames = np.repeat(source_frames[:1], frame_count, axis=0)
+        return vertices, joints, cache.faces, source_frames
+    vertices, joints, source_frames = _sample_step_from_cache(step, cache)
+    return vertices, joints, cache.faces, source_frames
 
 
 def _smoothstep(value: float) -> float:
@@ -424,6 +516,7 @@ def _smooth_transition_windows(
 def compose_stitched_mesh_sequence(
     manifest: dict[str, Any],
     caches_by_sequence: dict[str, MeshCache],
+    motion_base_assets_root: Path | None = None,
     transition_smooth_frames: int = 12,
     transition_smooth_passes: int = 2,
 ) -> StitchedMeshSequence:
@@ -435,11 +528,16 @@ def compose_stitched_mesh_sequence(
     scene_start = min(_safe_int(step.get("scene_frame_start"), 1) for step in steps)
     scene_end = max(_safe_int(step.get("scene_frame_end"), scene_start) for step in steps)
     total_frames = scene_end - scene_start + 1
-
-    first_cache = caches_by_sequence[str(steps[0].get("source_sequence"))]
-    vertex_count = int(first_cache.vertices.shape[1])
-    joint_count = int(first_cache.joints.shape[1])
-    faces = first_cache.faces
+    synthetic_cache: dict[tuple[str, int, int], tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]] = {}
+    first_vertices, first_joints, faces, first_source_frames = _sample_step_geometry(
+        steps[0],
+        caches_by_sequence=caches_by_sequence,
+        motion_base_assets_root=motion_base_assets_root,
+        fps=fps,
+        synthetic_cache=synthetic_cache,
+    )
+    vertex_count = int(first_vertices.shape[1])
+    joint_count = int(first_joints.shape[1])
     stitched_vertices = np.zeros((total_frames, vertex_count, 3), dtype=np.float32)
     stitched_joints = np.zeros((total_frames, joint_count, 3), dtype=np.float32)
     filled = np.zeros((total_frames,), dtype=bool)
@@ -448,15 +546,22 @@ def compose_stitched_mesh_sequence(
     transition_reports: list[dict[str, Any]] = []
     previous: dict[str, Any] | None = None
 
-    for step in steps:
+    for step_index, step in enumerate(steps):
         sequence_id = str(step.get("source_sequence", "unknown") or "unknown")
-        if sequence_id not in caches_by_sequence:
-            raise KeyError(f"missing mesh cache for source sequence {sequence_id}")
-        cache = caches_by_sequence[sequence_id]
-        if int(cache.vertices.shape[1]) != vertex_count:
+        if step_index == 0:
+            raw_vertices, raw_joints, step_faces, source_frames = first_vertices.copy(), first_joints.copy(), faces, first_source_frames.copy()
+        else:
+            raw_vertices, raw_joints, step_faces, source_frames = _sample_step_geometry(
+                step,
+                caches_by_sequence=caches_by_sequence,
+                motion_base_assets_root=motion_base_assets_root,
+                fps=fps,
+                synthetic_cache=synthetic_cache,
+            )
+        if int(raw_vertices.shape[1]) != vertex_count:
             raise ValueError(f"cache vertex count mismatch for {sequence_id}")
-
-        raw_vertices, raw_joints, source_frames = _sample_step_from_cache(step, cache)
+        if step_index == 0:
+            faces = step_faces
         scene_frame_start = _safe_int(step.get("scene_frame_start"), scene_start)
         scene_frame_end = max(scene_frame_start, _safe_int(step.get("scene_frame_end"), scene_frame_start))
         start_index = scene_frame_start - scene_start
@@ -566,6 +671,7 @@ def compose_stitched_mesh_sequence(
                 "index": _safe_int(step.get("index")),
                 "unit_id": step.get("unit_id"),
                 "source_sequence": sequence_id,
+                "pose_source": step.get("pose_source"),
                 "scene_frame_start": scene_frame_start,
                 "scene_frame_end": scene_frame_end,
                 "source_frame_start": int(source_frames[0]),
@@ -782,6 +888,7 @@ def build_rhythm_mapping(manifest: dict[str, Any], song_event_map: dict[str, Any
                 "index": _safe_int(step.get("index")),
                 "unit_id": step.get("unit_id"),
                 "source_sequence": step.get("source_sequence"),
+                "pose_source": step.get("pose_source"),
                 "section_label": step.get("section_label"),
                 "target_time_sec": {"start": round(step_start, 5), "end": round(step_end, 5)},
                 "local_time_sec": {"start": round(step_start - start_time_sec, 5), "end": round(step_end - start_time_sec, 5)},
@@ -945,6 +1052,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
             score = dict(item.get("score_breakdown", {}) or {})
             source_frames = dict(item.get("source_frame_range", {}) or {})
             rejected = list(item.get("rejected_top_candidates", []) or [])
+            pose_source = str(item.get("pose_source") or "finedance_motion_unit")
             reject_summary = " | ".join(
                 f"{entry.get('source_sequence')}:{entry.get('unit_id')} => {','.join(list(entry.get('reasons', []) or []))}"
                 for entry in rejected[:2]
@@ -957,7 +1065,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
                 f"<td>{html.escape(str(item.get('available_audio_until_sec')))}</td>"
                 f"<td>{html.escape(str(target.get('start')))}-{html.escape(str(target.get('end')))}s</td>"
                 f"<td>{html.escape(str(item.get('selected_unit_id')))}</td>"
-                f"<td>{html.escape(str(item.get('source_sequence')))}:{html.escape(str(source_frames.get('start')))}-{html.escape(str(source_frames.get('end_exclusive')))}</td>"
+                f"<td>{html.escape(str(item.get('source_sequence')))}:{html.escape(str(source_frames.get('start')))}-{html.escape(str(source_frames.get('end_exclusive')))} [{html.escape(pose_source)}]</td>"
                 f"<td>{html.escape(str(item.get('selected_from_tier')))}</td>"
                 f"<td>{html.escape(','.join(list(item.get('cohort_source_sequences', []) or [])[:8]))}</td>"
                 f"<td>{html.escape(str(item.get('target_energy')))} / {html.escape(str(item.get('target_bpm')))}</td>"
@@ -1325,6 +1433,7 @@ def build_smplx_mesh_stitch_visual_preview(
     stitched = compose_stitched_mesh_sequence(
         manifest,
         caches,
+        motion_base_assets_root=motion_base_assets_root,
         transition_smooth_frames=transition_smooth_frames,
         transition_smooth_passes=transition_smooth_passes,
     )

@@ -257,32 +257,52 @@ class StreamingSmplxTests(unittest.TestCase):
         self.assertEqual(header["source_sequence_allowlist"], ["001"])
         self.assertEqual(decisions[0]["source_sequence"], "001")
 
-    def test_streaming_planner_can_hold_initial_pose_before_retrieval(self) -> None:
+    def test_m17_can_insert_neutral_idle_and_delay_until_confident_boundary(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             motion_path = _write_motion(Path(tmpdir) / "finedance")
             library = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir), contact_mode="joints")
         stream_events = [
-            {"kind": "stream_header", "song_id": "hold_demo", "duration_sec": 4.2, "initial_buffer_sec": 2.0, "beats_per_bar": 4},
             {
-                "kind": "tick",
-                "tick_index": 0,
-                "playhead_sec": 0.0,
-                "available_audio_until_sec": 2.0,
-                "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.9},
-                "beats": [{"index": index, "time_sec": index * 0.5, "strength": 0.7, "confidence": 0.9, "is_downbeat": index % 4 == 0} for index in range(5)],
-                "downbeats": [{"index": 0, "time_sec": 0.0, "confidence": 0.9, "is_downbeat": True}],
-                "drum_hits": [{"index": 0, "time_sec": 0.0, "strength": 0.95, "kind": "kick"}],
-                "accents": [],
+                "kind": "stream_header",
+                "song_id": "hold_demo",
+                "duration_sec": 7.2,
+                "initial_buffer_sec": 2.0,
+                "lookahead_sec": 2.0,
+                "lookfront_sec": 1.0,
+                "total_future_sec": 3.0,
+                "beats_per_bar": 4,
             },
             {
                 "kind": "tick",
                 "tick_index": 20,
                 "playhead_sec": 2.0,
-                "available_audio_until_sec": 4.0,
-                "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.9},
-                "beats": [{"index": index, "time_sec": index * 0.5, "strength": 0.7, "confidence": 0.9, "is_downbeat": index % 4 == 0} for index in range(9)],
-                "downbeats": [{"index": 1, "time_sec": 2.0, "confidence": 0.9, "is_downbeat": True}],
-                "drum_hits": [{"index": 0, "time_sec": 2.0, "strength": 0.95, "kind": "kick"}],
+                "available_audio_until_sec": 5.0,
+                "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.42},
+                "beats": [{"index": index, "time_sec": index * 0.5, "strength": 0.7, "confidence": 0.42, "is_downbeat": index % 4 == 0} for index in range(11)],
+                "downbeats": [{"index": 0, "time_sec": 4.0, "confidence": 0.42, "is_downbeat": True}],
+                "drum_hits": [{"index": 0, "time_sec": 0.0, "strength": 0.95, "kind": "kick"}],
+                "accents": [],
+            },
+            {
+                "kind": "tick",
+                "tick_index": 26,
+                "playhead_sec": 2.6,
+                "available_audio_until_sec": 5.6,
+                "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.92},
+                "beats": [{"index": index, "time_sec": index * 0.5, "strength": 0.7, "confidence": 0.92, "is_downbeat": index % 4 == 0} for index in range(12)],
+                "downbeats": [{"index": 0, "time_sec": 4.0, "confidence": 0.92, "is_downbeat": True}],
+                "drum_hits": [{"index": 0, "time_sec": 5.5, "strength": 0.95, "kind": "kick"}],
+                "accents": [],
+            },
+            {
+                "kind": "tick",
+                "tick_index": 30,
+                "playhead_sec": 3.0,
+                "available_audio_until_sec": 6.0,
+                "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.95},
+                "beats": [{"index": index, "time_sec": index * 0.5, "strength": 0.7, "confidence": 0.95, "is_downbeat": index % 4 == 0} for index in range(13)],
+                "downbeats": [{"index": 0, "time_sec": 4.0, "confidence": 0.95, "is_downbeat": True}],
+                "drum_hits": [{"index": 0, "time_sec": 5.5, "strength": 0.95, "kind": "kick"}],
                 "accents": [],
             },
         ]
@@ -290,20 +310,29 @@ class StreamingSmplxTests(unittest.TestCase):
         plan = simulate_streaming_smplx_plan_records(
             stream_events,
             library,
-            planner_version="m12",
-            initial_hold_sec=2.0,
-            max_steps=1,
+            planner_version="m17",
+            initial_hold_sec=5.0,
+            initial_pose_mode="neutral_idle",
+            max_steps=3,
         )
+        evaluation = evaluate_streaming_planner_records(plan)
         header = plan[0]
         decisions = [record for record in plan if record["kind"] == "decision"]
         manifest = stream_plan_to_stitch_manifest(plan, fps=30, blend_frames=10)
 
-        self.assertEqual(header["initial_hold_sec"], 2.0)
-        self.assertEqual(decisions[0]["switch_reason"]["mode"], "initial_hold")
-        self.assertEqual(decisions[0]["target_time_sec"], {"start": 0.0, "end": 2.0})
-        self.assertEqual(decisions[1]["target_time_sec"]["start"], 2.0)
-        self.assertEqual(decisions[0]["source_frame_range"]["start"], decisions[1]["source_frame_range"]["start"])
-        self.assertEqual(manifest["steps"][0]["source_frame_start"], manifest["steps"][0]["source_frame_end_exclusive"] - 1)
+        self.assertEqual(header["planner_version"], "m17")
+        self.assertEqual(header["initial_hold_sec"], 5.0)
+        self.assertEqual(header["initial_pose_mode"], "neutral_idle")
+        self.assertEqual(decisions[0]["switch_reason"]["mode"], "initial_upright_hold")
+        self.assertEqual(decisions[0]["target_time_sec"], {"start": 0.0, "end": 5.0})
+        self.assertEqual(decisions[0]["pose_source"], "smplx_neutral_idle")
+        self.assertGreaterEqual(decisions[1]["target_time_sec"]["start"], 5.0)
+        self.assertEqual(manifest["steps"][0]["pose_source"], "smplx_neutral_idle")
+        self.assertIsNone(manifest["steps"][0]["source_motion_path"])
+        self.assertEqual(len(manifest["cache_requests"]), 1)
+        self.assertGreaterEqual(evaluation["metrics"]["low_confidence_continuation_count"], 1)
+        self.assertEqual(evaluation["metrics"]["initial_upright_hold_sec"], 5.0)
+        self.assertGreaterEqual(evaluation["metrics"]["first_dance_start_sec"], 5.0)
 
     def test_m12_tail_policy_extends_final_segment_and_evaluator_reports_acceptance(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -409,6 +438,50 @@ class StreamingSmplxTests(unittest.TestCase):
         self.assertIn("001", evaluation["cohort_source_sequences"])
         self.assertIn("transition_hard_reject_count", evaluation["metrics"])
         self.assertIn("rhythm_hard_reject_count", evaluation["metrics"])
+
+    def test_m17_tracks_speed_and_transition_hard_rejects(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            motion_path = _write_motion(Path(tmpdir) / "finedance")
+            library = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir), contact_mode="joints")
+        stream_events = [
+            {
+                "kind": "stream_header",
+                "song_id": "m17_demo",
+                "duration_sec": 3.5,
+                "initial_buffer_sec": 2.0,
+                "lookahead_sec": 2.0,
+                "lookfront_sec": 1.0,
+                "total_future_sec": 3.0,
+                "beats_per_bar": 4,
+            },
+            {
+                "kind": "tick",
+                "tick_index": 0,
+                "playhead_sec": 0.0,
+                "available_audio_until_sec": 3.0,
+                "beat_phase": {"bpm": 360.0, "spacing_sec": 1.0 / 6.0, "offset_sec": 0.0, "confidence": 0.95},
+                "beats": [{"index": index, "time_sec": index / 6.0, "strength": 0.75, "confidence": 0.95, "is_downbeat": index % 4 == 0} for index in range(19)],
+                "downbeats": [{"index": 0, "time_sec": 0.0, "confidence": 0.95, "is_downbeat": True}],
+                "drum_hits": [{"index": 0, "time_sec": 0.0, "strength": 0.95, "kind": "kick"}],
+                "accents": [],
+            },
+        ]
+
+        plan = simulate_streaming_smplx_plan_records(
+            stream_events,
+            library,
+            planner_version="m17",
+            initial_hold_sec=0.0,
+            max_steps=1,
+        )
+        decisions = [record for record in plan if record["kind"] == "decision"]
+        rejected = decisions[0]["rejected_top_candidates"]
+        evaluation = evaluate_streaming_planner_records(plan)
+
+        self.assertTrue(
+            any("non_tail_speed_outside_0_92_1_08" in list(item.get("reasons", []) or []) for item in rejected)
+        )
+        self.assertGreaterEqual(evaluation["metrics"]["non_tail_speed_hard_reject_count"], 1)
 
     def test_stream_plan_to_manifest_is_continuous_and_carries_decisions(self) -> None:
         decisions = [

@@ -23,10 +23,31 @@ DEFAULT_BLEND_FRAMES = 10
 DEFAULT_SAFE_RETIME_MIN = 0.85
 DEFAULT_SAFE_RETIME_MAX = 1.15
 DEFAULT_M15_COHORT_SIZE = 10
+DEFAULT_INITIAL_POSE_MODE = "neutral_idle"
+SYNTHETIC_NEUTRAL_IDLE_SOURCE = "smplx_neutral_idle"
+SYNTHETIC_FREEZE_FIRST_SOURCE = "smplx_freeze_first"
+SYNTHETIC_NEUTRAL_REST_SOURCE = "smplx_neutral_rest"
+SYNTHETIC_SOURCE_SEQUENCE = "__synthetic__"
 M15_LOW_CONFIDENCE_THRESHOLD = 0.38
 M15_MIN_SEQUENCE_DWELL_STEPS = 2
 M15_SEQUENCE_SWITCH_MARGIN = 0.055
 M15_CROSS_SEQUENCE_TRANSITION_FLOOR = 0.62
+M15_NON_TAIL_SPEED_MIN = 0.90
+M15_NON_TAIL_SPEED_MAX = 1.10
+M15_RHYTHM_HARD_MIN = 0.48
+M15_TRANSITION_HARD_MIN = 0.50
+M15_LOW_CONFIDENCE_FALLBACK_BEATS = 4
+M17_LOW_CONFIDENCE_THRESHOLD = 0.55
+M17_NON_TAIL_SPEED_MIN = 0.92
+M17_NON_TAIL_SPEED_MAX = 1.08
+M17_RHYTHM_HARD_MIN = 0.55
+M17_TRANSITION_HARD_MIN = 0.55
+M17_LOW_CONFIDENCE_FALLBACK_BEATS = 4
+M17_TEMPO_HYSTERESIS_MARGIN = 0.12
+M17_TEMPO_STABLE_SWITCH_TICKS = 3
+M17_EVENT_CONFIDENCE_FLOOR = 0.58
+M17_INITIAL_BOUNDARY_CONFIDENCE_FLOOR = 0.48
+M17_MAX_INITIAL_IDLE_EXTENSION_SEC = 1.0
 
 
 def _safe_float(value: Any, fallback: float = 0.0) -> float:
@@ -144,7 +165,8 @@ def _normalize_stream_tempo_state(
     sample_rate: int,
     hop_size: int,
     previous_bpm: float | None,
-) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    tracker_state: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any]]:
     primary_bpm = max(1.0, _safe_float(tempo_state.get("bpm"), 120.0))
     primary_confidence = _safe_float(tempo_state.get("confidence"), 0.0)
     candidates: list[dict[str, Any]] = []
@@ -176,9 +198,91 @@ def _normalize_stream_tempo_state(
             }
         )
     candidates.sort(key=lambda item: (_safe_float(item.get("confidence")), item.get("label") == "stream_primary"), reverse=True)
-    selected = dict(candidates[0] if candidates else tempo_state)
+    raw_selected = dict(candidates[0] if candidates else tempo_state)
+    tracker = dict(tracker_state or {})
+    previous_label = str(tracker.get("selected_tempo_label") or raw_selected.get("label") or "stream_primary")
+    previous_candidate = next((dict(item) for item in candidates if str(item.get("label")) == previous_label), None)
+    stability_hold = False
+    switch_pending_ticks = _safe_int(tracker.get("switch_pending_ticks"))
+    stable_ticks = _safe_int(tracker.get("stable_ticks"), 1)
+    if previous_candidate is not None and str(raw_selected.get("label")) != previous_label:
+        previous_confidence = _safe_float(previous_candidate.get("confidence"))
+        raw_confidence = _safe_float(raw_selected.get("confidence"))
+        if previous_confidence >= max(0.30, raw_confidence - M17_TEMPO_HYSTERESIS_MARGIN):
+            raw_selected = previous_candidate
+            stability_hold = True
+            switch_pending_ticks = 0
+        else:
+            switch_pending_ticks += 1
+            if switch_pending_ticks < M17_TEMPO_STABLE_SWITCH_TICKS:
+                raw_selected = previous_candidate
+                stability_hold = True
+            else:
+                switch_pending_ticks = 0
+    else:
+        switch_pending_ticks = 0
+    if str(raw_selected.get("label")) == previous_label:
+        stable_ticks = stable_ticks + 1 if tracker else max(stable_ticks, 1)
+    else:
+        stable_ticks = 1
+    selected = dict(raw_selected)
     selected["selected_tempo_label"] = selected.get("label", "stream_primary")
-    return selected, candidates
+    selected["stability_hold"] = bool(stability_hold)
+    selected["stable_ticks"] = int(stable_ticks)
+    updated_tracker = {
+        "selected_tempo_label": selected.get("selected_tempo_label", "stream_primary"),
+        "selected_bpm": _safe_float(selected.get("bpm"), primary_bpm),
+        "stable_ticks": int(stable_ticks),
+        "switch_pending_ticks": int(switch_pending_ticks),
+        "stability_hold": bool(stability_hold),
+    }
+    return selected, candidates, updated_tracker
+
+
+def _planner_score_weights(planner_version: str) -> dict[str, float]:
+    version = str(planner_version or "m9").lower()
+    if version == "m17":
+        return {
+            "rhythm_lock": 0.60,
+            "transition_smoothness": 0.25,
+            "style_energy_bpm": 0.10,
+            "source_quality_weight": 0.03,
+            "diversity": 0.02,
+        }
+    if version == "m15":
+        return {
+            "rhythm_lock": 0.50,
+            "transition_smoothness": 0.30,
+            "style_energy_bpm": 0.10,
+            "source_quality_weight": 0.05,
+            "diversity": 0.05,
+        }
+    if version == "m12":
+        return {
+            "rhythm_lock": 0.55,
+            "transition_smoothness": 0.30,
+            "style_energy_bpm": 0.10,
+            "source_quality_weight": 0.0,
+            "diversity": 0.05,
+        }
+    return {
+        "rhythm_lock": 0.45,
+        "transition_smoothness": 0.25,
+        "style_energy_bpm": 0.20,
+        "source_quality_weight": 0.0,
+        "diversity": 0.10,
+    }
+
+
+def _planner_name(planner_version: str) -> str:
+    version = str(planner_version or "m9").lower()
+    if version == "m17":
+        return "streaming_retrieval_v4_any_song_rhythm_stable"
+    if version == "m15":
+        return "streaming_retrieval_v3_style_cohort"
+    if version == "m12":
+        return "streaming_retrieval_v2_phrase_aware"
+    return "streaming_retrieval_v1"
 
 
 def _beat_times_for_window(
@@ -295,13 +399,14 @@ def build_streaming_song_event_records(
             "rolling_window_sec": round(float(rolling_window_sec), 5),
             "beats_per_bar": int(beats_per_bar),
             "analysis_mode": "streaming_simulation",
-            "tempo_tracker": "m11_normalized_online_hypotheses",
+            "tempo_tracker": "m17_online_hypotheses_with_hysteresis",
             "generated_at_utc": utc_now_iso(),
         }
     ]
 
     tempo_cache: dict[str, Any] | None = None
     previous_selected_bpm: float | None = None
+    tempo_tracker_state: dict[str, Any] | None = None
     tempo_update_ticks = max(1, int(round(0.25 / chunk_sec)))
     for tick_index in range(tick_count):
         playhead_sec = min(duration_sec, tick_index * chunk_sec)
@@ -318,11 +423,12 @@ def build_streaming_song_event_records(
                 window_start_sec=tempo_start,
                 available_until_sec=available_until,
             )
-        tempo_state, tempo_hypotheses = _normalize_stream_tempo_state(
+        tempo_state, tempo_hypotheses, tempo_tracker_state = _normalize_stream_tempo_state(
             dict(tempo_cache),
             sample_rate=sample_rate,
             hop_size=hop_size,
             previous_bpm=previous_selected_bpm,
+            tracker_state=tempo_tracker_state,
         )
         previous_selected_bpm = _safe_float(tempo_state.get("bpm"), previous_selected_bpm or 120.0)
         beat_window_start = max(0.0, window_start)
@@ -376,6 +482,8 @@ def build_streaming_song_event_records(
                     "offset_sec": tempo_state["offset_sec"],
                     "confidence": tempo_state["confidence"],
                     "selected_tempo_label": tempo_state.get("selected_tempo_label", "stream_primary"),
+                    "stable_ticks": _safe_int(tempo_state.get("stable_ticks"), 1),
+                    "stability_hold": bool(tempo_state.get("stability_hold")),
                 },
                 "downbeat_confidence": round(float(downbeat_confidence), 5),
                 "analysis_frame": {
@@ -397,7 +505,9 @@ def _segment_hypotheses(beats: list[dict[str, Any]], available_until: float) -> 
     if not beats:
         return []
     hypotheses: list[dict[str, Any]] = []
-    downbeat_candidates = [beat for beat in beats if bool(beat.get("is_downbeat"))] or beats[:1]
+    downbeat_candidates = [beat for beat in beats if bool(beat.get("is_downbeat")) and _safe_float(beat.get("confidence")) >= 0.5]
+    if not downbeat_candidates:
+        downbeat_candidates = [beat for beat in beats if _safe_float(beat.get("confidence")) >= 0.58] or beats[:1]
     for beat in downbeat_candidates[-3:]:
         start = _safe_float(beat.get("time_sec"))
         spacing = 0.5
@@ -795,6 +905,7 @@ def _rhythm_score(
     beat_spacing_sec: float,
     visible_until_sec: float,
     target_beats: int,
+    planner_version: str = "m9",
 ) -> tuple[float, list[dict[str, Any]], list[float]]:
     locks = list(candidate.get("accent_lock_frames", []) or [])
     if not locks:
@@ -804,21 +915,60 @@ def _rhythm_score(
         for lock in locks
         if _safe_float(lock.get("beat_offset")) <= float(target_beats) + 1e-8
     ] or [{"beat_offset": 0, "role": "count_1_downbeat", "count": 1}]
+    version = str(planner_version or "m9").lower()
+    is_m17 = version == "m17"
     beats = list(tick.get("beats", []) or [])
+    downbeats = list(tick.get("downbeats", []) or [])
     drums = list(tick.get("drum_hits", []) or [])
     accents = list(tick.get("accents", []) or [])
     lock_reports: list[dict[str, Any]] = []
     expected_hits: list[float] = []
     scores: list[float] = []
+    beat_confidence = _safe_float(dict(tick.get("beat_phase", {}) or {}).get("confidence"), 0.0)
     for lock in locks[:6]:
         beat_offset = _safe_float(lock.get("beat_offset"))
         lock_time = target_start_sec + beat_offset * beat_spacing_sec
         expected_hits.append(_round_time(lock_time))
-        visible_events = [*beats, *drums, *accents]
-        visible_events = [event for event in visible_events if _safe_float(event.get("time_sec"), 99999.0) <= visible_until_sec + 1e-8]
-        nearest_delta = min([abs(_safe_float(event.get("time_sec")) - lock_time) for event in visible_events] or [beat_spacing_sec])
         role = str(lock.get("role", "accent"))
         is_predicted = lock_time > visible_until_sec + 1e-8
+        if role == "count_1_downbeat":
+            prioritized_events = [
+                *((event, 1.0) for event in downbeats),
+                *((event, 0.95) for event in drums),
+                *((event, 0.82) for event in beats),
+                *((event, 0.68) for event in accents),
+            ]
+        elif role == "count_3_backbeat":
+            prioritized_events = [
+                *((event, 0.98) for event in drums),
+                *((event, 0.88) for event in beats),
+                *((event, 0.72) for event in accents),
+                *((event, 0.65) for event in downbeats),
+            ]
+        else:
+            prioritized_events = [
+                *((event, 0.92) for event in drums),
+                *((event, 0.84) for event in accents),
+                *((event, 0.80) for event in beats),
+                *((event, 0.70) for event in downbeats),
+            ]
+        best_visible_score = 0.0
+        nearest_delta = beat_spacing_sec
+        best_event_kind = "predicted"
+        visible_tolerance = max(beat_spacing_sec * (0.28 if is_m17 else 0.35), 1e-3)
+        for event, priority_weight in prioritized_events:
+            event_time = _safe_float(event.get("time_sec"), 99999.0)
+            if event_time > visible_until_sec + 1e-8:
+                continue
+            delta = abs(event_time - lock_time)
+            confidence = _safe_float(event.get("confidence"), _safe_float(event.get("strength"), 0.0))
+            event_score = _clamp(1.0 - delta / visible_tolerance, 0.0, 1.0)
+            event_score *= priority_weight
+            event_score *= 0.72 + 0.28 * _clamp(confidence, 0.0, 1.0)
+            if event_score > best_visible_score + 1e-8:
+                best_visible_score = event_score
+                nearest_delta = delta
+                best_event_kind = str(event.get("kind", "beat"))
         if role == "count_1_downbeat":
             downbeat_bonus = 0.18 if int(round(beat_offset)) % 4 == 0 else 0.0
         elif role == "count_3_backbeat":
@@ -826,10 +976,13 @@ def _rhythm_score(
         else:
             downbeat_bonus = 0.0
         if is_predicted:
-            score = _clamp(0.45 + downbeat_bonus, 0.0, 1.0)
+            predicted_base = 0.45 + downbeat_bonus
+            if is_m17 and beat_confidence < M17_LOW_CONFIDENCE_THRESHOLD:
+                predicted_base = 0.20 + downbeat_bonus * 0.25
+            score = _clamp(predicted_base, 0.0, 1.0)
             score *= 0.75 + 0.25 * _clamp(_safe_float(lock.get("strength"), 0.0), 0.0, 1.0)
         else:
-            score = _clamp(1.0 - nearest_delta / max(beat_spacing_sec * 0.35, 1e-3) + downbeat_bonus, 0.0, 1.0)
+            score = _clamp(best_visible_score + downbeat_bonus, 0.0, 1.0)
             score *= 0.72 + 0.28 * _clamp(_safe_float(lock.get("strength"), 0.0), 0.0, 1.0)
         scores.append(score)
         lock_reports.append(
@@ -840,6 +993,7 @@ def _rhythm_score(
                 "beat_offset": round(float(beat_offset), 5),
                 "visible_at_decision": not is_predicted,
                 "nearest_visible_event_delta_sec": round(float(nearest_delta), 5),
+                "nearest_visible_event_kind": best_event_kind,
                 "score": round(float(score), 5),
             }
         )
@@ -879,6 +1033,147 @@ def _choose_target_beats(units: list[dict[str, Any]], spacing_sec: float, prefer
     return int(best_option)
 
 
+def _m15_recovery_rank(
+    score: float,
+    candidate: dict[str, Any],
+    breakdown: dict[str, Any],
+    previous_unit: dict[str, Any] | None,
+) -> tuple[float, float, float, float]:
+    rhythm = _safe_float(breakdown.get("rhythm_lock"), 0.0)
+    transition = _safe_float(breakdown.get("transition_smoothness"), 0.0)
+    speed = _safe_float(breakdown.get("speed_scale"), 1.0)
+    speed_closeness = max(0.0, 1.0 - abs(speed - 1.0))
+    same_sequence = 1.0 if previous_unit and str(previous_unit.get("source_sequence")) == str(candidate.get("source_sequence")) else 0.0
+    return (rhythm, transition, speed_closeness, same_sequence + score * 0.001)
+
+
+def _m17_recovery_rank(
+    score: float,
+    candidate: dict[str, Any],
+    breakdown: dict[str, Any],
+    previous_unit: dict[str, Any] | None,
+) -> tuple[float, float, float, float, float]:
+    rhythm = _safe_float(breakdown.get("rhythm_lock"), 0.0)
+    transition = _safe_float(breakdown.get("transition_smoothness"), 0.0)
+    speed = _safe_float(breakdown.get("speed_scale"), 1.0)
+    speed_closeness = max(0.0, 1.0 - abs(speed - 1.0))
+    same_unit = 1.0 if previous_unit and str(previous_unit.get("unit_id")) == str(candidate.get("unit_id")) else 0.0
+    same_sequence = 1.0 if previous_unit and str(previous_unit.get("source_sequence")) == str(candidate.get("source_sequence")) else 0.0
+    return (same_unit, same_sequence, rhythm, transition, speed_closeness + score * 0.001)
+
+
+def _initial_pose_source(initial_pose_mode: str) -> str:
+    mode = str(initial_pose_mode or DEFAULT_INITIAL_POSE_MODE).lower()
+    if mode == "freeze_first":
+        return SYNTHETIC_FREEZE_FIRST_SOURCE
+    if mode == "neutral_rest":
+        return SYNTHETIC_NEUTRAL_REST_SOURCE
+    return SYNTHETIC_NEUTRAL_IDLE_SOURCE
+
+
+def _planner_boundary_events(
+    tick: dict[str, Any],
+    start_sec: float,
+    available_until_sec: float,
+    confidence_floor: float,
+) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    for kind, priority in (("downbeats", 0), ("drum_hits", 1), ("beats", 2), ("accents", 3)):
+        for event in list(tick.get(kind, []) or []):
+            event_time = _safe_float(event.get("time_sec"), -1.0)
+            if event_time + 1e-8 < start_sec or event_time > available_until_sec + 1e-8:
+                continue
+            confidence = _safe_float(event.get("confidence"), _safe_float(event.get("strength"), 0.0))
+            if confidence < confidence_floor:
+                continue
+            candidates.append(
+                {
+                    "time_sec": _round_time(event_time),
+                    "kind": "downbeat" if kind == "downbeats" else ("beat" if kind == "beats" else kind[:-1]),
+                    "priority": priority,
+                    "confidence": round(float(confidence), 5),
+                }
+            )
+    candidates.sort(key=lambda item: (float(item["time_sec"]), int(item["priority"]), -float(item["confidence"])))
+    return candidates
+
+
+def _synthetic_idle_decision(
+    *,
+    index: int,
+    planner_name: str,
+    planner_version: str,
+    initial_pose_mode: str,
+    start_sec: float,
+    end_sec: float,
+    playhead_sec: float,
+    available_audio_until_sec: float,
+    planning_lookahead_sec: float,
+    lookfront_sec: float,
+    total_future_sec: float,
+    decision_tick_index: int,
+    decision_time_sec: float,
+    target_bpm: float,
+    target_energy: str,
+    switch_mode: str,
+    extra_switch_reason: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    pose_source = _initial_pose_source(initial_pose_mode)
+    return {
+        "schema_version": 1,
+        "kind": "decision",
+        "index": int(index),
+        "decision_time_sec": _round_time(decision_time_sec),
+        "decision_tick_index": int(decision_tick_index),
+        "playhead_sec": _round_time(playhead_sec),
+        "available_audio_until_sec": _round_time(available_audio_until_sec),
+        "future_visibility_guard": {
+            "lookahead_sec": round(float(planning_lookahead_sec), 5),
+            "lookfront_sec": round(float(lookfront_sec), 5),
+            "total_future_sec": round(float(total_future_sec), 5),
+            "used_audio_until_sec": _round_time(available_audio_until_sec),
+            "passed": True,
+        },
+        "target_time_sec": {"start": _round_time(start_sec), "end": _round_time(end_sec)},
+        "target_beats": 0,
+        "target_bpm": round(float(target_bpm), 5),
+        "target_energy": target_energy,
+        "selected_unit_id": f"{pose_source}_{slugify(f'{start_sec:.2f}_{end_sec:.2f}')}",
+        "source_sequence": SYNTHETIC_SOURCE_SEQUENCE,
+        "selected_from_sequence": SYNTHETIC_SOURCE_SEQUENCE,
+        "selected_from_tier": "synthetic_pose",
+        "cohort_source_sequences": [],
+        "cohort_rankings": [],
+        "source_frame_range": {"start": 0, "end_exclusive": 1},
+        "source_beat_range": {"start": 0, "end_exclusive": 0},
+        "source_motion_path": None,
+        "speed_scale": 1.0,
+        "score": 1.0,
+        "pose_source": pose_source,
+        "initial_pose_mode": str(initial_pose_mode or DEFAULT_INITIAL_POSE_MODE),
+        "score_breakdown": {
+            "rhythm_lock": 1.0,
+            "transition_smoothness": 1.0,
+            "style_energy_bpm": 1.0,
+            "source_quality_weight": 1.0,
+            "diversity": 1.0,
+            "weighted_total": 1.0,
+            "speed_scale": 1.0,
+        },
+        "switch_reason": {
+            "planner": planner_name,
+            "planner_version": planner_version,
+            "mode": switch_mode,
+            "same_sequence_as_previous": False,
+            **dict(extra_switch_reason or {}),
+        },
+        "expected_accent_hits": [],
+        "rhythm_locks": [],
+        "reference_artifacts": {},
+        "rejected_top_candidates": [],
+    }
+
+
 def _score_candidate(
     candidate: dict[str, Any],
     previous_unit: dict[str, Any] | None,
@@ -890,6 +1185,7 @@ def _score_candidate(
     target_style_profile: dict[str, Any],
     planner_version: str = "m9",
 ) -> tuple[float, dict[str, Any], list[dict[str, Any]], list[float]]:
+    version = str(planner_version or "m9").lower()
     beat_phase = dict(tick.get("beat_phase", {}) or {})
     spacing = max(1e-3, _safe_float(beat_phase.get("spacing_sec"), (target_end_sec - target_start_sec) / max(1, target_beats)))
     visible_until = _safe_float(tick.get("available_audio_until_sec"), target_start_sec)
@@ -900,19 +1196,23 @@ def _score_candidate(
         beat_spacing_sec=spacing,
         visible_until_sec=visible_until,
         target_beats=target_beats,
+        planner_version=version,
     )
     transition = _transition_score(previous_unit, candidate)
     style = _music_style_score(candidate, target_style_profile=target_style_profile, target_bpm=_safe_float(beat_phase.get("bpm"), 120.0))
-    repeat_penalty = 0.5 if str(planner_version).lower() in {"m12", "m15"} else 0.35
+    repeat_penalty = 0.5 if version in {"m12", "m15"} else (0.65 if version == "m17" else 0.35)
     diversity = max(0.0, 1.0 - recent_units[str(candidate.get("unit_id"))] * repeat_penalty)
-    is_m12 = str(planner_version).lower() == "m12"
-    is_m15 = str(planner_version).lower() == "m15"
-    if is_m15:
-        total = rhythm_score * 0.45 + transition * 0.30 + style * 0.15 + _safe_float(candidate.get("source_song_quality_weight"), 0.65) * 0.05 + diversity * 0.05
-    elif is_m12:
-        total = rhythm_score * 0.55 + transition * 0.30 + style * 0.10 + diversity * 0.05
-    else:
-        total = rhythm_score * 0.45 + transition * 0.25 + style * 0.20 + diversity * 0.10
+    is_m12 = version == "m12"
+    is_m15 = version == "m15"
+    is_m17 = version == "m17"
+    weights = _planner_score_weights(version)
+    total = (
+        rhythm_score * weights["rhythm_lock"]
+        + transition * weights["transition_smoothness"]
+        + style * weights["style_energy_bpm"]
+        + _safe_float(candidate.get("source_song_quality_weight"), 0.65) * weights["source_quality_weight"]
+        + diversity * weights["diversity"]
+    )
     source_duration = _candidate_source_duration(candidate)
     target_duration = max(1e-3, target_end_sec - target_start_sec)
     speed_scale = source_duration / target_duration
@@ -920,11 +1220,16 @@ def _score_candidate(
     min_retime = _safe_float(safe_range.get("min"), 0.85)
     max_retime = _safe_float(safe_range.get("max"), 1.15)
     if speed_scale < min_retime or speed_scale > max_retime:
-        speed_penalty_gain = 2.4 if is_m12 else 1.8
+        speed_penalty_gain = 2.8 if is_m17 else (2.4 if is_m12 else 1.8)
         total -= min(1.0, abs(speed_scale - _clamp(speed_scale, min_retime, max_retime)) * speed_penalty_gain)
     if abs(_safe_float(candidate.get("duration_beats"), target_beats) - target_beats) > 0.1:
         total -= 0.12
-    if is_m12 or is_m15:
+    if is_m17:
+        if rhythm_score < 0.50:
+            total -= 0.32
+        if transition < 0.55:
+            total -= 0.22
+    elif is_m12 or is_m15:
         if rhythm_score < 0.35:
             total -= 0.25
         if transition < 0.45:
@@ -950,6 +1255,7 @@ def simulate_streaming_smplx_plan_records(
     tail_policy: str = "none",
     source_sequence_allowlist: list[str] | tuple[str, ...] | None = None,
     initial_hold_sec: float = 0.0,
+    initial_pose_mode: str = DEFAULT_INITIAL_POSE_MODE,
     cohort_size: int = DEFAULT_M15_COHORT_SIZE,
 ) -> list[dict[str, Any]]:
     header = _header(stream_event_records, "stream_header")
@@ -962,6 +1268,7 @@ def simulate_streaming_smplx_plan_records(
         units = [unit for unit in units if str(unit.get("source_sequence")) in allowed_sequences]
     if not units:
         raise ValueError("annotated motion library contains no units")
+
     sequence_profiles = _sequence_profiles(units)
     song_id = str(header.get("song_id") or "stream_song")
     duration_sec = _safe_float(header.get("duration_sec"), _safe_float(ticks[-1].get("available_audio_until_sec")))
@@ -974,10 +1281,16 @@ def simulate_streaming_smplx_plan_records(
     counts = sorted({_safe_int(unit.get("duration_beats"), 0) for unit in units if _safe_int(unit.get("duration_beats"), 0) > 0})
     preferred_beats = 4 if 4 in counts else (2 if 2 in counts else (8 if 8 in counts else counts[0]))
     planner_version = str(planner_version or "m9").lower()
+    is_m12 = planner_version == "m12"
+    is_m15 = planner_version == "m15"
+    is_m17 = planner_version == "m17"
     tail_policy = str(tail_policy or "none").lower()
+    initial_pose_mode = str(initial_pose_mode or DEFAULT_INITIAL_POSE_MODE).lower()
     cohort_size = max(1, int(cohort_size or DEFAULT_M15_COHORT_SIZE))
     initial_hold_sec = _clamp(_safe_float(initial_hold_sec), 0.0, max(0.0, duration_sec - 0.35))
-    planner_name = "streaming_retrieval_v3_style_cohort" if planner_version == "m15" else ("streaming_retrieval_v2_phrase_aware" if planner_version == "m12" else "streaming_retrieval_v1")
+    planner_name = _planner_name(planner_version)
+    score_weights = _planner_score_weights(planner_version)
+
     records: list[dict[str, Any]] = [
         {
             "schema_version": 1,
@@ -994,26 +1307,24 @@ def simulate_streaming_smplx_plan_records(
             "planner_version": planner_version,
             "tail_policy": tail_policy,
             "initial_hold_sec": round(float(initial_hold_sec), 5),
+            "initial_pose_mode": initial_pose_mode,
             "cohort_size": int(cohort_size),
             "source_sequence_allowlist": sorted(allowed_sequences),
-            "score_weights": {
-                "rhythm_lock": 0.45 if planner_version == "m15" else (0.55 if planner_version == "m12" else 0.45),
-                "transition_smoothness": 0.30 if planner_version in {"m12", "m15"} else 0.25,
-                "style_energy_bpm": 0.15 if planner_version == "m15" else (0.10 if planner_version == "m12" else 0.20),
-                "source_quality_weight": 0.05 if planner_version == "m15" else 0.0,
-                "diversity": 0.05 if planner_version in {"m12", "m15"} else 0.10,
-            },
+            "score_weights": score_weights,
             "generated_at_utc": utc_now_iso(),
         }
     ]
+
     next_start_sec = initial_hold_sec
     previous_unit: dict[str, Any] | None = None
     current_sequence_run = 0
     recent_units: Counter[str] = Counter()
     step_index = 0
+
     while next_start_sec < duration_sec - 0.20:
         if max_steps > 0 and step_index >= max_steps:
             break
+
         decision_time = max(0.0, next_start_sec - total_future_sec)
         tick = _find_tick_for_decision(ticks, decision_time)
         beat_phase = dict(tick.get("beat_phase", {}) or {})
@@ -1032,12 +1343,71 @@ def simulate_streaming_smplx_plan_records(
             effective_bpm = _safe_float(beat_phase.get("bpm"), 120.0)
             spacing = max(0.18, _safe_float(beat_phase.get("spacing_sec"), 0.5))
             scoring_tick = tick
+        visible_until_sec = _safe_float(tick.get("available_audio_until_sec"), next_start_sec)
+        playhead = _safe_float(tick.get("playhead_sec"), 0.0)
+
+        if is_m17 and previous_unit is None and next_start_sec >= initial_hold_sec - 1e-8:
+            visible_boundaries = _planner_boundary_events(
+                scoring_tick,
+                start_sec=next_start_sec,
+                available_until_sec=visible_until_sec,
+                confidence_floor=M17_INITIAL_BOUNDARY_CONFIDENCE_FLOOR,
+            )
+            can_extend_initial_idle = next_start_sec < initial_hold_sec + M17_MAX_INITIAL_IDLE_EXTENSION_SEC - 1e-8
+            if visible_boundaries:
+                next_start_sec = max(next_start_sec, _safe_float(visible_boundaries[0].get("time_sec"), next_start_sec))
+                decision_time = max(0.0, next_start_sec - total_future_sec)
+                tick = _find_tick_for_decision(ticks, decision_time)
+                beat_phase = dict(tick.get("beat_phase", {}) or {})
+                tempo_confidence = _safe_float(beat_phase.get("confidence"), tempo_confidence)
+                effective_bpm = _safe_float(beat_phase.get("bpm"), effective_bpm)
+                spacing = max(0.18, _safe_float(beat_phase.get("spacing_sec"), spacing))
+                if tempo_confidence >= 0.28:
+                    scoring_tick = tick
+                visible_until_sec = _safe_float(tick.get("available_audio_until_sec"), next_start_sec)
+                playhead = _safe_float(tick.get("playhead_sec"), playhead)
+            elif can_extend_initial_idle and (tempo_confidence < M17_LOW_CONFIDENCE_THRESHOLD or next_start_sec >= visible_until_sec - 1e-8):
+                idle_end_sec = min(
+                    duration_sec,
+                    initial_hold_sec + M17_MAX_INITIAL_IDLE_EXTENSION_SEC,
+                    max(next_start_sec + max(0.5, spacing), visible_until_sec),
+                )
+                if idle_end_sec <= next_start_sec + 1e-3:
+                    idle_end_sec = min(duration_sec, next_start_sec + max(0.5, spacing))
+                records.append(
+                    _synthetic_idle_decision(
+                        index=step_index,
+                        planner_name=planner_name,
+                        planner_version=planner_version,
+                        initial_pose_mode=initial_pose_mode,
+                        start_sec=next_start_sec,
+                        end_sec=idle_end_sec,
+                        playhead_sec=playhead,
+                        available_audio_until_sec=visible_until_sec,
+                        planning_lookahead_sec=planning_lookahead_sec,
+                        lookfront_sec=lookfront_sec,
+                        total_future_sec=total_future_sec,
+                        decision_tick_index=_safe_int(tick.get("tick_index")),
+                        decision_time_sec=decision_time,
+                        target_bpm=effective_bpm,
+                        target_energy="neutral_idle",
+                        switch_mode="low_confidence_upright_idle",
+                        extra_switch_reason={
+                            "low_confidence_continuation": True,
+                            "tempo_confidence": round(float(tempo_confidence), 5),
+                        },
+                    )
+                )
+                next_start_sec = idle_end_sec
+                step_index += 1
+                continue
+
         target_beats = (
             _choose_target_beats(units, spacing_sec=spacing, preferred_beats=preferred_beats)
             if tempo_confidence >= 0.28
             else min(preferred_beats, 4)
         )
-        if planner_version in {"m12", "m15"}:
+        if is_m12 or is_m15 or is_m17:
             hypotheses = list(scoring_tick.get("segment_hypotheses", []) or [])
             viable = [
                 item
@@ -1048,24 +1418,28 @@ def simulate_streaming_smplx_plan_records(
             viable.sort(key=lambda item: (_safe_float(item.get("confidence")), _safe_int(item.get("duration_beats")) in {4, 8}), reverse=True)
             if viable:
                 target_beats = _safe_int(viable[0].get("duration_beats"), target_beats)
-            if planner_version == "m15" and tempo_confidence < M15_LOW_CONFIDENCE_THRESHOLD:
-                short_options = [count for count in counts if count <= 2] or [2]
-                target_beats = min(short_options)
+            if is_m15 and tempo_confidence < M15_LOW_CONFIDENCE_THRESHOLD:
+                steady_options = [count for count in counts if count >= M15_LOW_CONFIDENCE_FALLBACK_BEATS]
+                target_beats = min(steady_options, key=lambda count: abs(count - M15_LOW_CONFIDENCE_FALLBACK_BEATS)) if steady_options else max(counts)
+            if is_m17 and tempo_confidence < M17_LOW_CONFIDENCE_THRESHOLD:
+                steady_options = [count for count in counts if count >= M17_LOW_CONFIDENCE_FALLBACK_BEATS]
+                target_beats = min(steady_options, key=lambda count: abs(count - M17_LOW_CONFIDENCE_FALLBACK_BEATS)) if steady_options else max(counts)
             if tail_policy == "recover":
                 remaining_total = duration_sec - next_start_sec
                 if remaining_total < target_beats * spacing * 0.75:
                     tail_options = [count for count in counts if count <= target_beats] or counts
                     target_beats = min(tail_options, key=lambda count: abs(count * spacing - remaining_total))
+
         target_end_sec = min(duration_sec, next_start_sec + target_beats * spacing)
         tail_extended = False
-        if planner_version in {"m12", "m15"} and tail_policy == "recover" and target_end_sec < duration_sec:
+        if (is_m12 or is_m15 or is_m17) and tail_policy == "recover" and target_end_sec < duration_sec:
             remaining_after = duration_sec - target_end_sec
             if remaining_after < max(0.75, spacing * 1.25):
                 target_end_sec = duration_sec
                 tail_extended = True
         if target_end_sec - next_start_sec < 0.35:
             break
-        visible_until_sec = _safe_float(tick.get("available_audio_until_sec"), next_start_sec)
+
         target_style_profile = _target_style_profile_for_tick(
             scoring_tick,
             start_sec=next_start_sec,
@@ -1073,56 +1447,73 @@ def simulate_streaming_smplx_plan_records(
             previous_unit=previous_unit,
         )
         target_energy = str(target_style_profile.get("energy", "mid_energy"))
+
         cohort_source_sequences: list[str] = []
         cohort_rankings: list[dict[str, Any]] = []
-        sequence_pool = sequence_profiles
-        if planner_version == "m15":
+        if is_m15 or is_m17:
             target_bpm = _safe_float(dict(scoring_tick.get("beat_phase", {}) or {}).get("bpm"), 120.0)
             cohort_rankings = sorted(
                 [
                     {
                         "sequence_id": sequence_id,
-                        "score": _sequence_cohort_score(profile, target_bpm=target_bpm, style_profile=target_style_profile, previous_unit=previous_unit),
+                        "score": _sequence_cohort_score(
+                            profile,
+                            target_bpm=target_bpm,
+                            style_profile=target_style_profile,
+                            previous_unit=previous_unit,
+                        ),
                         "priority_tier": profile.get("priority_tier"),
                         "quality_weight": profile.get("quality_weight"),
                     }
-                    for sequence_id, profile in sequence_pool.items()
+                    for sequence_id, profile in sequence_profiles.items()
                 ],
                 key=lambda item: item["score"],
                 reverse=True,
             )
             cohort_source_sequences = [str(item.get("sequence_id")) for item in cohort_rankings[:cohort_size]]
+
         candidates = [
             unit
             for unit in units
             if (not cohort_source_sequences or str(unit.get("source_sequence")) in cohort_source_sequences)
             and _safe_int(unit.get("duration_beats"), target_beats) == target_beats
         ] or units
+
         scored: list[tuple[float, dict[str, Any], dict[str, Any], list[dict[str, Any]], list[float]]] = []
         for candidate in candidates:
             score, breakdown, lock_reports, expected_hits = _score_candidate(
-                candidate=candidate,
-                previous_unit=previous_unit,
-                recent_units=recent_units,
-                tick=scoring_tick,
-                target_start_sec=next_start_sec,
-                target_end_sec=target_end_sec,
-                target_beats=target_beats,
-                target_style_profile=target_style_profile,
-                planner_version=planner_version,
-            )
+                    candidate=candidate,
+                    previous_unit=previous_unit,
+                    recent_units=recent_units,
+                    tick=scoring_tick,
+                    target_start_sec=next_start_sec,
+                    target_end_sec=target_end_sec,
+                    target_beats=target_beats,
+                    target_style_profile=target_style_profile,
+                    planner_version=planner_version,
+                )
             scored.append((score, candidate, breakdown, lock_reports, expected_hits))
         scored.sort(key=lambda item: item[0], reverse=True)
+
         hard_rejects: list[dict[str, Any]] = []
         valid_scored: list[tuple[float, dict[str, Any], dict[str, Any], list[dict[str, Any]], list[float]]] = []
         for score, candidate, breakdown, lock_reports, expected_hits in scored:
             reject_reasons: list[str] = []
-            if planner_version == "m15" and _safe_float(breakdown.get("rhythm_lock")) < 0.40:
-                reject_reasons.append("rhythm_lock_below_0_40")
-            if planner_version == "m15" and _safe_float(breakdown.get("transition_smoothness")) < 0.45:
-                reject_reasons.append("transition_smoothness_below_0_45")
+            speed_scale = _safe_float(breakdown.get("speed_scale"), 1.0)
+            if is_m15 and _safe_float(breakdown.get("rhythm_lock")) < M15_RHYTHM_HARD_MIN:
+                reject_reasons.append("rhythm_lock_below_0_48")
+            if is_m15 and _safe_float(breakdown.get("transition_smoothness")) < M15_TRANSITION_HARD_MIN:
+                reject_reasons.append("transition_smoothness_below_0_50")
+            if is_m17 and _safe_float(breakdown.get("rhythm_lock")) < M17_RHYTHM_HARD_MIN:
+                reject_reasons.append("rhythm_lock_below_0_55")
+            if is_m17 and _safe_float(breakdown.get("transition_smoothness")) < M17_TRANSITION_HARD_MIN:
+                reject_reasons.append("transition_smoothness_below_0_55")
+            if is_m15 and not tail_extended and (speed_scale < M15_NON_TAIL_SPEED_MIN or speed_scale > M15_NON_TAIL_SPEED_MAX):
+                reject_reasons.append("non_tail_speed_outside_0_90_1_10")
+            if is_m17 and not tail_extended and (speed_scale < M17_NON_TAIL_SPEED_MIN or speed_scale > M17_NON_TAIL_SPEED_MAX):
+                reject_reasons.append("non_tail_speed_outside_0_92_1_08")
             if (
-                planner_version == "m15"
+                is_m15
                 and previous_unit is not None
                 and str(previous_unit.get("source_sequence")) != str(candidate.get("source_sequence"))
                 and _safe_float(breakdown.get("transition_smoothness")) < M15_CROSS_SEQUENCE_TRANSITION_FLOOR
@@ -1140,26 +1531,54 @@ def simulate_streaming_smplx_plan_records(
                 )
                 continue
             valid_scored.append((score, candidate, breakdown, lock_reports, expected_hits))
+
         effective_scored = valid_scored or scored
+        if is_m17 and not valid_scored and scored:
+            effective_scored = sorted(
+                scored,
+                key=lambda item: _m17_recovery_rank(
+                    score=item[0],
+                    candidate=item[1],
+                    breakdown=item[2],
+                    previous_unit=previous_unit,
+                ),
+                reverse=True,
+            )
+        elif is_m15 and not valid_scored and scored:
+            effective_scored = sorted(
+                scored,
+                key=lambda item: _m15_recovery_rank(
+                    score=item[0],
+                    candidate=item[1],
+                    breakdown=item[2],
+                    previous_unit=previous_unit,
+                ),
+                reverse=True,
+            )
+
+        if previous_unit is not None and (is_m15 or is_m17):
+            previous_unit_id = str(previous_unit.get("unit_id"))
+            previous_sequence = str(previous_unit.get("source_sequence"))
+            same_unit_recovery = [item for item in effective_scored if str(item[1].get("unit_id")) == previous_unit_id]
+            same_sequence_recovery = [item for item in effective_scored if str(item[1].get("source_sequence")) == previous_sequence]
+            if is_m17 and same_unit_recovery:
+                effective_scored = same_unit_recovery + [item for item in effective_scored if item not in same_unit_recovery]
+            if same_sequence_recovery:
+                effective_scored = same_sequence_recovery + [item for item in effective_scored if item not in same_sequence_recovery]
+
+        if not effective_scored:
+            break
+
         score, selected, breakdown, lock_reports, expected_hits = effective_scored[0]
-        if planner_version == "m15" and previous_unit is not None:
+        if previous_unit is not None and (is_m15 or is_m17):
             previous_sequence = str(previous_unit.get("source_sequence"))
             selected_sequence = str(selected.get("source_sequence"))
-            same_sequence_candidate = next(
-                (
-                    item
-                    for item in effective_scored
-                    if str(item[1].get("source_sequence")) == previous_sequence
-                ),
-                None,
-            )
-            if (
-                selected_sequence != previous_sequence
-                and same_sequence_candidate is not None
-            ):
+            same_sequence_candidate = next((item for item in effective_scored if str(item[1].get("source_sequence")) == previous_sequence), None)
+            if selected_sequence != previous_sequence and same_sequence_candidate is not None:
                 same_score, same_selected, same_breakdown, same_lock_reports, same_expected_hits = same_sequence_candidate
                 score_margin = score - same_score
-                should_stick = current_sequence_run < M15_MIN_SEQUENCE_DWELL_STEPS or score_margin < M15_SEQUENCE_SWITCH_MARGIN
+                switch_margin = 0.075 if is_m17 else M15_SEQUENCE_SWITCH_MARGIN
+                should_stick = current_sequence_run < M15_MIN_SEQUENCE_DWELL_STEPS or score_margin < switch_margin
                 if should_stick:
                     hard_rejects.append(
                         {
@@ -1177,11 +1596,17 @@ def simulate_streaming_smplx_plan_records(
                         same_lock_reports,
                         same_expected_hits,
                     )
+
         source_artifacts = dict(selected.get("reference_artifacts", {}) or {})
         available_until = _safe_float(tick.get("available_audio_until_sec"), 0.0)
         playhead = _safe_float(tick.get("playhead_sec"), 0.0)
         guard_passed = available_until <= playhead + total_future_sec + 1e-5 and next_start_sec <= available_until + 1e-5
-        selected_tier = str(selected.get("priority_tier", "unknown") or "unknown")
+        low_confidence_continuation = bool(
+            is_m17
+            and tempo_confidence < M17_LOW_CONFIDENCE_THRESHOLD
+            and previous_unit is not None
+            and str(previous_unit.get("source_sequence")) == str(selected.get("source_sequence"))
+        )
         decision = {
             "schema_version": 1,
             "kind": "decision",
@@ -1204,7 +1629,9 @@ def simulate_streaming_smplx_plan_records(
             "selected_unit_id": selected.get("unit_id"),
             "source_sequence": selected.get("source_sequence"),
             "selected_from_sequence": selected.get("source_sequence"),
-            "selected_from_tier": selected_tier,
+            "selected_from_tier": str(selected.get("priority_tier", "unknown") or "unknown"),
+            "pose_source": "finedance_motion_unit",
+            "initial_pose_mode": initial_pose_mode,
             "cohort_source_sequences": cohort_source_sequences,
             "cohort_rankings": cohort_rankings[: min(len(cohort_rankings), max(4, cohort_size))],
             "source_frame_range": dict(selected.get("frame_range", {}) or {}),
@@ -1215,13 +1642,17 @@ def simulate_streaming_smplx_plan_records(
             "score_breakdown": breakdown,
             "switch_reason": {
                 "planner": planner_name,
-                "fallback": bool(tempo_confidence < 0.28 or not valid_scored),
+                "planner_version": planner_version,
+                "mode": "retrieval",
+                "fallback": bool((tempo_confidence < (M17_LOW_CONFIDENCE_THRESHOLD if is_m17 else 0.28)) or not valid_scored),
                 "target_energy": target_energy,
                 "candidate_energy": selected.get("energy"),
                 "compatible_from_previous": bool(previous_unit and selected.get("unit_id") in previous_unit.get("compatible_next_units", [])),
                 "tail_policy": tail_policy,
                 "tail_extended_to_song_end": bool(tail_extended),
                 "same_sequence_as_previous": bool(previous_unit and previous_unit.get("source_sequence") == selected.get("source_sequence")),
+                "low_confidence_continuation": low_confidence_continuation,
+                "tempo_confidence": round(float(tempo_confidence), 5),
             },
             "expected_accent_hits": expected_hits,
             "rhythm_locks": lock_reports,
@@ -1231,82 +1662,112 @@ def simulate_streaming_smplx_plan_records(
         records.append(decision)
         selected_sequence = str(selected.get("source_sequence"))
         previous_sequence = str(previous_unit.get("source_sequence")) if previous_unit is not None else None
-        if previous_sequence == selected_sequence:
-            current_sequence_run += 1
-        else:
-            current_sequence_run = 1
+        current_sequence_run = current_sequence_run + 1 if previous_sequence == selected_sequence else 1
         previous_unit = selected
         recent_units.update([str(selected.get("unit_id"))])
         next_start_sec = target_end_sec
         step_index += 1
+
     if initial_hold_sec > 0.0:
         decisions = [record for record in records if record.get("kind") == "decision"]
-        if decisions:
+        insert_at = next((index for index, record in enumerate(records) if record.get("kind") == "decision"), len(records))
+        if initial_pose_mode == "freeze_first" and decisions:
             first_decision = decisions[0]
             first_range = dict(first_decision.get("source_frame_range", {}) or {})
             hold_start_frame = _safe_int(first_range.get("start"))
             first_guard = dict(first_decision.get("future_visibility_guard", {}) or {})
-            hold_decision = {
-                "schema_version": 1,
-                "kind": "decision",
-                "index": 0,
-                "decision_time_sec": 0.0,
-                "decision_tick_index": 0,
-                "playhead_sec": 0.0,
-                "available_audio_until_sec": round(float(total_future_sec), 5),
-                "future_visibility_guard": {
-                    "lookahead_sec": round(float(planning_lookahead_sec), 5),
-                    "lookfront_sec": round(float(lookfront_sec), 5),
-                    "total_future_sec": round(float(total_future_sec), 5),
-                    "used_audio_until_sec": first_guard.get("used_audio_until_sec", round(float(total_future_sec), 5)),
-                    "passed": True,
-                },
-                "target_time_sec": {"start": 0.0, "end": _round_time(initial_hold_sec)},
-                "target_beats": 0,
-                "target_bpm": first_decision.get("target_bpm"),
-                "target_energy": "hold",
-                "selected_unit_id": f"{first_decision.get('selected_unit_id')}_initial_hold",
-                "source_sequence": first_decision.get("source_sequence"),
-                "source_frame_range": {"start": hold_start_frame, "end_exclusive": hold_start_frame + 1},
-                "source_beat_range": dict(first_decision.get("source_beat_range", {}) or {}),
-                "source_motion_path": first_decision.get("source_motion_path"),
-                "speed_scale": 0.0,
-                "score": 1.0,
-                "score_breakdown": {
-                    "rhythm_lock": 1.0,
-                    "transition_smoothness": 1.0,
-                    "style_energy_bpm": 1.0,
-                    "source_quality_weight": 1.0,
-                    "diversity": 1.0,
-                    "weighted_total": 1.0,
+            records.insert(
+                insert_at,
+                {
+                    "schema_version": 1,
+                    "kind": "decision",
+                    "index": 0,
+                    "decision_time_sec": 0.0,
+                    "decision_tick_index": 0,
+                    "playhead_sec": 0.0,
+                    "available_audio_until_sec": round(float(total_future_sec), 5),
+                    "future_visibility_guard": {
+                        "lookahead_sec": round(float(planning_lookahead_sec), 5),
+                        "lookfront_sec": round(float(lookfront_sec), 5),
+                        "total_future_sec": round(float(total_future_sec), 5),
+                        "used_audio_until_sec": first_guard.get("used_audio_until_sec", round(float(total_future_sec), 5)),
+                        "passed": True,
+                    },
+                    "target_time_sec": {"start": 0.0, "end": _round_time(initial_hold_sec)},
+                    "target_beats": 0,
+                    "target_bpm": first_decision.get("target_bpm"),
+                    "target_energy": "hold",
+                    "selected_unit_id": f"{first_decision.get('selected_unit_id')}_initial_hold",
+                    "source_sequence": first_decision.get("source_sequence"),
+                    "selected_from_sequence": first_decision.get("selected_from_sequence"),
+                    "selected_from_tier": first_decision.get("selected_from_tier"),
+                    "pose_source": SYNTHETIC_FREEZE_FIRST_SOURCE,
+                    "initial_pose_mode": initial_pose_mode,
+                    "source_frame_range": {"start": hold_start_frame, "end_exclusive": hold_start_frame + 1},
+                    "source_beat_range": dict(first_decision.get("source_beat_range", {}) or {}),
+                    "source_motion_path": first_decision.get("source_motion_path"),
                     "speed_scale": 0.0,
+                    "score": 1.0,
+                    "score_breakdown": {
+                        "rhythm_lock": 1.0,
+                        "transition_smoothness": 1.0,
+                        "style_energy_bpm": 1.0,
+                        "source_quality_weight": 1.0,
+                        "diversity": 1.0,
+                        "weighted_total": 1.0,
+                        "speed_scale": 0.0,
+                    },
+                    "switch_reason": {
+                        "planner": planner_name,
+                        "planner_version": planner_version,
+                        "mode": "initial_hold",
+                        "hold_until_sec": _round_time(initial_hold_sec),
+                    },
+                    "expected_accent_hits": [],
+                    "rhythm_locks": [],
+                    "reference_artifacts": dict(first_decision.get("reference_artifacts", {}) or {}),
+                    "rejected_top_candidates": [],
                 },
-                "switch_reason": {
-                    "planner": planner_name,
-                    "mode": "initial_hold",
-                    "hold_until_sec": _round_time(initial_hold_sec),
-                },
-                "expected_accent_hits": [],
-                "rhythm_locks": [],
-                "reference_artifacts": dict(first_decision.get("reference_artifacts", {}) or {}),
-            }
-            insert_at = next((index for index, record in enumerate(records) if record.get("kind") == "decision"), len(records))
-            records.insert(insert_at, hold_decision)
-            for new_index, decision in enumerate(record for record in records if record.get("kind") == "decision"):
-                decision["index"] = new_index
-            step_index += 1
+            )
+        else:
+            records.insert(
+                insert_at,
+                _synthetic_idle_decision(
+                    index=0,
+                    planner_name=planner_name,
+                    planner_version=planner_version,
+                    initial_pose_mode=initial_pose_mode,
+                    start_sec=0.0,
+                    end_sec=initial_hold_sec,
+                    playhead_sec=0.0,
+                    available_audio_until_sec=min(duration_sec, total_future_sec),
+                    planning_lookahead_sec=planning_lookahead_sec,
+                    lookfront_sec=lookfront_sec,
+                    total_future_sec=total_future_sec,
+                    decision_tick_index=0,
+                    decision_time_sec=0.0,
+                    target_bpm=120.0,
+                    target_energy="neutral_idle",
+                    switch_mode="initial_upright_hold",
+                    extra_switch_reason={"hold_until_sec": _round_time(initial_hold_sec)},
+                ),
+            )
+        for new_index, decision in enumerate(record for record in records if record.get("kind") == "decision"):
+            decision["index"] = new_index
+
+    decisions = [record for record in records if record.get("kind") == "decision"]
     records.append(
         {
             "schema_version": 1,
             "kind": "stream_plan_summary",
             "song_id": song_id,
-            "step_count": step_index,
+            "step_count": len(decisions),
             "planned_until_sec": _round_time(next_start_sec),
             "duration_sec": round(float(duration_sec), 5),
             "future_visibility_violations": sum(
                 1
-                for item in records
-                if item.get("kind") == "decision" and not bool(dict(item.get("future_visibility_guard", {}) or {}).get("passed"))
+                for item in decisions
+                if not bool(dict(item.get("future_visibility_guard", {}) or {}).get("passed"))
             ),
             "generated_at_utc": utc_now_iso(),
         }
@@ -1419,7 +1880,25 @@ def stream_plan_to_stitch_manifest(
     decisions = _records_by_kind(stream_plan_records, "decision")
     if not decisions:
         raise ValueError("stream plan contains no decision records")
-    plan_id = f"{header.get('song_id', 'stream_song')}_streaming_smplx_plan"
+    plan_digest = stable_digest(
+        {
+            "song_id": header.get("song_id"),
+            "planner_version": header.get("planner_version"),
+            "cohort_size": header.get("cohort_size"),
+            "initial_hold_sec": header.get("initial_hold_sec"),
+            "decision_signature": [
+                {
+                    "unit_id": item.get("selected_unit_id"),
+                    "pose_source": item.get("pose_source"),
+                    "source_sequence": item.get("source_sequence"),
+                    "source_frame_range": item.get("source_frame_range"),
+                    "target_time_sec": item.get("target_time_sec"),
+                }
+                for item in decisions
+            ],
+        }
+    )[:8]
+    plan_id = f"{header.get('song_id', 'stream_song')}_{plan_digest}_streaming_smplx_plan"
     ranges_by_sequence: dict[str, list[dict[str, int]]] = defaultdict(list)
     source_path_by_sequence: dict[str, str] = {}
     steps: list[dict[str, Any]] = []
@@ -1436,11 +1915,17 @@ def stream_plan_to_stitch_manifest(
         source_start = _safe_int(source_range.get("start"))
         source_end = max(source_start + 1, _safe_int(source_range.get("end_exclusive"), source_start + 1))
         source_sequence = str(decision.get("source_sequence", "unknown") or "unknown")
+        pose_source = str(decision.get("pose_source") or "finedance_motion_unit")
+        is_synthetic_pose = pose_source in {
+            SYNTHETIC_NEUTRAL_IDLE_SOURCE,
+            SYNTHETIC_NEUTRAL_REST_SOURCE,
+        }
         source_motion_path = str(decision.get("source_motion_path") or dict(decision.get("reference_artifacts", {}) or {}).get("source_motion_path") or "")
-        if not source_motion_path:
+        if not source_motion_path and not is_synthetic_pose:
             raise FileNotFoundError(f"stream decision {index} has no source_motion_path")
-        ranges_by_sequence[source_sequence].append({"start": source_start, "end_exclusive": source_end})
-        source_path_by_sequence[source_sequence] = source_motion_path
+        if source_motion_path:
+            ranges_by_sequence[source_sequence].append({"start": source_start, "end_exclusive": source_end})
+            source_path_by_sequence[source_sequence] = source_motion_path
         rhythm_locks = []
         for lock_index, lock in enumerate(list(decision.get("rhythm_locks", []) or [])):
             lock_time = _safe_float(lock.get("time_sec"))
@@ -1461,7 +1946,9 @@ def stream_plan_to_stitch_manifest(
             "index": index,
             "unit_id": decision.get("selected_unit_id"),
             "source_sequence": source_sequence,
-            "source_motion_path": source_motion_path,
+            "source_motion_path": source_motion_path or None,
+            "pose_source": pose_source,
+            "initial_pose_mode": decision.get("initial_pose_mode"),
             "source_frame_start": source_start,
             "source_frame_end_exclusive": source_end,
             "source_beat_range": dict(decision.get("source_beat_range", {}) or {}),
@@ -1537,6 +2024,8 @@ def stream_plan_to_stitch_manifest(
                     "target_time_sec": item.get("target_time_sec"),
                     "target_beats": item.get("target_beats"),
                     "selected_unit_id": item.get("selected_unit_id"),
+                    "pose_source": item.get("pose_source"),
+                    "initial_pose_mode": item.get("initial_pose_mode"),
                     "source_sequence": item.get("source_sequence"),
                     "selected_from_sequence": item.get("selected_from_sequence"),
                     "selected_from_tier": item.get("selected_from_tier"),
@@ -1622,14 +2111,44 @@ def render_streaming_smplx_mesh_review(
         1 for previous, current in zip(decisions, decisions[1:]) if str(previous.get("source_sequence")) != str(current.get("source_sequence"))
     )
     report["metrics"]["rhythm_hard_reject_count"] = sum(
-        1 for item in rejected_candidates if "rhythm_lock_below_0_40" in list(item.get("reasons", []) or [])
+        1
+        for item in rejected_candidates
+        if "rhythm_lock_below_0_40" in list(item.get("reasons", []) or [])
+        or "rhythm_lock_below_0_48" in list(item.get("reasons", []) or [])
+        or "rhythm_lock_below_0_55" in list(item.get("reasons", []) or [])
+    )
+    report["metrics"]["non_tail_speed_hard_reject_count"] = sum(
+        1
+        for item in rejected_candidates
+        if "non_tail_speed_outside_0_90_1_10" in list(item.get("reasons", []) or [])
+        or "non_tail_speed_outside_0_92_1_08" in list(item.get("reasons", []) or [])
     )
     report["metrics"]["transition_hard_reject_count"] = sum(
         1
         for item in rejected_candidates
         if "transition_smoothness_below_0_45" in list(item.get("reasons", []) or [])
+        or "transition_smoothness_below_0_50" in list(item.get("reasons", []) or [])
+        or "transition_smoothness_below_0_55" in list(item.get("reasons", []) or [])
         or "cross_sequence_transition_below_0_62" in list(item.get("reasons", []) or [])
     )
+    report["metrics"]["low_confidence_continuation_count"] = sum(
+        1 for item in decisions if bool(dict(item.get("switch_reason", {}) or {}).get("low_confidence_continuation"))
+    )
+    report["metrics"]["initial_upright_hold_sec"] = round(
+        sum(
+            _safe_float(dict(item.get("target_time_sec", {}) or {}).get("end"))
+            - _safe_float(dict(item.get("target_time_sec", {}) or {}).get("start"))
+            for item in decisions
+            if str(dict(item.get("switch_reason", {}) or {}).get("mode")) == "initial_upright_hold"
+        ),
+        5,
+    )
+    dance_starts = [
+        _safe_float(dict(item.get("target_time_sec", {}) or {}).get("start"))
+        for item in decisions
+        if str(item.get("pose_source") or "finedance_motion_unit") == "finedance_motion_unit"
+    ]
+    report["metrics"]["first_dance_start_sec"] = round(float(min(dance_starts) if dance_starts else 0.0), 5)
     report["metrics"]["cohort_song_count"] = len(
         {str(sequence_id) for decision in decisions for sequence_id in list(decision.get("cohort_source_sequences", []) or [])}
     )
@@ -1773,14 +2292,43 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
     outside = [value for value in speeds if value < DEFAULT_SAFE_RETIME_MIN or value > DEFAULT_SAFE_RETIME_MAX]
     non_tail_outside = [value for value in non_tail_speeds if value < DEFAULT_SAFE_RETIME_MIN or value > DEFAULT_SAFE_RETIME_MAX]
     rejected_candidates = [item for decision in decisions for item in list(decision.get("rejected_top_candidates", []) or [])]
-    rhythm_reject_count = sum(1 for item in rejected_candidates if "rhythm_lock_below_0_40" in list(item.get("reasons", []) or []))
-    transition_reject_count = sum(1 for item in rejected_candidates if "transition_smoothness_below_0_45" in list(item.get("reasons", []) or []))
+    rhythm_reject_count = sum(
+        1
+        for item in rejected_candidates
+        if "rhythm_lock_below_0_40" in list(item.get("reasons", []) or [])
+        or "rhythm_lock_below_0_48" in list(item.get("reasons", []) or [])
+        or "rhythm_lock_below_0_55" in list(item.get("reasons", []) or [])
+    )
+    non_tail_speed_reject_count = sum(
+        1
+        for item in rejected_candidates
+        if "non_tail_speed_outside_0_90_1_10" in list(item.get("reasons", []) or [])
+        or "non_tail_speed_outside_0_92_1_08" in list(item.get("reasons", []) or [])
+    )
+    transition_reject_count = sum(
+        1
+        for item in rejected_candidates
+        if "transition_smoothness_below_0_45" in list(item.get("reasons", []) or [])
+        or "transition_smoothness_below_0_50" in list(item.get("reasons", []) or [])
+        or "transition_smoothness_below_0_55" in list(item.get("reasons", []) or [])
+    )
     transition_reject_count += sum(1 for item in rejected_candidates if "cross_sequence_transition_below_0_62" in list(item.get("reasons", []) or []))
     cross_sequence_transition_count = sum(
         1
         for previous, current in zip(decisions, decisions[1:])
         if str(previous.get("source_sequence")) != str(current.get("source_sequence"))
     )
+    initial_upright_hold_sec = sum(
+        _safe_float(dict(item.get("target_time_sec", {}) or {}).get("end"))
+        - _safe_float(dict(item.get("target_time_sec", {}) or {}).get("start"))
+        for item in decisions
+        if str(dict(item.get("switch_reason", {}) or {}).get("mode")) == "initial_upright_hold"
+    )
+    first_dance_start_candidates = [
+        _safe_float(dict(item.get("target_time_sec", {}) or {}).get("start"))
+        for item in decisions
+        if str(item.get("pose_source") or "finedance_motion_unit") == "finedance_motion_unit"
+    ]
     return {
         "schema_version": 1,
         "report_id": f"{header.get('song_id', 'stream_song')}_streaming_planner_eval",
@@ -1800,8 +2348,14 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
             "future_visibility_violations": sum(1 for item in decisions if not bool(dict(item.get("future_visibility_guard", {}) or {}).get("passed"))),
             "gap_count": len(gaps),
             "rhythm_hard_reject_count": rhythm_reject_count,
+            "non_tail_speed_hard_reject_count": non_tail_speed_reject_count,
             "transition_hard_reject_count": transition_reject_count,
             "cross_sequence_transition_count": cross_sequence_transition_count,
+            "low_confidence_continuation_count": sum(
+                1 for item in decisions if bool(dict(item.get("switch_reason", {}) or {}).get("low_confidence_continuation"))
+            ),
+            "initial_upright_hold_sec": round(float(initial_upright_hold_sec), 5),
+            "first_dance_start_sec": round(float(min(first_dance_start_candidates) if first_dance_start_candidates else 0.0), 5),
         },
         "cohort_source_sequences": sorted({str(sequence_id) for decision in decisions for sequence_id in list(decision.get("cohort_source_sequences", []) or [])}),
         "gaps": gaps,
