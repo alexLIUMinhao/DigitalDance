@@ -227,6 +227,152 @@ class StreamingSmplxTests(unittest.TestCase):
             )
         self.assertGreater(decisions[0]["score_breakdown"]["rhythm_lock"], 0.5)
 
+    def test_m19_streaming_events_emit_history_main_future_windows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            audio_path = Path(tmpdir) / "pulse.wav"
+            _write_pulse_audio(audio_path, duration_sec=6.2)
+
+            records = build_streaming_song_event_records(
+                audio_path,
+                "pulse_m19",
+                initial_buffer_sec=2.0,
+                chunk_ms=500.0,
+                window_contract="history_main_future",
+                history_sec=2.0,
+                main_window_sec=2.0,
+                future_sec=1.0,
+            )
+
+        header = records[0]
+        ticks = [record for record in records if record["kind"] == "tick"]
+        tick = next(record for record in ticks if abs(float(record["playhead_sec"]) - 2.0) < 1e-6)
+
+        self.assertEqual(header["window_contract"], "history_main_future")
+        self.assertEqual(header["history_sec"], 2.0)
+        self.assertEqual(header["main_window_duration_sec"], 2.0)
+        self.assertEqual(header["future_sec"], 1.0)
+        self.assertEqual(tick["history_window_sec"], {"start": 0.0, "end": 2.0})
+        self.assertEqual(tick["main_window_sec"], {"start": 2.0, "end": 4.0})
+        self.assertEqual(tick["future_window_sec"], {"start": 4.0, "end": 5.0})
+        self.assertEqual(tick["visible_window_sec"], {"start": 0.0, "end": 5.0})
+        self.assertGreaterEqual(tick["window_event_counts"]["main"], 1)
+        for key in ("beats", "downbeats", "drum_hits", "accents"):
+            for event in tick[key]:
+                self.assertIn(event["window_role"], {"history", "main", "future"})
+                self.assertLessEqual(float(event["time_sec"]), 5.00001)
+
+    def test_m19_planner_scores_main_window_and_uses_future_only_for_prepare(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            motion_path = _write_motion(Path(tmpdir) / "finedance")
+            library = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir), contact_mode="joints")
+        beats = [
+            {
+                "index": index,
+                "time_sec": index * 0.5,
+                "strength": 0.7,
+                "confidence": 0.5,
+                "is_downbeat": index % 4 == 0,
+                "window_role": "main" if index * 0.5 <= 2.0 else "future",
+            }
+            for index in range(7)
+        ]
+        stream_events = [
+            {
+                "kind": "stream_header",
+                "song_id": "m19_demo",
+                "duration_sec": 12.0,
+                "initial_buffer_sec": 2.0,
+                "lookahead_sec": 2.0,
+                "lookfront_sec": 1.0,
+                "total_future_sec": 3.0,
+                "window_contract": "history_main_future",
+                "history_sec": 2.0,
+                "main_window_duration_sec": 2.0,
+                "future_sec": 1.0,
+                "beats_per_bar": 4,
+            },
+            {
+                "kind": "tick",
+                "tick_index": 0,
+                "playhead_sec": 0.0,
+                "available_audio_until_sec": 3.0,
+                "planning_audio_until_sec": 2.0,
+                "visible_window_sec": {"start": 0.0, "end": 3.0},
+                "history_window_sec": {"start": 0.0, "end": 0.0},
+                "main_window_sec": {"start": 0.0, "end": 2.0},
+                "future_window_sec": {"start": 2.0, "end": 3.0},
+                "window_event_counts": {"history": 0, "main": 5, "future": 2},
+                "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.95},
+                "music_state": {
+                    "energy_level": "mid",
+                    "accent_density": "mid",
+                    "beat_confidence": 0.95,
+                    "phrase_phase": {"count": 1, "is_reliable": True},
+                    "melodic_motion_proxy": 0.35,
+                },
+                "beats": beats,
+                "downbeats": [],
+                "drum_hits": [{"index": 0, "time_sec": 2.5, "strength": 0.95, "kind": "kick", "window_role": "future"}],
+                "accents": [{"index": 0, "time_sec": 2.5, "strength": 0.92, "kind": "accent_peak", "window_role": "future"}],
+                "history_events": [],
+                "main_events": [{"kind": "beat", "time_sec": 0.0, "confidence": 0.5}],
+                "future_events": [{"kind": "drum_hit", "time_sec": 2.5, "confidence": 0.95, "strength": 0.95}],
+                "main_segment_hypotheses": [{"start_time_sec": 0.0, "end_time_sec": 2.0, "duration_beats": 4, "confidence": 0.9}],
+                "future_segment_hypotheses": [],
+                "segment_hypotheses": [{"start_time_sec": 0.0, "end_time_sec": 2.0, "duration_beats": 4, "confidence": 0.9}],
+            },
+            {
+                "kind": "tick",
+                "tick_index": 1,
+                "playhead_sec": 2.0,
+                "available_audio_until_sec": 5.0,
+                "planning_audio_until_sec": 4.0,
+                "visible_window_sec": {"start": 0.0, "end": 5.0},
+                "history_window_sec": {"start": 0.0, "end": 2.0},
+                "main_window_sec": {"start": 2.0, "end": 4.0},
+                "future_window_sec": {"start": 4.0, "end": 5.0},
+                "window_event_counts": {"history": 5, "main": 4, "future": 2},
+                "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.95},
+                "music_state": {"energy_level": "mid", "accent_density": "mid", "beat_confidence": 0.95, "phrase_phase": {"count": 1, "is_reliable": True}},
+                "beats": [{**beat, "window_role": "history" if beat["time_sec"] < 2.0 else "main"} for beat in beats],
+                "downbeats": [],
+                "drum_hits": [],
+                "accents": [],
+                "history_events": [],
+                "main_events": [],
+                "future_events": [],
+                "main_segment_hypotheses": [{"start_time_sec": 2.0, "end_time_sec": 4.0, "duration_beats": 4, "confidence": 0.9}],
+                "segment_hypotheses": [{"start_time_sec": 2.0, "end_time_sec": 4.0, "duration_beats": 4, "confidence": 0.9}],
+            },
+        ]
+
+        plan = simulate_streaming_smplx_plan_records(
+            stream_events,
+            library,
+            planner_version="m19",
+            initial_hold_sec=0.0,
+            ending_hold_sec=5.0,
+            ending_policy="gradual_recover",
+            speed_retime_policy="conservative_lock",
+            state_machine_policy="hybrid",
+            max_steps=1,
+        )
+        decisions = [record for record in plan if record["kind"] == "decision"]
+        decision = decisions[0]
+
+        self.assertEqual(plan[0]["planner_version"], "m19")
+        self.assertEqual(plan[0]["window_contract"], "history_main_future")
+        self.assertEqual(decision["window_context"]["main_window_sec"], {"start": 0.0, "end": 2.0})
+        self.assertEqual(decision["window_context"]["future_window_sec"], {"start": 2.0, "end": 3.0})
+        self.assertEqual(decision["choreography_state"], "accent_prepare")
+        self.assertEqual(decision["state_machine"]["rhythm_scoring_window"], "main")
+        self.assertGreaterEqual(decision["state_machine"]["future_prepare_event_count"], 1)
+        self.assertTrue(decision["future_visibility_guard"]["passed"])
+        self.assertLessEqual(decision["future_visibility_guard"]["main_window_end_sec"], 2.0)
+        for lock in decision["rhythm_locks"]:
+            if lock["visible_at_decision"]:
+                self.assertLessEqual(float(lock["time_sec"]), 2.00001)
+
     def test_streaming_planner_can_constrain_source_sequences(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             motion_path = _write_motion(Path(tmpdir) / "finedance")

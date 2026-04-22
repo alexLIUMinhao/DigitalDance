@@ -17,6 +17,11 @@ DEFAULT_LOOKAHEAD_SEC = 2.0
 DEFAULT_LOOKFRONT_SEC = 1.0
 DEFAULT_CHUNK_MS = 46.44
 DEFAULT_ROLLING_WINDOW_SEC = 8.0
+DEFAULT_WINDOW_CONTRACT = "legacy_lookahead"
+M19_WINDOW_CONTRACT = "history_main_future"
+M19_DEFAULT_HISTORY_SEC = 2.0
+M19_DEFAULT_MAIN_WINDOW_SEC = 2.0
+M19_DEFAULT_FUTURE_SEC = 1.0
 DEFAULT_TEMPO_WINDOW_SEC = 16.0
 DEFAULT_STREAM_FPS = 30
 DEFAULT_BLEND_FRAMES = 10
@@ -253,7 +258,7 @@ def _normalize_stream_tempo_state(
 
 def _planner_score_weights(planner_version: str) -> dict[str, float]:
     version = str(planner_version or "m9").lower()
-    if version in {"m17", "m18"}:
+    if version in {"m17", "m18", "m19"}:
         return {
             "rhythm_lock": 0.60,
             "transition_smoothness": 0.25,
@@ -288,6 +293,8 @@ def _planner_score_weights(planner_version: str) -> dict[str, float]:
 
 def _planner_name(planner_version: str) -> str:
     version = str(planner_version or "m9").lower()
+    if version == "m19":
+        return "streaming_retrieval_v6_windowed_state_machine"
     if version == "m18":
         return "streaming_retrieval_v5_hybrid_state_retime_outro"
     if version == "m17":
@@ -438,6 +445,62 @@ def _music_state_for_visible_window(
     }
 
 
+def _window_role_for_time(time_sec: float, playhead_sec: float, main_end_sec: float, future_end_sec: float) -> str:
+    if time_sec < playhead_sec - 1e-8:
+        return "history"
+    if time_sec <= main_end_sec + 1e-8:
+        return "main"
+    if time_sec <= future_end_sec + 1e-8:
+        return "future"
+    return "outside"
+
+
+def _annotate_window_roles(
+    events: list[dict[str, Any]],
+    *,
+    playhead_sec: float,
+    main_end_sec: float,
+    future_end_sec: float,
+) -> list[dict[str, Any]]:
+    annotated: list[dict[str, Any]] = []
+    for event in events:
+        item = dict(event)
+        item["window_role"] = _window_role_for_time(
+            _safe_float(item.get("time_sec"), -1.0),
+            playhead_sec=playhead_sec,
+            main_end_sec=main_end_sec,
+            future_end_sec=future_end_sec,
+        )
+        annotated.append(item)
+    return annotated
+
+
+def _flat_window_events(
+    *,
+    role: str,
+    beats: list[dict[str, Any]],
+    downbeats: list[dict[str, Any]],
+    drum_hits: list[dict[str, Any]],
+    accents: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    for key, values in (("beat", beats), ("downbeat", downbeats), ("drum_hit", drum_hits), ("accent", accents)):
+        for item in values:
+            if str(item.get("window_role")) != role:
+                continue
+            events.append(
+                {
+                    "kind": key,
+                    "time_sec": item.get("time_sec"),
+                    "confidence": item.get("confidence", item.get("strength")),
+                    "strength": item.get("strength", item.get("confidence")),
+                    "source_index": item.get("index"),
+                }
+            )
+    events.sort(key=lambda item: (_safe_float(item.get("time_sec")), str(item.get("kind"))))
+    return events
+
+
 def build_streaming_song_event_records(
     audio_path: Path,
     song_id: str,
@@ -448,6 +511,10 @@ def build_streaming_song_event_records(
     beats_per_bar: int = 4,
     rolling_window_sec: float = DEFAULT_ROLLING_WINDOW_SEC,
     tempo_window_sec: float = DEFAULT_TEMPO_WINDOW_SEC,
+    window_contract: str = DEFAULT_WINDOW_CONTRACT,
+    history_sec: float = M19_DEFAULT_HISTORY_SEC,
+    main_window_sec: float = M19_DEFAULT_MAIN_WINDOW_SEC,
+    future_sec: float = M19_DEFAULT_FUTURE_SEC,
 ) -> list[dict[str, Any]]:
     from ..audio_analysis import build_frame_analysis, load_audio, local_peak_indices
 
@@ -467,8 +534,13 @@ def build_streaming_song_event_records(
 
     chunk_sec = max(0.001, float(chunk_ms) / 1000.0)
     tick_count = int(math.ceil(duration_sec / chunk_sec)) + 1
-    planning_future_sec = max(0.0, float(lookahead_sec))
-    transport_future_sec = max(0.0, float(lookfront_sec))
+    contract = str(window_contract or DEFAULT_WINDOW_CONTRACT).lower()
+    is_windowed = contract == M19_WINDOW_CONTRACT
+    history_sec = max(0.0, float(history_sec))
+    main_window_sec = max(0.0, float(main_window_sec))
+    future_sec = max(0.0, float(future_sec))
+    planning_future_sec = max(0.0, float(main_window_sec if is_windowed else lookahead_sec))
+    transport_future_sec = max(0.0, float(future_sec if is_windowed else lookfront_sec))
     total_future_sec = planning_future_sec + transport_future_sec
     records: list[dict[str, Any]] = [
         {
@@ -486,6 +558,10 @@ def build_streaming_song_event_records(
             "lookfront_sec": round(float(transport_future_sec), 5),
             "total_future_sec": round(float(total_future_sec), 5),
             "rolling_window_sec": round(float(rolling_window_sec), 5),
+            "window_contract": contract,
+            "history_sec": round(float(history_sec if is_windowed else 0.0), 5),
+            "main_window_duration_sec": round(float(planning_future_sec), 5),
+            "future_sec": round(float(transport_future_sec), 5),
             "beats_per_bar": int(beats_per_bar),
             "analysis_mode": "streaming_simulation",
             "tempo_tracker": "m17_online_hypotheses_with_hysteresis",
@@ -499,9 +575,20 @@ def build_streaming_song_event_records(
     tempo_update_ticks = max(1, int(round(0.25 / chunk_sec)))
     for tick_index in range(tick_count):
         playhead_sec = min(duration_sec, tick_index * chunk_sec)
-        planning_until = min(duration_sec, playhead_sec + planning_future_sec)
-        available_until = min(duration_sec, playhead_sec + total_future_sec)
-        window_start = max(0.0, playhead_sec - max(0.0, float(rolling_window_sec)))
+        if is_windowed:
+            history_start = max(0.0, playhead_sec - history_sec)
+            main_start = playhead_sec
+            planning_until = min(duration_sec, playhead_sec + planning_future_sec)
+            future_start = planning_until
+            available_until = min(duration_sec, playhead_sec + total_future_sec)
+            window_start = history_start
+        else:
+            history_start = max(0.0, playhead_sec - max(0.0, float(rolling_window_sec)))
+            main_start = playhead_sec
+            planning_until = min(duration_sec, playhead_sec + planning_future_sec)
+            future_start = planning_until
+            available_until = min(duration_sec, playhead_sec + total_future_sec)
+            window_start = history_start
         tempo_start = max(0.0, available_until - max(1.0, float(tempo_window_sec)))
         if tempo_cache is None or tick_index % tempo_update_ticks == 0:
             tempo_cache = _tempo_state_for_window(
@@ -529,13 +616,31 @@ def build_streaming_song_event_records(
             onset=onset,
             beats_per_bar=beats_per_bar,
         )
+        main_end = planning_until
+        future_end = available_until
+        beats = _annotate_window_roles(beats, playhead_sec=playhead_sec, main_end_sec=main_end, future_end_sec=future_end)
         downbeats = [dict(beat) for beat in beats if beat.get("is_downbeat")]
         low_floor = _dynamic_floor(low, frame_times, window_start, available_until, 76.0)
         high_floor = _dynamic_floor(high, frame_times, window_start, available_until, 82.0)
         onset_floor = _dynamic_floor(onset, frame_times, window_start, available_until, 80.0)
-        kick_events = _peak_events(frame_times, low, low_peaks, window_start, available_until, low_floor, "kick", 24)
-        high_events = _peak_events(frame_times, high, high_peaks, window_start, available_until, high_floor, "high_attack", 24)
-        accent_events = _peak_events(frame_times, onset, onset_peaks, window_start, available_until, onset_floor, "accent_peak", 32)
+        kick_events = _annotate_window_roles(
+            _peak_events(frame_times, low, low_peaks, window_start, available_until, low_floor, "kick", 24),
+            playhead_sec=playhead_sec,
+            main_end_sec=main_end,
+            future_end_sec=future_end,
+        )
+        high_events = _annotate_window_roles(
+            _peak_events(frame_times, high, high_peaks, window_start, available_until, high_floor, "high_attack", 24),
+            playhead_sec=playhead_sec,
+            main_end_sec=main_end,
+            future_end_sec=future_end,
+        )
+        accent_events = _annotate_window_roles(
+            _peak_events(frame_times, onset, onset_peaks, window_start, available_until, onset_floor, "accent_peak", 32),
+            playhead_sec=playhead_sec,
+            main_end_sec=main_end,
+            future_end_sec=future_end,
+        )
         drum_hits = sorted([*kick_events, *high_events], key=lambda item: (float(item["time_sec"]), str(item["kind"])))
         for index, item in enumerate(drum_hits):
             item["index"] = index
@@ -562,8 +667,7 @@ def build_streaming_song_event_records(
             downbeat_confidence=downbeat_confidence,
             beats_per_bar=beats_per_bar,
         )
-        records.append(
-            {
+        tick_payload = {
                 "schema_version": 1,
                 "kind": "tick",
                 "tick_index": tick_index,
@@ -574,6 +678,10 @@ def build_streaming_song_event_records(
                 "lookfront_sec": round(float(transport_future_sec), 5),
                 "total_future_sec": round(float(max(0.0, available_until - playhead_sec)), 5),
                 "visible_window_sec": {"start": _round_time(window_start), "end": _round_time(available_until)},
+                "window_contract": contract,
+                "history_window_sec": {"start": _round_time(history_start), "end": _round_time(playhead_sec)},
+                "main_window_sec": {"start": _round_time(main_start), "end": _round_time(planning_until)},
+                "future_window_sec": {"start": _round_time(future_start), "end": _round_time(available_until)},
                 "tempo_hypotheses": [
                     {
                         "label": item["label"],
@@ -605,7 +713,28 @@ def build_streaming_song_event_records(
                 "accents": accent_events,
                 "segment_hypotheses": _segment_hypotheses(beats, available_until),
             }
-        )
+        if is_windowed:
+            history_beats = [item for item in beats if str(item.get("window_role")) == "history"]
+            main_beats = [item for item in beats if str(item.get("window_role")) == "main"]
+            future_beats = [item for item in beats if str(item.get("window_role")) == "future"]
+            tick_payload.update(
+                {
+                    "window_event_counts": {
+                        "history": len(_flat_window_events(role="history", beats=beats, downbeats=downbeats, drum_hits=drum_hits, accents=accent_events)),
+                        "main": len(_flat_window_events(role="main", beats=beats, downbeats=downbeats, drum_hits=drum_hits, accents=accent_events)),
+                        "future": len(_flat_window_events(role="future", beats=beats, downbeats=downbeats, drum_hits=drum_hits, accents=accent_events)),
+                    },
+                    "history_events": _flat_window_events(role="history", beats=beats, downbeats=downbeats, drum_hits=drum_hits, accents=accent_events),
+                    "main_events": _flat_window_events(role="main", beats=beats, downbeats=downbeats, drum_hits=drum_hits, accents=accent_events),
+                    "future_events": _flat_window_events(role="future", beats=beats, downbeats=downbeats, drum_hits=drum_hits, accents=accent_events),
+                    "main_segment_hypotheses": _segment_hypotheses(main_beats, planning_until),
+                    "future_segment_hypotheses": _segment_hypotheses(future_beats, available_until),
+                    "history_beat_count": len(history_beats),
+                    "main_beat_count": len(main_beats),
+                    "future_beat_count": len(future_beats),
+                }
+            )
+        records.append(tick_payload)
     return records
 
 
@@ -876,6 +1005,18 @@ def _find_tick_for_decision(ticks: list[dict[str, Any]], decision_time_sec: floa
     return ticks[-1]
 
 
+def _find_tick_at_or_before(ticks: list[dict[str, Any]], decision_time_sec: float) -> dict[str, Any]:
+    if not ticks:
+        raise ValueError("stream event records contain no ticks")
+    selected = ticks[0]
+    for tick in ticks:
+        if _safe_float(tick.get("playhead_sec")) <= decision_time_sec + 1e-8:
+            selected = tick
+        else:
+            break
+    return selected
+
+
 def _events_in_time_window(tick: dict[str, Any], key: str, start_sec: float, end_sec: float) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     for event in list(tick.get(key, []) or []):
@@ -883,6 +1024,124 @@ def _events_in_time_window(tick: dict[str, Any], key: str, start_sec: float, end
         if start_sec - 1e-8 <= time_sec <= end_sec + 1e-8:
             result.append(dict(event))
     return result
+
+
+def _tick_window_bounds(tick: dict[str, Any]) -> dict[str, float]:
+    playhead = _safe_float(tick.get("playhead_sec"), 0.0)
+    visible = dict(tick.get("visible_window_sec", {}) or {})
+    history_window = dict(tick.get("history_window_sec", {}) or {})
+    main_window = dict(tick.get("main_window_sec", {}) or {})
+    future_window = dict(tick.get("future_window_sec", {}) or {})
+    history_start = _safe_float(history_window.get("start"), _safe_float(visible.get("start"), playhead))
+    history_end = _safe_float(history_window.get("end"), playhead)
+    main_start = _safe_float(main_window.get("start"), playhead)
+    main_end = _safe_float(main_window.get("end"), _safe_float(tick.get("planning_audio_until_sec"), _safe_float(tick.get("available_audio_until_sec"), playhead)))
+    future_start = _safe_float(future_window.get("start"), main_end)
+    future_end = _safe_float(future_window.get("end"), _safe_float(tick.get("available_audio_until_sec"), main_end))
+    return {
+        "history_start": history_start,
+        "history_end": history_end,
+        "main_start": main_start,
+        "main_end": main_end,
+        "future_start": future_start,
+        "future_end": future_end,
+        "visible_start": _safe_float(visible.get("start"), history_start),
+        "visible_end": _safe_float(visible.get("end"), future_end),
+    }
+
+
+def _event_roles_for_time(time_sec: float, bounds: dict[str, float]) -> set[str]:
+    roles: set[str] = set()
+    if bounds["history_start"] - 1e-8 <= time_sec <= bounds["history_end"] + 1e-8:
+        roles.add("history")
+    if bounds["main_start"] - 1e-8 <= time_sec <= bounds["main_end"] + 1e-8:
+        roles.add("main")
+    if bounds["future_start"] - 1e-8 <= time_sec <= bounds["future_end"] + 1e-8:
+        roles.add("future")
+    return roles
+
+
+def _filter_tick_for_window_roles(tick: dict[str, Any], roles: set[str]) -> dict[str, Any]:
+    bounds = _tick_window_bounds(tick)
+    filtered = dict(tick)
+    for key in ("beats", "downbeats", "drum_hits", "accents"):
+        values: list[dict[str, Any]] = []
+        for event in list(tick.get(key, []) or []):
+            event_time = _safe_float(event.get("time_sec"), -1.0)
+            event_role = str(event.get("window_role") or "")
+            event_roles = {event_role} if event_role else _event_roles_for_time(event_time, bounds)
+            if roles & event_roles:
+                values.append(dict(event))
+        filtered[key] = values
+    if roles == {"main"}:
+        filtered["available_audio_until_sec"] = _round_time(bounds["main_end"])
+        filtered["visible_window_sec"] = {"start": _round_time(bounds["main_start"]), "end": _round_time(bounds["main_end"])}
+        filtered["segment_hypotheses"] = list(tick.get("main_segment_hypotheses", []) or _segment_hypotheses(filtered["beats"], bounds["main_end"]))
+    elif roles == {"future"}:
+        filtered["available_audio_until_sec"] = _round_time(bounds["future_end"])
+        filtered["visible_window_sec"] = {"start": _round_time(bounds["future_start"]), "end": _round_time(bounds["future_end"])}
+        filtered["segment_hypotheses"] = list(tick.get("future_segment_hypotheses", []) or _segment_hypotheses(filtered["beats"], bounds["future_end"]))
+    elif roles == {"history"}:
+        filtered["available_audio_until_sec"] = _round_time(bounds["history_end"])
+        filtered["visible_window_sec"] = {"start": _round_time(bounds["history_start"]), "end": _round_time(bounds["history_end"])}
+        filtered["segment_hypotheses"] = _segment_hypotheses(filtered["beats"], bounds["history_end"])
+    else:
+        filtered["available_audio_until_sec"] = _round_time(bounds["future_end"])
+        filtered["visible_window_sec"] = {"start": _round_time(bounds["visible_start"]), "end": _round_time(bounds["future_end"])}
+        filtered["segment_hypotheses"] = _segment_hypotheses(filtered["beats"], bounds["future_end"])
+    return filtered
+
+
+def _m19_decision_window_context(
+    tick: dict[str, Any],
+    previous_unit: dict[str, Any] | None,
+    previous_state: str | None,
+) -> dict[str, Any]:
+    bounds = _tick_window_bounds(tick)
+    counts = dict(tick.get("window_event_counts", {}) or {})
+    if not counts:
+        counts = {
+            role: len(_flat_window_events(
+                role=role,
+                beats=list(tick.get("beats", []) or []),
+                downbeats=list(tick.get("downbeats", []) or []),
+                drum_hits=list(tick.get("drum_hits", []) or []),
+                accents=list(tick.get("accents", []) or []),
+            ))
+            for role in ("history", "main", "future")
+        }
+    return {
+        "window_contract": M19_WINDOW_CONTRACT,
+        "history_window_sec": {"start": _round_time(bounds["history_start"]), "end": _round_time(bounds["history_end"])},
+        "main_window_sec": {"start": _round_time(bounds["main_start"]), "end": _round_time(bounds["main_end"])},
+        "future_window_sec": {"start": _round_time(bounds["future_start"]), "end": _round_time(bounds["future_end"])},
+        "history_event_count": _safe_int(counts.get("history")),
+        "main_event_count": _safe_int(counts.get("main")),
+        "future_event_count": _safe_int(counts.get("future")),
+        "previous_unit_id": previous_unit.get("unit_id") if previous_unit is not None else None,
+        "previous_source_sequence": previous_unit.get("source_sequence") if previous_unit is not None else None,
+        "previous_choreography_state": previous_state,
+    }
+
+
+def _m19_future_prepare_events(tick: dict[str, Any]) -> list[dict[str, Any]]:
+    future_events = [dict(item) for item in list(tick.get("future_events", []) or [])]
+    if not future_events:
+        future_events = _flat_window_events(
+            role="future",
+            beats=list(tick.get("beats", []) or []),
+            downbeats=list(tick.get("downbeats", []) or []),
+            drum_hits=list(tick.get("drum_hits", []) or []),
+            accents=list(tick.get("accents", []) or []),
+        )
+    strong = [
+        item
+        for item in future_events
+        if str(item.get("kind")) in {"downbeat", "drum_hit", "accent"}
+        and _safe_float(item.get("confidence"), _safe_float(item.get("strength"), 0.0)) >= M17_EVENT_CONFIDENCE_FLOOR
+    ]
+    strong.sort(key=lambda item: (_safe_float(item.get("time_sec")), str(item.get("kind"))))
+    return strong
 
 
 def _target_energy_for_tick(tick: dict[str, Any], start_sec: float, visible_end_sec: float) -> str:
@@ -1102,8 +1361,8 @@ def _rhythm_score(
         if _safe_float(lock.get("beat_offset")) <= float(target_beats) + 1e-8
     ] or [{"beat_offset": 0, "role": "count_1_downbeat", "count": 1}]
     version = str(planner_version or "m9").lower()
-    is_m18 = version == "m18"
-    is_m17 = version in {"m17", "m18"}
+    is_m18 = version in {"m18", "m19"}
+    is_m17 = version in {"m17", "m18", "m19"}
     beats = list(tick.get("beats", []) or [])
     downbeats = list(tick.get("downbeats", []) or [])
     drums = list(tick.get("drum_hits", []) or [])
@@ -1514,12 +1773,12 @@ def _score_candidate(
     )
     transition = _transition_score(previous_unit, candidate)
     style = _music_style_score(candidate, target_style_profile=target_style_profile, target_bpm=_safe_float(beat_phase.get("bpm"), 120.0))
-    repeat_penalty = 0.5 if version in {"m12", "m15"} else (0.65 if version in {"m17", "m18"} else 0.35)
+    repeat_penalty = 0.5 if version in {"m12", "m15"} else (0.65 if version in {"m17", "m18", "m19"} else 0.35)
     diversity = max(0.0, 1.0 - recent_units[str(candidate.get("unit_id"))] * repeat_penalty)
     is_m12 = version == "m12"
     is_m15 = version == "m15"
-    is_m17 = version in {"m17", "m18"}
-    is_m18 = version == "m18"
+    is_m17 = version in {"m17", "m18", "m19"}
+    is_m18 = version in {"m18", "m19"}
     weights = _planner_score_weights(version)
     total = (
         rhythm_score * weights["rhythm_lock"]
@@ -1621,20 +1880,23 @@ def simulate_streaming_smplx_plan_records(
     planner_version = str(planner_version or "m9").lower()
     is_m12 = planner_version == "m12"
     is_m15 = planner_version == "m15"
+    is_m19 = planner_version == "m19"
     is_m18 = planner_version == "m18"
+    is_m18_family = planner_version in {"m18", "m19"}
     is_m17_exact = planner_version == "m17"
-    is_m17 = is_m17_exact or is_m18
+    is_m17 = is_m17_exact or is_m18_family
+    event_window_contract = str(header.get("window_contract") or DEFAULT_WINDOW_CONTRACT).lower()
     tail_policy = str(tail_policy or "none").lower()
     initial_pose_mode = str(initial_pose_mode or DEFAULT_INITIAL_POSE_MODE).lower()
     cohort_size = max(1, int(cohort_size or DEFAULT_M15_COHORT_SIZE))
     initial_hold_sec = _clamp(_safe_float(initial_hold_sec), 0.0, max(0.0, duration_sec - 0.35))
-    ending_policy = str(ending_policy or ("gradual_recover" if is_m18 else "none")).lower()
-    speed_retime_policy = str(speed_retime_policy or ("conservative_lock" if is_m18 else "none")).lower()
-    state_machine_policy = str(state_machine_policy or ("hybrid" if is_m18 else "none")).lower()
-    ending_hold_sec = _safe_float(ending_hold_sec, M18_DEFAULT_ENDING_HOLD_SEC if is_m18 else 0.0)
-    if is_m18 and ending_policy == "none":
+    ending_policy = str(ending_policy or ("gradual_recover" if is_m18_family else "none")).lower()
+    speed_retime_policy = str(speed_retime_policy or ("conservative_lock" if is_m18_family else "none")).lower()
+    state_machine_policy = str(state_machine_policy or ("hybrid" if is_m18_family else "none")).lower()
+    ending_hold_sec = _safe_float(ending_hold_sec, M18_DEFAULT_ENDING_HOLD_SEC if is_m18_family else 0.0)
+    if is_m18_family and ending_policy == "none":
         ending_policy = "gradual_recover"
-    if is_m18 and ending_hold_sec <= 0.0:
+    if is_m18_family and ending_hold_sec <= 0.0:
         ending_hold_sec = M18_DEFAULT_ENDING_HOLD_SEC
     ending_hold_sec = _clamp(ending_hold_sec, 0.0, max(0.0, duration_sec - initial_hold_sec - 0.35))
     planner_name = _planner_name(planner_version)
@@ -1642,14 +1904,16 @@ def simulate_streaming_smplx_plan_records(
     outro_recover_start_sec = duration_sec
     outro_neutral_arrival_sec = duration_sec
     final_neutral_hold_sec = 0.0
-    if is_m18 and ending_policy == "gradual_recover" and ending_hold_sec > 0.0:
+    if is_m18_family and ending_policy == "gradual_recover" and ending_hold_sec > 0.0:
         nominal_outro_start = max(initial_hold_sec, duration_sec - ending_hold_sec)
-        boundary_tick = _find_tick_for_decision(ticks, max(0.0, nominal_outro_start - total_future_sec))
-        visible_until = _safe_float(boundary_tick.get("available_audio_until_sec"), nominal_outro_start)
+        boundary_decision_time = nominal_outro_start if is_m19 else max(0.0, nominal_outro_start - total_future_sec)
+        boundary_tick = _find_tick_at_or_before(ticks, boundary_decision_time) if is_m19 else _find_tick_for_decision(ticks, boundary_decision_time)
+        boundary_scoring_tick = _filter_tick_for_window_roles(boundary_tick, {"history", "main"}) if is_m19 else boundary_tick
+        visible_until = _safe_float(boundary_scoring_tick.get("available_audio_until_sec"), nominal_outro_start)
         boundary_candidates = [
             item
             for item in _planner_boundary_events(
-                boundary_tick,
+                boundary_scoring_tick,
                 start_sec=max(initial_hold_sec, nominal_outro_start - 0.75),
                 available_until_sec=min(nominal_outro_start, visible_until),
                 confidence_floor=M17_INITIAL_BOUNDARY_CONFIDENCE_FLOOR,
@@ -1663,7 +1927,7 @@ def simulate_streaming_smplx_plan_records(
             outro_recover_start_sec = nominal_outro_start
         final_neutral_hold_sec = min(M18_FINAL_NEUTRAL_HOLD_SEC, max(0.5, duration_sec - outro_recover_start_sec))
         outro_neutral_arrival_sec = max(outro_recover_start_sec + 0.35, duration_sec - final_neutral_hold_sec)
-    dance_until_sec = outro_recover_start_sec if is_m18 and ending_policy == "gradual_recover" else duration_sec
+    dance_until_sec = outro_recover_start_sec if is_m18_family and ending_policy == "gradual_recover" else duration_sec
 
     records: list[dict[str, Any]] = [
         {
@@ -1677,6 +1941,10 @@ def simulate_streaming_smplx_plan_records(
             "lookahead_sec": round(float(planning_lookahead_sec), 5),
             "lookfront_sec": round(float(lookfront_sec), 5),
             "total_future_sec": round(float(total_future_sec), 5),
+            "window_contract": event_window_contract,
+            "history_sec": header.get("history_sec"),
+            "main_window_duration_sec": header.get("main_window_duration_sec", planning_lookahead_sec),
+            "future_sec": header.get("future_sec", lookfront_sec),
             "planner": planner_name,
             "planner_version": planner_version,
             "tail_policy": tail_policy,
@@ -1708,54 +1976,68 @@ def simulate_streaming_smplx_plan_records(
         if max_steps > 0 and step_index >= max_steps:
             break
 
-        decision_time = max(0.0, next_start_sec - total_future_sec)
-        tick = _find_tick_for_decision(ticks, decision_time)
-        beat_phase = dict(tick.get("beat_phase", {}) or {})
+        decision_time = max(0.0, next_start_sec if is_m19 else next_start_sec - total_future_sec)
+        tick = _find_tick_at_or_before(ticks, decision_time) if is_m19 else _find_tick_for_decision(ticks, decision_time)
+        scoring_tick = _filter_tick_for_window_roles(tick, {"main"}) if is_m19 else dict(tick)
+        state_tick = _filter_tick_for_window_roles(tick, {"main", "future"}) if is_m19 else dict(scoring_tick)
+        beat_phase = dict(scoring_tick.get("beat_phase", {}) or {})
         tempo_confidence = _safe_float(beat_phase.get("confidence"), 0.0)
         if tempo_confidence < 0.28:
             effective_bpm = 120.0
             spacing = 0.5
             scoring_tick = dict(tick)
+            if is_m19:
+                scoring_tick = _filter_tick_for_window_roles(tick, {"main"})
+                state_tick = _filter_tick_for_window_roles(tick, {"main", "future"})
             scoring_tick["beat_phase"] = {
                 **beat_phase,
                 "bpm": effective_bpm,
                 "spacing_sec": spacing,
                 "confidence": tempo_confidence,
             }
+            state_tick["beat_phase"] = dict(scoring_tick["beat_phase"])
         else:
             effective_bpm = _safe_float(beat_phase.get("bpm"), 120.0)
             spacing = max(0.18, _safe_float(beat_phase.get("spacing_sec"), 0.5))
-            scoring_tick = tick
+            if not is_m19:
+                scoring_tick = tick
+                state_tick = tick
         visible_until_sec = _safe_float(tick.get("available_audio_until_sec"), next_start_sec)
+        scoring_visible_until_sec = _safe_float(scoring_tick.get("available_audio_until_sec"), visible_until_sec)
         playhead = _safe_float(tick.get("playhead_sec"), 0.0)
-        if is_m18 and dance_until_sec - next_start_sec < max(1.0, spacing * 2.0):
+        if is_m18_family and dance_until_sec - next_start_sec < max(1.0, spacing * 2.0):
             break
 
         if is_m17 and previous_unit is None and next_start_sec >= initial_hold_sec - 1e-8:
             visible_boundaries = _planner_boundary_events(
                 scoring_tick,
                 start_sec=next_start_sec,
-                available_until_sec=visible_until_sec,
+                available_until_sec=scoring_visible_until_sec,
                 confidence_floor=M17_INITIAL_BOUNDARY_CONFIDENCE_FLOOR,
             )
             can_extend_initial_idle = next_start_sec < initial_hold_sec + M17_MAX_INITIAL_IDLE_EXTENSION_SEC - 1e-8
             if visible_boundaries:
                 next_start_sec = max(next_start_sec, _safe_float(visible_boundaries[0].get("time_sec"), next_start_sec))
-                decision_time = max(0.0, next_start_sec - total_future_sec)
-                tick = _find_tick_for_decision(ticks, decision_time)
-                beat_phase = dict(tick.get("beat_phase", {}) or {})
+                decision_time = max(0.0, next_start_sec if is_m19 else next_start_sec - total_future_sec)
+                tick = _find_tick_at_or_before(ticks, decision_time) if is_m19 else _find_tick_for_decision(ticks, decision_time)
+                scoring_tick = _filter_tick_for_window_roles(tick, {"main"}) if is_m19 else dict(tick)
+                state_tick = _filter_tick_for_window_roles(tick, {"main", "future"}) if is_m19 else dict(scoring_tick)
+                beat_phase = dict(scoring_tick.get("beat_phase", {}) or {})
                 tempo_confidence = _safe_float(beat_phase.get("confidence"), tempo_confidence)
                 effective_bpm = _safe_float(beat_phase.get("bpm"), effective_bpm)
                 spacing = max(0.18, _safe_float(beat_phase.get("spacing_sec"), spacing))
                 if tempo_confidence >= 0.28:
-                    scoring_tick = tick
+                    if not is_m19:
+                        scoring_tick = tick
+                        state_tick = tick
                 visible_until_sec = _safe_float(tick.get("available_audio_until_sec"), next_start_sec)
+                scoring_visible_until_sec = _safe_float(scoring_tick.get("available_audio_until_sec"), visible_until_sec)
                 playhead = _safe_float(tick.get("playhead_sec"), playhead)
-            elif can_extend_initial_idle and (tempo_confidence < M17_LOW_CONFIDENCE_THRESHOLD or next_start_sec >= visible_until_sec - 1e-8):
+            elif can_extend_initial_idle and (tempo_confidence < M17_LOW_CONFIDENCE_THRESHOLD or next_start_sec >= scoring_visible_until_sec - 1e-8):
                 idle_end_sec = min(
                     dance_until_sec,
                     initial_hold_sec + M17_MAX_INITIAL_IDLE_EXTENSION_SEC,
-                    max(next_start_sec + max(0.5, spacing), visible_until_sec),
+                    max(next_start_sec + max(0.5, spacing), scoring_visible_until_sec),
                 )
                 if idle_end_sec <= next_start_sec + 1e-3:
                     idle_end_sec = min(dance_until_sec, next_start_sec + max(0.5, spacing))
@@ -1815,7 +2097,7 @@ def simulate_streaming_smplx_plan_records(
                 if remaining_total < target_beats * spacing * 0.75:
                     tail_options = [count for count in counts if count <= target_beats] or counts
                     target_beats = min(tail_options, key=lambda count: abs(count * spacing - remaining_total))
-            if is_m18 and speed_retime_policy == "conservative_lock" and tempo_confidence >= 0.28:
+            if is_m18_family and speed_retime_policy == "conservative_lock" and tempo_confidence >= 0.28:
                 target_beats, adjusted_spacing, retime_reason = _choose_conservative_target_beats(
                     units=units,
                     spacing_sec=spacing,
@@ -1833,7 +2115,9 @@ def simulate_streaming_smplx_plan_records(
                         "confidence": tempo_confidence,
                         "retime_spacing_adjusted": True,
                     }
-            if is_m18 and dance_until_sec - next_start_sec < target_beats * spacing * 0.75:
+                    state_tick = dict(state_tick)
+                    state_tick["beat_phase"] = dict(scoring_tick["beat_phase"])
+            if is_m18_family and dance_until_sec - next_start_sec < target_beats * spacing * 0.75:
                 break
 
         target_end_sec = min(dance_until_sec, next_start_sec + target_beats * spacing)
@@ -1849,20 +2133,34 @@ def simulate_streaming_smplx_plan_records(
         target_style_profile = _target_style_profile_for_tick(
             scoring_tick,
             start_sec=next_start_sec,
-            visible_end_sec=visible_until_sec,
+            visible_end_sec=scoring_visible_until_sec,
             previous_unit=previous_unit,
         )
         choreography_state = "legacy_retrieval"
         state_machine: dict[str, Any] = {"policy": state_machine_policy}
-        if is_m18 and state_machine_policy == "hybrid":
+        if is_m18_family and state_machine_policy == "hybrid":
+            state_visible_until_sec = _safe_float(state_tick.get("available_audio_until_sec"), visible_until_sec)
             choreography_state, state_machine = _choreography_state_for_tick(
-                tick=scoring_tick,
+                tick=state_tick,
                 start_sec=next_start_sec,
-                visible_end_sec=visible_until_sec,
+                visible_end_sec=state_visible_until_sec,
                 previous_state=previous_choreography_state,
                 previous_unit=previous_unit,
             )
-            target_style_profile = _state_adjusted_style_profile(target_style_profile, choreography_state, scoring_tick)
+            if is_m19:
+                future_prepare_events = _m19_future_prepare_events(tick)
+                if future_prepare_events and choreography_state.startswith("groove_"):
+                    choreography_state = "accent_prepare"
+                state_machine = {
+                    **state_machine,
+                    "window_contract": M19_WINDOW_CONTRACT,
+                    "state_uses_future_for_prepare_only": True,
+                    "rhythm_scoring_window": "main",
+                    "history_context_available": True,
+                    "future_prepare_event_count": len(future_prepare_events),
+                    "future_prepare_next_time_sec": _round_time(_safe_float(future_prepare_events[0].get("time_sec"))) if future_prepare_events else None,
+                }
+            target_style_profile = _state_adjusted_style_profile(target_style_profile, choreography_state, state_tick)
         target_energy = str(target_style_profile.get("energy", "mid_energy"))
 
         cohort_source_sequences: list[str] = []
@@ -1928,7 +2226,7 @@ def simulate_streaming_smplx_plan_records(
                 reject_reasons.append("transition_smoothness_below_0_55")
             if is_m15 and not tail_extended and (speed_scale < M15_NON_TAIL_SPEED_MIN or speed_scale > M15_NON_TAIL_SPEED_MAX):
                 reject_reasons.append("non_tail_speed_outside_0_90_1_10")
-            if is_m18 and not tail_extended and (speed_scale < M18_HARD_RETIME_MIN or speed_scale > M18_HARD_RETIME_MAX):
+            if is_m18_family and not tail_extended and (speed_scale < M18_HARD_RETIME_MIN or speed_scale > M18_HARD_RETIME_MAX):
                 reject_reasons.append("non_tail_speed_outside_0_85_1_15")
             elif is_m17_exact and not tail_extended and (speed_scale < M17_NON_TAIL_SPEED_MIN or speed_scale > M17_NON_TAIL_SPEED_MAX):
                 reject_reasons.append("non_tail_speed_outside_0_92_1_08")
@@ -1951,7 +2249,7 @@ def simulate_streaming_smplx_plan_records(
             ):
                 reject_reasons.append("cross_sequence_transition_below_0_62")
             if (
-                is_m18
+                is_m18_family
                 and previous_unit is not None
                 and str(previous_unit.get("source_sequence")) != str(candidate.get("source_sequence"))
                 and (
@@ -1988,7 +2286,7 @@ def simulate_streaming_smplx_plan_records(
                 for item in scored
                 if recent_units[str(item[1].get("unit_id"))] < M17_MAX_TOTAL_SAME_UNIT_USES
             ] or scored
-            if is_m18:
+            if is_m18_family:
                 hard_speed_recovery_pool = [
                     item
                     for item in recovery_pool
@@ -2068,7 +2366,11 @@ def simulate_streaming_smplx_plan_records(
         source_artifacts = dict(selected.get("reference_artifacts", {}) or {})
         available_until = _safe_float(tick.get("available_audio_until_sec"), 0.0)
         playhead = _safe_float(tick.get("playhead_sec"), 0.0)
+        window_context = _m19_decision_window_context(tick, previous_unit=previous_unit, previous_state=previous_choreography_state) if is_m19 else {}
+        m19_main_end = _safe_float(dict(window_context.get("main_window_sec", {}) or {}).get("end"), available_until)
         guard_passed = available_until <= playhead + total_future_sec + 1e-5 and next_start_sec <= available_until + 1e-5
+        if is_m19:
+            guard_passed = guard_passed and next_start_sec <= m19_main_end + 1e-5
         previous_unit_id = str(previous_unit.get("unit_id")) if previous_unit is not None else None
         selected_unit_id = str(selected.get("unit_id"))
         selected_unit_run = current_unit_run + 1 if previous_unit_id == selected_unit_id else 1
@@ -2090,9 +2392,12 @@ def simulate_streaming_smplx_plan_records(
                 "lookahead_sec": round(float(planning_lookahead_sec), 5),
                 "lookfront_sec": round(float(lookfront_sec), 5),
                 "total_future_sec": round(float(total_future_sec), 5),
+                "window_contract": M19_WINDOW_CONTRACT if is_m19 else event_window_contract,
+                "main_window_end_sec": _round_time(m19_main_end) if is_m19 else None,
                 "used_audio_until_sec": _round_time(available_until),
                 "passed": bool(guard_passed),
             },
+            "window_context": window_context,
             "target_time_sec": {"start": _round_time(next_start_sec), "end": _round_time(target_end_sec)},
             "target_beats": int(target_beats),
             "target_bpm": round(float(effective_bpm), 5),
@@ -2138,6 +2443,9 @@ def simulate_streaming_smplx_plan_records(
                 "low_confidence_continuation": low_confidence_continuation,
                 "tempo_confidence": round(float(tempo_confidence), 5),
                 "retime_adjusted": bool(retime_reason.get("retime_adjusted")),
+                "m19_history_main_future": bool(is_m19),
+                "m19_rhythm_scored_from_main_window": bool(is_m19),
+                "m19_future_used_for_prepare_only": bool(is_m19),
             },
             "expected_accent_hits": expected_hits,
             "rhythm_locks": lock_reports,
@@ -2155,11 +2463,11 @@ def simulate_streaming_smplx_plan_records(
         next_start_sec = target_end_sec
         step_index += 1
 
-    if is_m18 and ending_policy == "gradual_recover" and outro_recover_start_sec < duration_sec - 1e-3:
+    if is_m18_family and ending_policy == "gradual_recover" and outro_recover_start_sec < duration_sec - 1e-3:
         recover_start_sec = min(outro_recover_start_sec, next_start_sec) if next_start_sec < outro_recover_start_sec - 1e-4 else outro_recover_start_sec
         recover_start_sec = max(0.0, min(recover_start_sec, duration_sec - 0.35))
-        recover_decision_time = max(0.0, recover_start_sec - total_future_sec)
-        recover_tick = _find_tick_for_decision(ticks, recover_decision_time)
+        recover_decision_time = max(0.0, recover_start_sec if is_m19 else recover_start_sec - total_future_sec)
+        recover_tick = _find_tick_at_or_before(ticks, recover_decision_time) if is_m19 else _find_tick_for_decision(ticks, recover_decision_time)
         recover_beat_phase = dict(recover_tick.get("beat_phase", {}) or {})
         recover_bpm = _safe_float(recover_beat_phase.get("bpm"), 120.0)
         recover_playhead = _safe_float(recover_tick.get("playhead_sec"), recover_decision_time)
@@ -2559,6 +2867,7 @@ def stream_plan_to_stitch_manifest(
                 "decision_time_sec": decision.get("decision_time_sec"),
                 "playhead_sec": decision.get("playhead_sec"),
                 "available_audio_until_sec": decision.get("available_audio_until_sec"),
+                "window_context": dict(decision.get("window_context", {}) or {}),
                 "score": decision.get("score"),
                 "score_breakdown": dict(decision.get("score_breakdown", {}) or {}),
                 "target_energy": decision.get("target_energy"),
@@ -2621,6 +2930,7 @@ def stream_plan_to_stitch_manifest(
                     "decision_time_sec": item.get("decision_time_sec"),
                     "playhead_sec": item.get("playhead_sec"),
                     "available_audio_until_sec": item.get("available_audio_until_sec"),
+                    "window_context": item.get("window_context"),
                     "target_time_sec": item.get("target_time_sec"),
                     "target_beats": item.get("target_beats"),
                     "selected_unit_id": item.get("selected_unit_id"),
@@ -2947,6 +3257,7 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
         for item in rejected_candidates
         if "non_tail_speed_outside_0_90_1_10" in list(item.get("reasons", []) or [])
         or "non_tail_speed_outside_0_92_1_08" in list(item.get("reasons", []) or [])
+        or "non_tail_speed_outside_0_85_1_15" in list(item.get("reasons", []) or [])
     )
     transition_reject_count = sum(
         1
@@ -3055,6 +3366,7 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
             "retime_adjustment_count": int(retime_adjustment_count),
             "max_retime_speed_scale": round(float(max(speeds or [1.0])), 6),
             "high_confidence_lock_error_frames": round(float(max(visible_lock_errors or [0.0])), 5),
+            "window_contract": str(header.get("window_contract") or DEFAULT_WINDOW_CONTRACT),
         },
         "cohort_source_sequences": sorted({str(sequence_id) for decision in decisions for sequence_id in list(decision.get("cohort_source_sequences", []) or [])}),
         "gaps": gaps,
@@ -3067,8 +3379,8 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
             "max_consecutive_motion_unit_run_le_2": _max_consecutive_motion_unit_run(decisions) <= M17_IDEAL_MAX_CONSECUTIVE_SAME_UNIT,
             "max_consecutive_motion_unit_run_le_3": _max_consecutive_motion_unit_run(decisions) <= M17_MAX_CONSECUTIVE_SAME_UNIT,
             "max_total_motion_unit_uses_le_5": _max_total_motion_unit_uses(decisions) <= M17_MAX_TOTAL_SAME_UNIT_USES,
-            "outro_recover_sec_gte_5": outro_recover_sec >= M18_DEFAULT_ENDING_HOLD_SEC - 1e-4 if str(header.get("planner_version")) == "m18" else True,
-            "final_pose_source_is_neutral_idle": final_pose_source == SYNTHETIC_NEUTRAL_IDLE_SOURCE if str(header.get("planner_version")) == "m18" else True,
+            "outro_recover_sec_gte_5": outro_recover_sec >= M18_DEFAULT_ENDING_HOLD_SEC - 1e-4 if str(header.get("planner_version")) in {"m18", "m19"} else True,
+            "final_pose_source_is_neutral_idle": final_pose_source == SYNTHETIC_NEUTRAL_IDLE_SOURCE if str(header.get("planner_version")) in {"m18", "m19"} else True,
             "high_confidence_lock_error_within_2_frames": max(visible_lock_errors or [0.0]) <= 2.0,
         },
     }

@@ -1049,6 +1049,16 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
             "drumHits": rhythm_mapping.get("drum_hits", []),
             "segments": segment_mapping,
             "transitions": transitions,
+            "streamingWindows": [
+                {
+                    "index": item.get("index"),
+                    "history": dict(dict(item.get("window_context", {}) or {}).get("history_window_sec", {}) or {}),
+                    "main": dict(dict(item.get("window_context", {}) or {}).get("main_window_sec", {}) or {}),
+                    "future": dict(dict(item.get("window_context", {}) or {}).get("future_window_sec", {}) or {}),
+                }
+                for item in streaming_decisions
+                if item.get("window_context")
+            ],
         },
         ensure_ascii=False,
     ).replace("</", "<\\/")
@@ -1075,17 +1085,26 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
 
     def streaming_rows() -> str:
         if not streaming_decisions:
-            return "<tr><td colspan=\"15\">No streaming decision records.</td></tr>"
+            return "<tr><td colspan=\"16\">No streaming decision records.</td></tr>"
         rows = []
         for item in streaming_decisions:
             target = dict(item.get("target_time_sec", {}) or {})
             guard = dict(item.get("future_visibility_guard", {}) or {})
             score = dict(item.get("score_breakdown", {}) or {})
             source_frames = dict(item.get("source_frame_range", {}) or {})
+            window = dict(item.get("window_context", {}) or {})
+            history_window = dict(window.get("history_window_sec", {}) or {})
+            main_window = dict(window.get("main_window_sec", {}) or {})
+            future_window = dict(window.get("future_window_sec", {}) or {})
             rejected = list(item.get("rejected_top_candidates", []) or [])
             pose_source = str(item.get("pose_source") or "finedance_motion_unit")
             state = str(item.get("choreography_state") or dict(item.get("switch_reason", {}) or {}).get("choreography_state") or "-")
             retime = dict(item.get("retime_reason", {}) or {})
+            window_summary = (
+                f"H {history_window.get('start', '-')}-{history_window.get('end', '-')} | "
+                f"M {main_window.get('start', '-')}-{main_window.get('end', '-')} | "
+                f"F {future_window.get('start', '-')}-{future_window.get('end', '-')}"
+            )
             reject_summary = " | ".join(
                 f"{entry.get('source_sequence')}:{entry.get('unit_id')} => {','.join(list(entry.get('reasons', []) or []))}"
                 for entry in rejected[:2]
@@ -1096,6 +1115,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
                 f"<td>{html.escape(str(item.get('decision_time_sec')))}</td>"
                 f"<td>{html.escape(str(item.get('playhead_sec')))}</td>"
                 f"<td>{html.escape(str(item.get('available_audio_until_sec')))}</td>"
+                f"<td>{html.escape(window_summary)}</td>"
                 f"<td>{html.escape(str(target.get('start')))}-{html.escape(str(target.get('end')))}s</td>"
                 f"<td>{html.escape(str(item.get('selected_unit_id')))}</td>"
                 f"<td>{html.escape(str(item.get('source_sequence')))}:{html.escape(str(source_frames.get('start')))}-{html.escape(str(source_frames.get('end_exclusive')))} [{html.escape(pose_source)}]</td>"
@@ -1316,7 +1336,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
       </table>
       <h2>Streaming Decisions</h2>
       <table>
-        <thead><tr><th>step</th><th>decision</th><th>playhead</th><th>available</th><th>target</th><th>unit</th><th>source</th><th>tier</th><th>cohort songs</th><th>state</th><th>retime</th><th>energy/bpm</th><th>speed/score</th><th>guard/scores</th><th>top rejects</th></tr></thead>
+        <thead><tr><th>step</th><th>decision</th><th>playhead</th><th>available</th><th>H/M/F window</th><th>target</th><th>unit</th><th>source</th><th>tier</th><th>cohort songs</th><th>state</th><th>retime</th><th>energy/bpm</th><th>speed/score</th><th>guard/scores</th><th>top rejects</th></tr></thead>
         <tbody>{streaming_rows()}</tbody>
       </table>
       <h2>Transitions</h2>
@@ -1360,6 +1380,23 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = "#11161a";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      for (const win of rhythmData.streamingWindows || []) {{
+        const h = win.history || {{}};
+        const m = win.main || {{}};
+        const f = win.future || {{}};
+        if (h.start !== undefined && h.end !== undefined) {{
+          ctx.fillStyle = "rgba(116,185,255,0.16)";
+          ctx.fillRect(xFor(h.start), 2, Math.max(1, xFor(h.end) - xFor(h.start)), 5);
+        }}
+        if (m.start !== undefined && m.end !== undefined) {{
+          ctx.fillStyle = "rgba(123,216,143,0.28)";
+          ctx.fillRect(xFor(m.start), 7, Math.max(1, xFor(m.end) - xFor(m.start)), 5);
+        }}
+        if (f.start !== undefined && f.end !== undefined) {{
+          ctx.fillStyle = "rgba(255,123,99,0.22)";
+          ctx.fillRect(xFor(f.start), 12, Math.max(1, xFor(f.end) - xFor(f.start)), 5);
+        }}
+      }}
       for (const segment of rhythmData.segments || []) {{
         const local = segment.target_time_sec || {{}};
         const x0 = xFor(local.start);
@@ -1420,6 +1457,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
       ctx.fillStyle = "#aeb8ba";
       ctx.font = "12px system-ui, sans-serif";
       ctx.fillText("segments", 8, 12);
+      ctx.fillText("H/M/F window bands", 112, 12);
       ctx.fillText("beats/downbeats", 8, 72);
       ctx.fillText("drum hits / accents", 8, 120);
     }}
