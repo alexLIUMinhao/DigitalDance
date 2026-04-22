@@ -48,6 +48,7 @@ M17_TEMPO_STABLE_SWITCH_TICKS = 3
 M17_EVENT_CONFIDENCE_FLOOR = 0.58
 M17_INITIAL_BOUNDARY_CONFIDENCE_FLOOR = 0.48
 M17_MAX_INITIAL_IDLE_EXTENSION_SEC = 1.0
+M17_IDEAL_MAX_CONSECUTIVE_SAME_UNIT = 2
 M17_MAX_CONSECUTIVE_SAME_UNIT = 3
 
 
@@ -1536,10 +1537,12 @@ def simulate_streaming_smplx_plan_records(
             if (
                 is_m17
                 and previous_unit is not None
-                and current_unit_run >= M17_MAX_CONSECUTIVE_SAME_UNIT
                 and str(previous_unit.get("unit_id")) == str(candidate.get("unit_id"))
             ):
-                reject_reasons.append("same_unit_run_limit_3")
+                if current_unit_run >= M17_MAX_CONSECUTIVE_SAME_UNIT:
+                    reject_reasons.append("same_unit_run_limit_3")
+                elif current_unit_run >= M17_IDEAL_MAX_CONSECUTIVE_SAME_UNIT:
+                    reject_reasons.append("same_unit_preferred_limit_2")
             if (
                 is_m15
                 and previous_unit is not None
@@ -1587,14 +1590,15 @@ def simulate_streaming_smplx_plan_records(
         if previous_unit is not None and (is_m15 or is_m17):
             previous_unit_id = str(previous_unit.get("unit_id"))
             previous_sequence = str(previous_unit.get("source_sequence"))
+            repeat_prefer_change_active = bool(is_m17 and current_unit_run >= M17_IDEAL_MAX_CONSECUTIVE_SAME_UNIT)
             repeat_limit_active = bool(is_m17 and current_unit_run >= M17_MAX_CONSECUTIVE_SAME_UNIT)
             same_unit_recovery = [item for item in effective_scored if str(item[1].get("unit_id")) == previous_unit_id]
             same_sequence_recovery = [item for item in effective_scored if str(item[1].get("source_sequence")) == previous_sequence]
-            if is_m17 and same_unit_recovery and not repeat_limit_active:
+            if is_m17 and same_unit_recovery and not repeat_prefer_change_active:
                 effective_scored = same_unit_recovery + [item for item in effective_scored if item not in same_unit_recovery]
             if same_sequence_recovery:
                 effective_scored = same_sequence_recovery + [item for item in effective_scored if item not in same_sequence_recovery]
-            if repeat_limit_active:
+            if repeat_prefer_change_active or repeat_limit_active:
                 non_same_unit = [item for item in effective_scored if str(item[1].get("unit_id")) != previous_unit_id]
                 if non_same_unit:
                     effective_scored = non_same_unit + [item for item in effective_scored if item not in non_same_unit]
@@ -1689,7 +1693,8 @@ def simulate_streaming_smplx_plan_records(
                 "same_sequence_as_previous": bool(previous_unit and previous_unit.get("source_sequence") == selected.get("source_sequence")),
                 "same_unit_as_previous": bool(previous_unit_id == selected_unit_id),
                 "same_unit_run": int(selected_unit_run),
-                "same_unit_run_limit": int(M17_MAX_CONSECUTIVE_SAME_UNIT) if is_m17 else None,
+                "same_unit_ideal_run_limit": int(M17_IDEAL_MAX_CONSECUTIVE_SAME_UNIT) if is_m17 else None,
+                "same_unit_hard_run_limit": int(M17_MAX_CONSECUTIVE_SAME_UNIT) if is_m17 else None,
                 "low_confidence_continuation": low_confidence_continuation,
                 "tempo_confidence": round(float(tempo_confidence), 5),
             },
@@ -2180,6 +2185,9 @@ def render_streaming_smplx_mesh_review(
     report["metrics"]["repeat_unit_hard_reject_count"] = sum(
         1 for item in rejected_candidates if "same_unit_run_limit_3" in list(item.get("reasons", []) or [])
     )
+    report["metrics"]["repeat_unit_preferred_reject_count"] = sum(
+        1 for item in rejected_candidates if "same_unit_preferred_limit_2" in list(item.get("reasons", []) or [])
+    )
     report["metrics"]["max_consecutive_motion_unit_run"] = _max_consecutive_motion_unit_run(decisions)
     report["metrics"]["low_confidence_continuation_count"] = sum(
         1 for item in decisions if bool(dict(item.get("switch_reason", {}) or {}).get("low_confidence_continuation"))
@@ -2364,6 +2372,7 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
     )
     transition_reject_count += sum(1 for item in rejected_candidates if "cross_sequence_transition_below_0_62" in list(item.get("reasons", []) or []))
     repeat_reject_count = sum(1 for item in rejected_candidates if "same_unit_run_limit_3" in list(item.get("reasons", []) or []))
+    repeat_preferred_reject_count = sum(1 for item in rejected_candidates if "same_unit_preferred_limit_2" in list(item.get("reasons", []) or []))
     cross_sequence_transition_count = sum(
         1
         for previous, current in zip(decisions, decisions[1:])
@@ -2402,6 +2411,7 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
             "non_tail_speed_hard_reject_count": non_tail_speed_reject_count,
             "transition_hard_reject_count": transition_reject_count,
             "repeat_unit_hard_reject_count": repeat_reject_count,
+            "repeat_unit_preferred_reject_count": repeat_preferred_reject_count,
             "max_consecutive_motion_unit_run": _max_consecutive_motion_unit_run(decisions),
             "cross_sequence_transition_count": cross_sequence_transition_count,
             "low_confidence_continuation_count": sum(
@@ -2417,6 +2427,7 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
             "no_gaps": not gaps,
             "speed_outside_ratio_le_10pct": len(outside) / max(1, len(speeds)) <= 0.10,
             "non_tail_max_speed_le_1_25": max(non_tail_speeds or [1.0]) <= 1.25,
+            "max_consecutive_motion_unit_run_le_2": _max_consecutive_motion_unit_run(decisions) <= M17_IDEAL_MAX_CONSECUTIVE_SAME_UNIT,
             "max_consecutive_motion_unit_run_le_3": _max_consecutive_motion_unit_run(decisions) <= M17_MAX_CONSECUTIVE_SAME_UNIT,
         },
     }

@@ -483,7 +483,7 @@ class StreamingSmplxTests(unittest.TestCase):
         )
         self.assertGreaterEqual(evaluation["metrics"]["non_tail_speed_hard_reject_count"], 1)
 
-    def test_m17_limits_consecutive_same_motion_unit_to_three_when_alternative_exists(self) -> None:
+    def test_m17_prefers_changing_after_two_consecutive_same_motion_units(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             motion_path = _write_motion(Path(tmpdir) / "finedance")
             library = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir), contact_mode="joints")
@@ -549,9 +549,11 @@ class StreamingSmplxTests(unittest.TestCase):
             max_run = max(max_run, current_run)
         evaluation = evaluate_streaming_planner_records(plan)
 
-        self.assertLessEqual(max_run, 3)
-        self.assertLessEqual(evaluation["metrics"]["max_consecutive_motion_unit_run"], 3)
+        self.assertLessEqual(max_run, 2)
+        self.assertLessEqual(evaluation["metrics"]["max_consecutive_motion_unit_run"], 2)
         self.assertIn("repeat_unit_hard_reject_count", evaluation["metrics"])
+        self.assertIn("repeat_unit_preferred_reject_count", evaluation["metrics"])
+        self.assertTrue(evaluation["acceptance"]["max_consecutive_motion_unit_run_le_2"])
 
     def test_stream_plan_to_manifest_is_continuous_and_carries_decisions(self) -> None:
         decisions = [
