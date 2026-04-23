@@ -1146,9 +1146,18 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
             pose_source = str(item.get("pose_source") or "finedance_motion_unit")
             state = str(item.get("choreography_state") or dict(item.get("switch_reason", {}) or {}).get("choreography_state") or "-")
             retime = dict(item.get("retime_reason", {}) or {})
+            quality_gate = dict(item.get("quality_gate", {}) or {})
             source_warp = dict(item.get("source_time_warp", {}) or {})
             warp_mode = str(source_warp.get("mode") or "-")
             warp_anchor_count = len(list(source_warp.get("anchors", []) or []))
+            score_summary = (
+                f"r={score.get('rhythm_lock')} t={score.get('transition_smoothness')} "
+                f"body={score.get('body_accent_lock', '-')} stress={item.get('retime_stress_score', '-')}"
+            )
+            quality_summary = (
+                f"q={score.get('motion_quality_score', '-')} a={score.get('accent_clarity_score', '-')} "
+                f"d={score.get('danceability_score', '-')} risk={score.get('transition_risk_score', '-')}"
+            )
             window_summary = (
                 f"H {history_window.get('start', '-')}-{history_window.get('end', '-')} | "
                 f"M {main_window.get('start', '-')}-{main_window.get('end', '-')} | "
@@ -1170,11 +1179,11 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
                 f"<td>{html.escape(str(item.get('source_sequence')))}:{html.escape(str(source_frames.get('start')))}-{html.escape(str(source_frames.get('end_exclusive')))} [{html.escape(pose_source)}]</td>"
                 f"<td>{html.escape(str(item.get('selected_from_tier')))}</td>"
                 f"<td>{html.escape(','.join(list(item.get('cohort_source_sequences', []) or [])[:8]))}</td>"
-                f"<td>{html.escape(state)}</td>"
+                f"<td>{html.escape(state)}<br>{html.escape(str(item.get('music_intent') or '-'))}</td>"
                 f"<td>{html.escape(str(item.get('retime_policy') or '-'))}:{html.escape(str(retime.get('selected_beats', '-')))}b<br>{html.escape(warp_mode)}({warp_anchor_count})</td>"
                 f"<td>{html.escape(str(item.get('target_energy')))} / {html.escape(str(item.get('target_bpm')))}</td>"
                 f"<td>{html.escape(str(item.get('speed_scale')))} / {html.escape(str(item.get('score')))}</td>"
-                f"<td>{html.escape(str(guard.get('passed')))} r={html.escape(str(score.get('rhythm_lock')))} t={html.escape(str(score.get('transition_smoothness')))}</td>"
+                f"<td>{html.escape(str(guard.get('passed')))} {html.escape(score_summary)}<br>{html.escape(quality_summary)}<br>gate={html.escape(str(quality_gate.get('passed', '-')))}</td>"
                 f"<td>{html.escape(reject_summary)}</td>"
                 "</tr>"
             )

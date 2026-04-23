@@ -162,13 +162,25 @@ class StreamingSmplxTests(unittest.TestCase):
             "energy_curve",
             "movement_quality",
             "safe_retime_range",
+            "motion_quality_score",
+            "accent_clarity_score",
+            "danceability_score",
+            "transition_risk_score",
+            "retime_stress_score",
+            "quality_bucket",
+            "quality_thresholds",
+            "quality_threshold_source",
+            "quality_gate_passed",
         ):
             self.assertIn(key, unit)
         self.assertTrue(unit["count_grid"])
         self.assertTrue(unit["drum_lock_frames"])
         self.assertGreater(unit["safe_retime_range"]["max"], unit["safe_retime_range"]["min"])
-        self.assertTrue(joint_annotated["library_id"].endswith("_m10_annotated"))
+        self.assertTrue(joint_annotated["library_id"].endswith("_m21_annotated"))
         self.assertEqual(joint_annotated["units"][0]["annotation_profile"]["contact_mode"], "joints")
+        for score_key in ("motion_quality_score", "accent_clarity_score", "danceability_score", "transition_risk_score"):
+            self.assertGreaterEqual(unit[score_key], 0.0)
+            self.assertLessEqual(unit[score_key], 1.0)
 
     def test_streaming_planner_prefers_downbeat_locked_unit_and_keeps_future_guard(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -253,10 +265,14 @@ class StreamingSmplxTests(unittest.TestCase):
         self.assertEqual(header["history_sec"], 2.0)
         self.assertEqual(header["main_window_duration_sec"], 2.0)
         self.assertEqual(header["future_sec"], 1.0)
+        self.assertEqual(header["phrase_context_history_sec"], 16.0)
+        self.assertEqual(header["phrase_context_future_sec"], 4.0)
         self.assertEqual(tick["history_window_sec"], {"start": 0.0, "end": 2.0})
         self.assertEqual(tick["main_window_sec"], {"start": 2.0, "end": 4.0})
         self.assertEqual(tick["future_window_sec"], {"start": 4.0, "end": 5.0})
         self.assertEqual(tick["visible_window_sec"], {"start": 0.0, "end": 5.0})
+        self.assertIn(tick["music_intent"], {"smooth_flow", "drum_lock", "build_up", "drop_prepare"})
+        self.assertEqual(tick["phrase_context"]["future_use"], "style_state_and_prepare_only")
         self.assertGreaterEqual(tick["window_event_counts"]["main"], 1)
         self.assertIn("drum_anchor_events", tick)
         self.assertIn("main_drum_anchor_events", tick)
@@ -471,6 +487,143 @@ class StreamingSmplxTests(unittest.TestCase):
         self.assertTrue(any(lock.get("drum_anchor_lock") for lock in decisions[0]["rhythm_locks"]))
         self.assertEqual(first_motion_step["source_time_warp"]["mode"], "piecewise_linear_motion_accent_to_drum_anchor")
         self.assertGreaterEqual(len(first_motion_step["source_time_warp"]["anchors"]), 3)
+
+    def test_m21_rejects_low_quality_and_retime_stressed_candidates(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            motion_path = _write_motion(Path(tmpdir) / "finedance")
+            library = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir), contact_mode="joints")
+        for unit in library["units"]:
+            unit["quality_thresholds"] = {
+                "motion_quality_min": 0.50,
+                "accent_clarity_min": 0.50,
+                "danceability_min": 0.50,
+                "transition_risk_max": 0.75,
+            }
+            unit["quality_threshold_source"] = "test_bucket"
+            unit["motion_quality_score"] = 0.72
+            unit["accent_clarity_score"] = 0.70
+            unit["danceability_score"] = 0.74
+            unit["transition_risk_score"] = 0.28
+            unit["quality_gate_reasons"] = []
+            if unit["unit_id"] == "finedance_001_good":
+                unit["drum_lock_frames"] = [
+                    {"kind": "count_grid_lock", "role": "kick_downbeat", "beat_offset": 0.0, "source_frame": 0, "local_frame": 0, "strength": 0.95, "lock_priority": 0},
+                    {"kind": "root_speed_peak", "role": "motion_backbeat_accent", "beat_offset": 2.0, "source_frame": 60, "local_frame": 60, "strength": 0.92, "lock_priority": 1},
+                ]
+            elif unit["unit_id"] == "finedance_001_weak":
+                unit["motion_quality_score"] = 0.10
+                unit["accent_clarity_score"] = 0.10
+                unit["danceability_score"] = 0.12
+                unit["transition_risk_score"] = 0.95
+                unit["source_song_quality_weight"] = 1.0
+                unit["drum_lock_frames"] = [
+                    {"kind": "count_grid_lock", "role": "kick_downbeat", "beat_offset": 0.0, "source_frame": 0, "local_frame": 0, "strength": 0.99, "lock_priority": 0},
+                    {"kind": "root_speed_peak", "role": "motion_backbeat_accent", "beat_offset": 2.0, "source_frame": 60, "local_frame": 60, "strength": 0.99, "lock_priority": 1},
+                ]
+            elif unit["unit_id"] == "finedance_002_other":
+                unit["source_song_quality_weight"] = 1.0
+                unit["drum_lock_frames"] = [
+                    {"kind": "count_grid_lock", "role": "kick_downbeat", "beat_offset": 0.0, "source_frame": 0, "local_frame": 0, "strength": 0.99, "lock_priority": 0},
+                    {"kind": "root_speed_peak", "role": "motion_backbeat_accent", "beat_offset": 2.0, "source_frame": 118, "local_frame": 118, "strength": 0.99, "lock_priority": 1},
+                ]
+            else:
+                unit["quality_gate_reasons"] = ["motion_quality_below_adaptive_threshold"]
+        beats = [
+            {
+                "index": index,
+                "time_sec": index * 0.5,
+                "strength": 0.8,
+                "confidence": 0.95,
+                "is_downbeat": index % 4 == 0,
+                "count": index % 4 + 1,
+                "window_role": "main" if index * 0.5 <= 2.0 else "future",
+            }
+            for index in range(7)
+        ]
+        stream_events = [
+            {
+                "kind": "stream_header",
+                "song_id": "m21_demo",
+                "duration_sec": 8.0,
+                "initial_buffer_sec": 2.0,
+                "lookahead_sec": 2.0,
+                "lookfront_sec": 1.0,
+                "total_future_sec": 3.0,
+                "window_contract": "history_main_future",
+                "history_sec": 2.0,
+                "main_window_duration_sec": 2.0,
+                "future_sec": 1.0,
+                "phrase_context_history_sec": 16.0,
+                "phrase_context_future_sec": 4.0,
+                "beats_per_bar": 4,
+            },
+            {
+                "kind": "tick",
+                "tick_index": 0,
+                "playhead_sec": 0.0,
+                "available_audio_until_sec": 3.0,
+                "planning_audio_until_sec": 2.0,
+                "visible_window_sec": {"start": 0.0, "end": 3.0},
+                "history_window_sec": {"start": 0.0, "end": 0.0},
+                "main_window_sec": {"start": 0.0, "end": 2.0},
+                "future_window_sec": {"start": 2.0, "end": 3.0},
+                "window_event_counts": {"history": 0, "main": 7, "future": 2},
+                "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.95},
+                "music_state": {"energy_level": "mid", "accent_density": "high", "beat_confidence": 0.95, "phrase_phase": {"count": 1, "is_reliable": True}, "music_intent": "drum_lock"},
+                "music_intent": "drum_lock",
+                "phrase_context": {
+                    "music_intent": "drum_lock",
+                    "preferred_unit_beats": [4, 2, 8],
+                    "preferred_movement_quality": {"attack": "sharp", "size": "medium_motion"},
+                    "future_use": "style_state_and_prepare_only",
+                },
+                "beats": beats,
+                "downbeats": [{"index": 0, "time_sec": 0.0, "confidence": 0.95, "strength": 0.95, "is_downbeat": True, "window_role": "main"}],
+                "drum_hits": [
+                    {"index": 0, "time_sec": 0.0, "strength": 0.95, "kind": "kick", "window_role": "main"},
+                    {"index": 1, "time_sec": 1.0, "strength": 0.92, "kind": "high_attack", "window_role": "main"},
+                ],
+                "drum_anchor_events": [
+                    {"index": 0, "time_sec": 0.0, "kind": "downbeat", "anchor_role": "count_1_downbeat", "priority": 0, "confidence": 0.95, "strength": 0.95, "window_role": "main"},
+                    {"index": 1, "time_sec": 1.0, "kind": "high_attack", "anchor_role": "snare_backbeat", "priority": 2, "confidence": 0.94, "strength": 0.92, "window_role": "main"},
+                ],
+                "accents": [],
+                "history_events": [],
+                "main_events": [{"kind": "downbeat", "time_sec": 0.0, "confidence": 0.95}, {"kind": "drum_hit", "time_sec": 1.0, "confidence": 0.94}],
+                "future_events": [],
+                "main_segment_hypotheses": [{"start_time_sec": 0.0, "end_time_sec": 2.0, "duration_beats": 4, "confidence": 0.9}],
+                "segment_hypotheses": [{"start_time_sec": 0.0, "end_time_sec": 2.0, "duration_beats": 4, "confidence": 0.9}],
+            },
+        ]
+
+        plan = simulate_streaming_smplx_plan_records(
+            stream_events,
+            library,
+            planner_version="m21",
+            initial_hold_sec=0.0,
+            ending_hold_sec=5.0,
+            ending_policy="gradual_recover",
+            speed_retime_policy="conservative_lock",
+            state_machine_policy="hybrid",
+            max_steps=1,
+        )
+        decisions = [record for record in plan if record["kind"] == "decision" and record["pose_source"] == "finedance_motion_unit"]
+        decision = decisions[0]
+        rejected_reasons = [reason for item in decision["rejected_top_candidates"] for reason in list(item.get("reasons", []) or [])]
+        manifest = stream_plan_to_stitch_manifest(plan, fps=30, blend_frames=10)
+        first_motion_step = next(step for step in manifest["steps"] if step["pose_source"] == "finedance_motion_unit")
+        evaluation = evaluate_streaming_planner_records(plan)
+
+        self.assertEqual(plan[0]["planner_version"], "m21")
+        self.assertEqual(decision["selected_unit_id"], "finedance_001_good")
+        self.assertEqual(decision["music_intent"], "drum_lock")
+        self.assertTrue(decision["quality_gate"]["passed"])
+        self.assertIn("m21_motion_quality_below_adaptive_threshold", rejected_reasons)
+        self.assertIn("m21_accent_retime_stress_above_local_hard", rejected_reasons)
+        self.assertLessEqual(decision["retime_stress_score"], 0.72)
+        self.assertEqual(first_motion_step["source_time_warp"]["mode"], "piecewise_linear_motion_accent_to_drum_anchor")
+        self.assertGreaterEqual(evaluation["metrics"]["m21_quality_hard_reject_count"], 1)
+        self.assertGreaterEqual(evaluation["metrics"]["m21_retime_stress_hard_reject_count"], 1)
 
     def test_streaming_planner_can_constrain_source_sequences(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
