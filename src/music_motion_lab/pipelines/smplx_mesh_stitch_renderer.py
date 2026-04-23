@@ -60,6 +60,10 @@ def _safe_float(value: Any, fallback: float = 0.0) -> float:
         return fallback
 
 
+def _clamp(value: float, low: float, high: float) -> float:
+    return max(low, min(high, value))
+
+
 def _project_path(project_root: Path, raw_path: str) -> Path:
     candidate = Path(raw_path)
     if candidate.is_absolute():
@@ -508,6 +512,15 @@ def _limit_temporal_delta_window(values: np.ndarray, start_index: int, end_index
             values[index] = values[index - 1] + delta * float(target_delta / max(mean_delta, 1e-8))
 
 
+def _adaptive_delta_limit(values: np.ndarray, floor: float, ceiling: float) -> float:
+    if values.shape[0] < 2:
+        return 0.0
+    raw_delta = _max_temporal_delta(values)
+    if raw_delta <= 0.0:
+        return 0.0
+    return float(_clamp(raw_delta * 0.78, floor, ceiling))
+
+
 def _smooth_transition_windows(
     vertices: np.ndarray,
     joints: np.ndarray,
@@ -528,14 +541,35 @@ def _smooth_transition_windows(
         window_end = min(vertices.shape[0] - 1, incoming_start - scene_start + smooth_frames)
         before_vertices = vertices[window_start : window_end + 1].copy()
         before_joints = joints[window_start : window_end + 1].copy()
+        foot_slide_before = _foot_slide_proxy(before_joints)
+        root_velocity_before = _boundary_velocity_delta(
+            before_joints[: max(2, min(len(before_joints), smooth_frames + 1))],
+            before_joints[max(0, len(before_joints) - max(2, smooth_frames + 1)) :],
+            index=0,
+        )
         _smooth_array_window(vertices, window_start, window_end, passes=passes)
         _smooth_array_window(joints, window_start, window_end, passes=passes)
+        vertex_delta_limit = _adaptive_delta_limit(before_vertices, floor=0.035, ceiling=0.052)
+        joint_delta_limit = _adaptive_delta_limit(before_joints, floor=0.024, ceiling=0.042)
+        if vertex_delta_limit > 0.0:
+            _limit_temporal_delta_window(vertices, window_start, window_end, vertex_delta_limit)
+        if joint_delta_limit > 0.0:
+            _limit_temporal_delta_window(joints, window_start, window_end, joint_delta_limit)
         after_vertices = vertices[window_start : window_end + 1]
         after_joints = joints[window_start : window_end + 1]
+        foot_slide_after = _foot_slide_proxy(after_joints)
+        root_velocity_after = _boundary_velocity_delta(
+            after_joints[: max(2, min(len(after_joints), smooth_frames + 1))],
+            after_joints[max(0, len(after_joints) - max(2, smooth_frames + 1)) :],
+            index=0,
+        )
         report.update(
             {
                 "smoothing_frames": int(smooth_frames),
                 "smoothing_passes": int(passes),
+                "m22_contact_aware_smoothing": True,
+                "m22_delta_limit_target_vertex": round(float(vertex_delta_limit), 6),
+                "m22_delta_limit_target_joint": round(float(joint_delta_limit), 6),
                 "smoothing_window": {
                     "start_frame": int(scene_start + window_start),
                     "end_frame": int(scene_start + window_end),
@@ -544,6 +578,10 @@ def _smooth_transition_windows(
                 "max_temporal_vertex_delta_after_smoothing": round(_max_temporal_delta(after_vertices), 6),
                 "max_temporal_joint_delta_before_smoothing": round(_max_temporal_delta(before_joints), 6),
                 "max_temporal_joint_delta_after_smoothing": round(_max_temporal_delta(after_joints), 6),
+                "foot_slide_before_smoothing_proxy": round(float(foot_slide_before), 6),
+                "foot_slide_after_smoothing_proxy": round(float(foot_slide_after), 6),
+                "root_velocity_delta_before_smoothing_proxy": round(float(root_velocity_before), 6),
+                "root_velocity_delta_after_smoothing_proxy": round(float(root_velocity_after), 6),
             }
         )
 
@@ -1065,12 +1103,15 @@ def build_mesh_stitch_report(
             "max_root_acceleration_discontinuity_proxy": round(_max_metric(transition_reports, "root_acceleration_discontinuity_proxy"), 6),
             "max_joint_jerk_proxy": round(_max_metric(transition_reports, "joint_jerk_proxy"), 6),
             "max_foot_slide_proxy": round(_max_metric(transition_reports, "foot_slide_proxy"), 6),
+            "max_foot_slide_after_smoothing_proxy": round(_max_metric(transition_reports, "foot_slide_after_smoothing_proxy"), 6),
+            "max_root_velocity_delta_after_smoothing_proxy": round(_max_metric(transition_reports, "root_velocity_delta_after_smoothing_proxy"), 6),
+            "m22_contact_aware_transition_count": sum(1 for item in transition_reports if bool(item.get("m22_contact_aware_smoothing"))),
             "max_rhythm_lock_frame_error": int(_max_metric(rhythm_lock_reports, "frame_error")),
             "cache_miss_count": sum(1 for item in cache_summaries if str(item.get("status")) != "hit"),
         },
         "notes": [
             "This report renders real FineDance source SMPL-X vertices into a stitched visual preview.",
-            "Boundary smoothing is a visual vertex/joint crossfade for review; it is not yet a pose-space reusable motion blend.",
+            "M22 boundary smoothing adds adaptive vertex/joint temporal-delta limits and foot-slide proxies for review; production foot locking still needs runtime IK validation.",
         ],
     }
     write_json(output_report, report)
@@ -1111,7 +1152,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
 
     def transition_rows() -> str:
         if not transitions:
-            return "<tr><td colspan=\"9\">No transitions.</td></tr>"
+            return "<tr><td colspan=\"12\">No transitions.</td></tr>"
         rows = []
         for item in transitions:
             rows.append(
@@ -1125,6 +1166,9 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
                 f"<td>{html.escape(str(item.get('aligned_root_xz_delta_before_blend')))}</td>"
                 f"<td>{html.escape(str(item.get('joint_delta_after_blend')))}</td>"
                 f"<td>{html.escape(str(item.get('vertex_delta_after_blend')))}</td>"
+                f"<td>{html.escape(str(item.get('max_temporal_vertex_delta_after_smoothing', '-')))}</td>"
+                f"<td>{html.escape(str(item.get('foot_slide_after_smoothing_proxy', '-')))}</td>"
+                f"<td>{html.escape(str(item.get('m22_delta_limit_target_vertex', '-')))}</td>"
                 "</tr>"
             )
         return "\n".join(rows)
@@ -1402,7 +1446,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
       </table>
       <h2>Transitions</h2>
       <table>
-        <thead><tr><th>steps</th><th>boundary</th><th>gap</th><th>blend</th><th>smooth</th><th>raw root</th><th>aligned root</th><th>joint after</th><th>vertex after</th></tr></thead>
+        <thead><tr><th>steps</th><th>boundary</th><th>gap</th><th>blend</th><th>smooth</th><th>raw root</th><th>aligned root</th><th>joint after</th><th>vertex after</th><th>temporal v</th><th>foot slide</th><th>v limit</th></tr></thead>
         <tbody>{transition_rows()}</tbody>
       </table>
       <h2>Rhythm Locks</h2>

@@ -81,6 +81,10 @@ M21_TRANSITION_RISK_KEEP_QUANTILE = 0.75
 M21_LOCAL_WARP_HARD_MIN = 0.80
 M21_LOCAL_WARP_HARD_MAX = 1.20
 M21_RETIME_STRESS_HARD_MAX = 0.72
+M22_RECOVERY_MIN_SCORE = 0.24
+M22_RECOVERY_RETIME_STRESS_MAX = 0.68
+M22_RECOVERY_TRANSITION_MIN = 0.45
+M22_STABLE_FALLBACK_MAX_SEC = 1.25
 
 
 def _safe_float(value: Any, fallback: float = 0.0) -> float:
@@ -274,6 +278,14 @@ def _normalize_stream_tempo_state(
 
 def _planner_score_weights(planner_version: str) -> dict[str, float]:
     version = str(planner_version or "m9").lower()
+    if version == "m22":
+        return {
+            "rhythm_lock": 0.60,
+            "transition_smoothness": 0.18,
+            "style_energy_bpm": 0.10,
+            "source_quality_weight": 0.08,
+            "diversity": 0.04,
+        }
     if version == "m21":
         return {
             "rhythm_lock": 0.62,
@@ -325,6 +337,8 @@ def _planner_score_weights(planner_version: str) -> dict[str, float]:
 
 def _planner_name(planner_version: str) -> str:
     version = str(planner_version or "m9").lower()
+    if version == "m22":
+        return "streaming_retrieval_v9_stable_fallback_contact_smooth"
     if version == "m21":
         return "streaming_retrieval_v8_dual_window_quality_retime"
     if version == "m20":
@@ -2092,7 +2106,7 @@ def _rhythm_score(
     planner_version: str = "m9",
 ) -> tuple[float, list[dict[str, Any]], list[float]]:
     version = str(planner_version or "m9").lower()
-    is_m20 = version in {"m20", "m21"}
+    is_m20 = version in {"m20", "m21", "m22"}
     locks = _m20_motion_locks(candidate) if is_m20 else list(candidate.get("accent_lock_frames", []) or [])
     if not locks:
         locks = [{"beat_offset": 0, "role": "count_1_downbeat", "count": 1}]
@@ -2101,8 +2115,8 @@ def _rhythm_score(
         for lock in locks
         if _safe_float(lock.get("beat_offset")) <= float(target_beats) + 1e-8
     ] or [{"beat_offset": 0, "role": "count_1_downbeat", "count": 1}]
-    is_m18 = version in {"m18", "m19", "m20", "m21"}
-    is_m17 = version in {"m17", "m18", "m19", "m20", "m21"}
+    is_m18 = version in {"m18", "m19", "m20", "m21", "m22"}
+    is_m17 = version in {"m17", "m18", "m19", "m20", "m21", "m22"}
     beats = list(tick.get("beats", []) or [])
     downbeats = list(tick.get("downbeats", []) or [])
     drums = list(tick.get("drum_hits", []) or [])
@@ -2442,6 +2456,25 @@ def _m21_recovery_rank(
     return (retime_pass, quality_pass, rhythm, transition, speed_closeness, -stress, score, same_sequence + same_unit * 0.25)
 
 
+def _m22_stable_fallback_reasons(score: float, breakdown: dict[str, Any]) -> list[str]:
+    reasons: list[str] = []
+    transition = _safe_float(breakdown.get("transition_smoothness"), 0.0)
+    stress = _safe_float(breakdown.get("retime_stress_score"), 0.0)
+    speed = _safe_float(breakdown.get("speed_scale"), 1.0)
+    quality_gate = dict(breakdown.get("quality_gate", {}) or {})
+    if transition < M22_RECOVERY_TRANSITION_MIN:
+        reasons.append("recovery_transition_too_risky")
+    if stress > M22_RECOVERY_RETIME_STRESS_MAX or bool(breakdown.get("rejected_by_retime_stress")):
+        reasons.append("recovery_retime_stress_too_high")
+    if speed < M18_HARD_RETIME_MIN or speed > M18_HARD_RETIME_MAX:
+        reasons.append("recovery_speed_outside_hard_range")
+    if not bool(quality_gate.get("passed", True)) and (
+        float(score) < M22_RECOVERY_MIN_SCORE + 0.12 or stress > M22_RECOVERY_RETIME_STRESS_MAX * 0.80
+    ):
+        reasons.append("recovery_quality_gate_failed")
+    return sorted(set(reasons))
+
+
 def _max_consecutive_motion_unit_run(decisions: list[dict[str, Any]]) -> int:
     max_run = 0
     current_id: str | None = None
@@ -2631,14 +2664,14 @@ def _score_candidate(
     )
     transition = _transition_score(previous_unit, candidate)
     style = _music_style_score(candidate, target_style_profile=target_style_profile, target_bpm=_safe_float(beat_phase.get("bpm"), 120.0))
-    repeat_penalty = 0.5 if version in {"m12", "m15"} else (0.65 if version in {"m17", "m18", "m19", "m20", "m21"} else 0.35)
+    repeat_penalty = 0.5 if version in {"m12", "m15"} else (0.65 if version in {"m17", "m18", "m19", "m20", "m21", "m22"} else 0.35)
     diversity = max(0.0, 1.0 - recent_units[str(candidate.get("unit_id"))] * repeat_penalty)
     is_m12 = version == "m12"
     is_m15 = version == "m15"
-    is_m21 = version == "m21"
-    is_m20 = version in {"m20", "m21"}
-    is_m17 = version in {"m17", "m18", "m19", "m20", "m21"}
-    is_m18 = version in {"m18", "m19", "m20", "m21"}
+    is_m21 = version in {"m21", "m22"}
+    is_m20 = version in {"m20", "m21", "m22"}
+    is_m17 = version in {"m17", "m18", "m19", "m20", "m21", "m22"}
+    is_m18 = version in {"m18", "m19", "m20", "m21", "m22"}
     weights = _planner_score_weights(version)
     total = (
         rhythm_score * weights["rhythm_lock"]
@@ -2795,11 +2828,12 @@ def simulate_streaming_smplx_plan_records(
     planner_version = str(planner_version or "m9").lower()
     is_m12 = planner_version == "m12"
     is_m15 = planner_version == "m15"
-    is_m21 = planner_version == "m21"
-    is_m20 = planner_version in {"m20", "m21"}
-    is_m19 = planner_version in {"m19", "m20", "m21"}
+    is_m22 = planner_version == "m22"
+    is_m21 = planner_version in {"m21", "m22"}
+    is_m20 = planner_version in {"m20", "m21", "m22"}
+    is_m19 = planner_version in {"m19", "m20", "m21", "m22"}
     is_m18 = planner_version == "m18"
-    is_m18_family = planner_version in {"m18", "m19", "m20", "m21"}
+    is_m18_family = planner_version in {"m18", "m19", "m20", "m21", "m22"}
     is_m17_exact = planner_version == "m17"
     is_m17 = is_m17_exact or is_m18_family
     event_window_contract = str(header.get("window_contract") or DEFAULT_WINDOW_CONTRACT).lower()
@@ -3168,12 +3202,13 @@ def simulate_streaming_smplx_plan_records(
                 reject_reasons.append("m20_body_accent_lock_below_0_52")
             if is_m21:
                 quality_gate = dict(breakdown.get("quality_gate", {}) or {})
+                retime_hard_max = M22_RECOVERY_RETIME_STRESS_MAX if is_m22 else M21_RETIME_STRESS_HARD_MAX
                 if not bool(quality_gate.get("passed", True)):
                     reject_reasons.extend([f"m21_{reason}" for reason in list(quality_gate.get("reasons", []) or [])])
                 if bool(breakdown.get("rejected_by_retime_stress")):
                     reject_reasons.append("m21_accent_retime_stress_above_local_hard")
-                elif _safe_float(breakdown.get("retime_stress_score"), 0.0) > M21_RETIME_STRESS_HARD_MAX:
-                    reject_reasons.append("m21_accent_retime_stress_above_0_72")
+                elif _safe_float(breakdown.get("retime_stress_score"), 0.0) > retime_hard_max:
+                    reject_reasons.append("m22_accent_retime_stress_above_0_68" if is_m22 else "m21_accent_retime_stress_above_0_72")
             if is_m17 and _safe_float(breakdown.get("transition_smoothness")) < M17_TRANSITION_HARD_MIN:
                 reject_reasons.append("transition_smoothness_below_0_55")
             if is_m15 and not tail_extended and (speed_scale < M15_NON_TAIL_SPEED_MIN or speed_scale > M15_NON_TAIL_SPEED_MAX):
@@ -3258,8 +3293,9 @@ def simulate_streaming_smplx_plan_records(
                         expanded_rejects.append("m21_body_accent_lock_below_0_38")
                     if not bool(quality_gate.get("passed", True)):
                         expanded_rejects.extend([f"m21_{reason}" for reason in list(quality_gate.get("reasons", []) or [])])
-                    if bool(breakdown.get("rejected_by_retime_stress")) or _safe_float(breakdown.get("retime_stress_score"), 0.0) > M21_RETIME_STRESS_HARD_MAX:
-                        expanded_rejects.append("m21_accent_retime_stress_above_local_hard")
+                    retime_hard_max = M22_RECOVERY_RETIME_STRESS_MAX if is_m22 else M21_RETIME_STRESS_HARD_MAX
+                    if bool(breakdown.get("rejected_by_retime_stress")) or _safe_float(breakdown.get("retime_stress_score"), 0.0) > retime_hard_max:
+                        expanded_rejects.append("m22_accent_retime_stress_above_0_68" if is_m22 else "m21_accent_retime_stress_above_local_hard")
                     if not tail_extended and (speed_scale < M18_HARD_RETIME_MIN or speed_scale > M18_HARD_RETIME_MAX):
                         expanded_rejects.append("non_tail_speed_outside_0_85_1_15")
                     if _safe_float(breakdown.get("transition_smoothness")) < M17_TRANSITION_HARD_MIN:
@@ -3310,7 +3346,7 @@ def simulate_streaming_smplx_plan_records(
                     for item in recovery_pool
                     if bool(dict(item[2].get("quality_gate", {}) or {}).get("passed", True))
                     and not bool(item[2].get("rejected_by_retime_stress"))
-                    and _safe_float(item[2].get("retime_stress_score"), 0.0) <= M21_RETIME_STRESS_HARD_MAX
+                    and _safe_float(item[2].get("retime_stress_score"), 0.0) <= (M22_RECOVERY_RETIME_STRESS_MAX if is_m22 else M21_RETIME_STRESS_HARD_MAX)
                 ]
                 if quality_recovery_pool:
                     recovery_pool = quality_recovery_pool
@@ -3357,6 +3393,96 @@ def simulate_streaming_smplx_plan_records(
                 non_same_unit = [item for item in effective_scored if str(item[1].get("unit_id")) != previous_unit_id]
                 if non_same_unit:
                     effective_scored = non_same_unit + [item for item in effective_scored if item not in non_same_unit]
+
+        if is_m22 and not valid_scored and effective_scored:
+            recovery_score, recovery_selected, recovery_breakdown, _recovery_locks, _recovery_hits = effective_scored[0]
+            fallback_reasons = _m22_stable_fallback_reasons(recovery_score, recovery_breakdown)
+            if fallback_reasons:
+                fallback_end_sec = min(
+                    target_end_sec,
+                    next_start_sec + max(0.75, min(M22_STABLE_FALLBACK_MAX_SEC, spacing * 2.0)),
+                )
+                if target_end_sec - fallback_end_sec < 0.35:
+                    fallback_end_sec = target_end_sec
+                available_until = _safe_float(tick.get("available_audio_until_sec"), 0.0)
+                playhead = _safe_float(tick.get("playhead_sec"), 0.0)
+                window_context = _m19_decision_window_context(tick, previous_unit=previous_unit, previous_state=previous_choreography_state) if is_m19 else {}
+                m19_main_end = _safe_float(dict(window_context.get("main_window_sec", {}) or {}).get("end"), available_until)
+                fallback_decision = _synthetic_idle_decision(
+                    index=step_index,
+                    planner_name=planner_name,
+                    planner_version=planner_version,
+                    initial_pose_mode=initial_pose_mode,
+                    start_sec=next_start_sec,
+                    end_sec=fallback_end_sec,
+                    playhead_sec=playhead,
+                    available_audio_until_sec=available_until,
+                    planning_lookahead_sec=planning_lookahead_sec,
+                    lookfront_sec=lookfront_sec,
+                    total_future_sec=total_future_sec,
+                    decision_tick_index=_safe_int(tick.get("tick_index")),
+                    decision_time_sec=decision_time,
+                    target_bpm=effective_bpm,
+                    target_energy="stable_groove_hold",
+                    switch_mode="m22_stable_groove_fallback",
+                    pose_source_override=SYNTHETIC_NEUTRAL_IDLE_SOURCE,
+                    choreography_state="transition" if choreography_state == "accent_hit" else choreography_state,
+                    music_state=dict(scoring_tick.get("music_state", {}) or {}),
+                    state_machine={
+                        **dict(state_machine or {}),
+                        "state": "stable_groove_fallback",
+                        "previous_state": previous_choreography_state,
+                        "reason": "no_valid_motion_candidate_without_high_retime_or_transition_risk",
+                    },
+                    extra_switch_reason={
+                        "m22_stable_fallback": True,
+                        "m22_no_valid_motion_candidate": True,
+                        "m22_recovery_reasons": fallback_reasons,
+                        "rejected_recovery_unit_id": recovery_selected.get("unit_id"),
+                        "rejected_recovery_source_sequence": recovery_selected.get("source_sequence"),
+                        "rejected_recovery_score": round(float(recovery_score), 5),
+                        "rejected_recovery_retime_stress_score": recovery_breakdown.get("retime_stress_score"),
+                        "rejected_recovery_rhythm_lock": recovery_breakdown.get("rhythm_lock"),
+                        "rejected_recovery_transition_smoothness": recovery_breakdown.get("transition_smoothness"),
+                    },
+                )
+                fallback_decision["window_context"] = window_context
+                fallback_decision["music_intent"] = scoring_tick.get("music_intent") or dict(scoring_tick.get("music_state", {}) or {}).get("music_intent")
+                fallback_decision["phrase_context"] = dict(tick.get("phrase_context", {}) or {})
+                fallback_decision["cohort_source_sequences"] = cohort_source_sequences
+                fallback_decision["cohort_rankings"] = cohort_rankings[: min(len(cohort_rankings), max(4, cohort_size))]
+                fallback_decision["retime_policy"] = speed_retime_policy
+                fallback_decision["retime_reason"] = retime_reason
+                fallback_decision["quality_gate"] = {"passed": True, "reasons": ["m22_synthetic_stable_fallback"]}
+                fallback_decision["retime_stress_score"] = 0.0
+                fallback_decision["anchor_speed_segments"] = []
+                fallback_decision["score_breakdown"] = {
+                    **dict(fallback_decision.get("score_breakdown", {}) or {}),
+                    "m22_rejected_recovery_score": round(float(recovery_score), 5),
+                    "m22_rejected_recovery_retime_stress_score": recovery_breakdown.get("retime_stress_score"),
+                    "m22_rejected_recovery_rhythm_lock": recovery_breakdown.get("rhythm_lock"),
+                    "m22_rejected_recovery_transition_smoothness": recovery_breakdown.get("transition_smoothness"),
+                    "m22_stable_fallback": True,
+                }
+                fallback_decision["future_visibility_guard"] = {
+                    **dict(fallback_decision.get("future_visibility_guard", {}) or {}),
+                    "window_contract": M19_WINDOW_CONTRACT,
+                    "main_window_end_sec": _round_time(m19_main_end),
+                    "passed": bool(available_until <= playhead + total_future_sec + 1e-5 and next_start_sec <= m19_main_end + 1e-5),
+                }
+                recovery_reject_entry = {
+                    "unit_id": recovery_selected.get("unit_id"),
+                    "source_sequence": recovery_selected.get("source_sequence"),
+                    "score": recovery_score,
+                    "score_breakdown": recovery_breakdown,
+                    "reasons": [f"m22_{reason}" for reason in fallback_reasons],
+                }
+                fallback_decision["rejected_top_candidates"] = [recovery_reject_entry, *hard_rejects[:2]]
+                records.append(fallback_decision)
+                previous_choreography_state = str(fallback_decision.get("choreography_state") or "stable_groove_fallback")
+                next_start_sec = fallback_end_sec
+                step_index += 1
+                continue
 
         if not effective_scored:
             break
@@ -3480,6 +3606,7 @@ def simulate_streaming_smplx_plan_records(
                 "m19_future_used_for_prepare_only": bool(is_m19),
                 "m20_drum_anchor_motion_accent_lock": bool(is_m20),
                 "m21_dual_window_quality_retime": bool(is_m21),
+                "m22_stable_fallback_contact_smooth": bool(is_m22),
                 "music_intent": scoring_tick.get("music_intent") or dict(scoring_tick.get("music_state", {}) or {}).get("music_intent"),
             },
             "expected_accent_hits": expected_hits,
@@ -3963,7 +4090,7 @@ def stream_plan_to_stitch_manifest(
                 scene_end=scene_end,
                 fps=fps,
             )
-            if str(header.get("planner_version")) in {"m20", "m21"} and pose_source == "finedance_motion_unit"
+            if str(header.get("planner_version")) in {"m20", "m21", "m22"} and pose_source == "finedance_motion_unit"
             else {"mode": "linear"}
         )
         step = {
@@ -4175,7 +4302,11 @@ def render_streaming_smplx_mesh_review(
     report["metrics"]["max_streaming_speed_scale"] = round(max(speed_values or [1.0]), 6)
     report["metrics"]["min_streaming_speed_scale"] = round(min(speed_values or [1.0]), 6)
     report["metrics"]["cross_sequence_transition_count"] = sum(
-        1 for previous, current in zip(decisions, decisions[1:]) if str(previous.get("source_sequence")) != str(current.get("source_sequence"))
+        1
+        for previous, current in zip(decisions, decisions[1:])
+        if str(previous.get("pose_source") or "finedance_motion_unit") == "finedance_motion_unit"
+        and str(current.get("pose_source") or "finedance_motion_unit") == "finedance_motion_unit"
+        and str(previous.get("source_sequence")) != str(current.get("source_sequence"))
     )
     report["metrics"]["rhythm_hard_reject_count"] = sum(
         1
@@ -4220,11 +4351,19 @@ def render_streaming_smplx_mesh_review(
         if any(str(reason).startswith("m21_") and "threshold" in str(reason) for reason in list(item.get("reasons", []) or []))
     )
     report["metrics"]["m21_retime_stress_hard_reject_count"] = sum(
-        1 for item in rejected_candidates if any("m21_accent_retime_stress" in str(reason) for reason in list(item.get("reasons", []) or []))
+        1
+        for item in rejected_candidates
+        if any("m21_accent_retime_stress" in str(reason) or "m22_accent_retime_stress" in str(reason) for reason in list(item.get("reasons", []) or []))
     )
     report["metrics"]["max_m21_retime_stress_score"] = round(
         max([_safe_float(item.get("retime_stress_score"), 0.0) for item in decisions] or [0.0]),
         6,
+    )
+    report["metrics"]["m22_stable_fallback_count"] = sum(
+        1 for item in decisions if str(dict(item.get("switch_reason", {}) or {}).get("mode")) == "m22_stable_groove_fallback"
+    )
+    report["metrics"]["m22_no_valid_motion_candidate_count"] = sum(
+        1 for item in decisions if bool(dict(item.get("switch_reason", {}) or {}).get("m22_no_valid_motion_candidate"))
     )
     report["metrics"]["music_intent_counts"] = dict(Counter(str(item.get("music_intent") or "unknown") for item in decisions))
     report["metrics"]["max_consecutive_motion_unit_run"] = _max_consecutive_motion_unit_run(decisions)
@@ -4286,6 +4425,9 @@ def render_streaming_smplx_mesh_review(
                 "m21_quality_hard_reject_count",
                 "m21_retime_stress_hard_reject_count",
                 "max_m21_retime_stress_score",
+                "m22_stable_fallback_count",
+                "m22_no_valid_motion_candidate_count",
+                "m22_bad_recovery_avoided_count",
                 "music_intent_counts",
             }
         }
@@ -4458,12 +4600,21 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
         if any(str(reason).startswith("m21_") and "threshold" in str(reason) for reason in list(item.get("reasons", []) or []))
     )
     m21_retime_reject_count = sum(
-        1 for item in rejected_candidates if any("m21_accent_retime_stress" in str(reason) for reason in list(item.get("reasons", []) or []))
+        1
+        for item in rejected_candidates
+        if any("m21_accent_retime_stress" in str(reason) or "m22_accent_retime_stress" in str(reason) for reason in list(item.get("reasons", []) or []))
     )
     cross_sequence_transition_count = sum(
         1
         for previous, current in zip(decisions, decisions[1:])
-        if str(previous.get("source_sequence")) != str(current.get("source_sequence"))
+        if str(previous.get("pose_source") or "finedance_motion_unit") == "finedance_motion_unit"
+        and str(current.get("pose_source") or "finedance_motion_unit") == "finedance_motion_unit"
+        and str(previous.get("source_sequence")) != str(current.get("source_sequence"))
+    )
+    m22_stable_fallback_count = sum(
+        1
+        for item in decisions
+        if str(dict(item.get("switch_reason", {}) or {}).get("mode")) == "m22_stable_groove_fallback"
     )
     initial_upright_hold_sec = sum(
         _safe_float(dict(item.get("target_time_sec", {}) or {}).get("end"))
@@ -4552,6 +4703,11 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
             "m21_quality_hard_reject_count": m21_quality_reject_count,
             "m21_retime_stress_hard_reject_count": m21_retime_reject_count,
             "max_m21_retime_stress_score": round(float(max([_safe_float(item.get("retime_stress_score"), 0.0) for item in decisions] or [0.0])), 6),
+            "m22_stable_fallback_count": int(m22_stable_fallback_count),
+            "m22_no_valid_motion_candidate_count": sum(
+                1 for item in decisions if bool(dict(item.get("switch_reason", {}) or {}).get("m22_no_valid_motion_candidate"))
+            ),
+            "m22_bad_recovery_avoided_count": int(m22_stable_fallback_count),
             "music_intent_counts": dict(Counter(str(item.get("music_intent") or "unknown") for item in decisions)),
             "max_consecutive_motion_unit_run": _max_consecutive_motion_unit_run(decisions),
             "max_total_motion_unit_uses": _max_total_motion_unit_uses(decisions),
@@ -4587,8 +4743,8 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
             "max_consecutive_motion_unit_run_le_2": _max_consecutive_motion_unit_run(decisions) <= M17_IDEAL_MAX_CONSECUTIVE_SAME_UNIT,
             "max_consecutive_motion_unit_run_le_3": _max_consecutive_motion_unit_run(decisions) <= M17_MAX_CONSECUTIVE_SAME_UNIT,
             "max_total_motion_unit_uses_le_5": _max_total_motion_unit_uses(decisions) <= M17_MAX_TOTAL_SAME_UNIT_USES,
-            "outro_recover_sec_gte_5": outro_recover_sec >= M18_DEFAULT_ENDING_HOLD_SEC - 1e-4 if str(header.get("planner_version")) in {"m18", "m19", "m20", "m21"} else True,
-            "final_pose_source_is_neutral_idle": final_pose_source == SYNTHETIC_NEUTRAL_IDLE_SOURCE if str(header.get("planner_version")) in {"m18", "m19", "m20", "m21"} else True,
+            "outro_recover_sec_gte_5": outro_recover_sec >= M18_DEFAULT_ENDING_HOLD_SEC - 1e-4 if str(header.get("planner_version")) in {"m18", "m19", "m20", "m21", "m22"} else True,
+            "final_pose_source_is_neutral_idle": final_pose_source == SYNTHETIC_NEUTRAL_IDLE_SOURCE if str(header.get("planner_version")) in {"m18", "m19", "m20", "m21", "m22"} else True,
             "high_confidence_lock_error_within_2_frames": max(visible_lock_errors or [0.0]) <= 2.0,
             "body_accent_lock_error_p95_within_2_frames": (float(np.percentile(np.asarray(post_warp_body_errors or body_accent_errors, dtype=np.float32), 95.0)) if (post_warp_body_errors or body_accent_errors) else 0.0) <= 2.0,
             "m21_retime_stress_le_hard_max": max([_safe_float(item.get("retime_stress_score"), 0.0) for item in decisions] or [0.0]) <= M21_RETIME_STRESS_HARD_MAX,

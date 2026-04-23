@@ -17,6 +17,7 @@ from music_motion_lab.pipelines.streaming_smplx import (
     stream_events_to_song_event_map,
     stream_plan_to_stitch_manifest,
 )
+from music_motion_lab.pipelines.smplx_mesh_stitch_renderer import _smooth_transition_windows
 
 
 def _write_pulse_audio(path: Path, duration_sec: float = 3.2, sample_rate: int = 22050) -> None:
@@ -624,6 +625,106 @@ class StreamingSmplxTests(unittest.TestCase):
         self.assertEqual(first_motion_step["source_time_warp"]["mode"], "piecewise_linear_motion_accent_to_drum_anchor")
         self.assertGreaterEqual(evaluation["metrics"]["m21_quality_hard_reject_count"], 1)
         self.assertGreaterEqual(evaluation["metrics"]["m21_retime_stress_hard_reject_count"], 1)
+
+    def test_m22_uses_stable_fallback_when_recovery_motion_is_bad(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            motion_path = _write_motion(Path(tmpdir) / "finedance")
+            library = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir), contact_mode="joints")
+        for unit in library["units"]:
+            unit["duration_sec"] = 5.0
+            unit["safe_retime_range"] = {"min": 0.95, "max": 1.05}
+            unit["quality_thresholds"] = {
+                "motion_quality_min": 0.85,
+                "accent_clarity_min": 0.85,
+                "danceability_min": 0.85,
+                "transition_risk_max": 0.20,
+            }
+            unit["motion_quality_score"] = 0.20
+            unit["accent_clarity_score"] = 0.20
+            unit["danceability_score"] = 0.20
+            unit["transition_risk_score"] = 0.95
+            unit["quality_gate_reasons"] = ["motion_quality_below_adaptive_threshold"]
+            unit["drum_lock_frames"] = [
+                {"kind": "count_grid_lock", "role": "late_motion_accent", "beat_offset": 3.5, "source_frame": 118, "local_frame": 118, "strength": 0.3, "lock_priority": 4}
+            ]
+        stream_events = [
+            {
+                "kind": "stream_header",
+                "song_id": "m22_bad_recovery_demo",
+                "duration_sec": 10.0,
+                "initial_buffer_sec": 2.0,
+                "lookahead_sec": 2.0,
+                "lookfront_sec": 1.0,
+                "total_future_sec": 3.0,
+                "window_contract": "history_main_future",
+                "history_sec": 2.0,
+                "main_window_duration_sec": 2.0,
+                "future_sec": 1.0,
+                "beats_per_bar": 4,
+            },
+            {
+                "kind": "tick",
+                "tick_index": 0,
+                "playhead_sec": 0.0,
+                "available_audio_until_sec": 3.0,
+                "planning_audio_until_sec": 2.0,
+                "visible_window_sec": {"start": 0.0, "end": 3.0},
+                "history_window_sec": {"start": 0.0, "end": 0.0},
+                "main_window_sec": {"start": 0.0, "end": 2.0},
+                "future_window_sec": {"start": 2.0, "end": 3.0},
+                "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.95},
+                "music_state": {"energy_level": "mid", "accent_density": "high", "beat_confidence": 0.95, "music_intent": "drum_lock"},
+                "music_intent": "drum_lock",
+                "phrase_context": {"music_intent": "drum_lock", "preferred_unit_beats": [4]},
+                "beats": [{"index": index, "time_sec": index * 0.5, "strength": 0.8, "confidence": 0.95, "is_downbeat": index % 4 == 0, "window_role": "main" if index <= 4 else "future"} for index in range(7)],
+                "downbeats": [{"index": 0, "time_sec": 0.0, "confidence": 0.95, "strength": 0.95, "is_downbeat": True, "window_role": "main"}],
+                "drum_hits": [{"index": 0, "time_sec": 0.0, "strength": 0.95, "kind": "kick", "window_role": "main"}],
+                "drum_anchor_events": [{"index": 0, "time_sec": 0.0, "kind": "downbeat", "anchor_role": "count_1_downbeat", "priority": 0, "confidence": 0.95, "strength": 0.95, "window_role": "main"}],
+                "accents": [],
+                "history_events": [],
+                "main_events": [{"kind": "downbeat", "time_sec": 0.0, "confidence": 0.95}],
+                "future_events": [],
+                "segment_hypotheses": [{"start_time_sec": 0.0, "end_time_sec": 2.0, "duration_beats": 4, "confidence": 0.9}],
+            },
+        ]
+
+        plan = simulate_streaming_smplx_plan_records(
+            stream_events,
+            library,
+            planner_version="m22",
+            initial_hold_sec=0.0,
+            ending_hold_sec=5.0,
+            ending_policy="gradual_recover",
+            speed_retime_policy="conservative_lock",
+            state_machine_policy="hybrid",
+            max_steps=1,
+        )
+        decisions = [record for record in plan if record["kind"] == "decision"]
+        evaluation = evaluate_streaming_planner_records(plan)
+
+        self.assertEqual(plan[0]["planner_version"], "m22")
+        self.assertEqual(decisions[0]["pose_source"], "smplx_neutral_idle")
+        self.assertEqual(decisions[0]["switch_reason"]["mode"], "m22_stable_groove_fallback")
+        self.assertTrue(decisions[0]["switch_reason"]["m22_stable_fallback"])
+        self.assertTrue(decisions[0]["future_visibility_guard"]["passed"])
+        self.assertGreaterEqual(evaluation["metrics"]["m22_stable_fallback_count"], 1)
+        self.assertGreaterEqual(evaluation["metrics"]["m22_bad_recovery_avoided_count"], 1)
+
+    def test_m22_transition_smoothing_limits_temporal_deltas(self) -> None:
+        vertices = np.zeros((8, 3, 3), dtype=np.float32)
+        joints = np.zeros((8, 24, 3), dtype=np.float32)
+        for frame in range(4, 8):
+            vertices[frame, :, 0] = 1.0 + (frame - 4) * 0.16
+            joints[frame, :, 0] = 1.0 + (frame - 4) * 0.16
+        reports = [{"outgoing_end_frame": 4, "incoming_start_frame": 5, "boundary_frame": 5}]
+
+        _smooth_transition_windows(vertices, joints, reports, scene_start=1, smooth_frames=3, passes=2)
+
+        report = reports[0]
+        self.assertTrue(report["m22_contact_aware_smoothing"])
+        self.assertLess(report["max_temporal_vertex_delta_after_smoothing"], report["max_temporal_vertex_delta_before_smoothing"])
+        self.assertLessEqual(report["max_temporal_vertex_delta_after_smoothing"], report["m22_delta_limit_target_vertex"] + 1e-5)
+        self.assertIn("foot_slide_after_smoothing_proxy", report)
 
     def test_streaming_planner_can_constrain_source_sequences(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
