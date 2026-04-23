@@ -153,6 +153,7 @@ class StreamingSmplxTests(unittest.TestCase):
             "count_grid",
             "accent_lock_frames",
             "motion_accent_frames",
+            "drum_lock_frames",
             "foot_contact_windows",
             "entry_pose_anchor",
             "exit_pose_anchor",
@@ -164,6 +165,7 @@ class StreamingSmplxTests(unittest.TestCase):
         ):
             self.assertIn(key, unit)
         self.assertTrue(unit["count_grid"])
+        self.assertTrue(unit["drum_lock_frames"])
         self.assertGreater(unit["safe_retime_range"]["max"], unit["safe_retime_range"]["min"])
         self.assertTrue(joint_annotated["library_id"].endswith("_m10_annotated"))
         self.assertEqual(joint_annotated["units"][0]["annotation_profile"]["contact_mode"], "joints")
@@ -256,6 +258,8 @@ class StreamingSmplxTests(unittest.TestCase):
         self.assertEqual(tick["future_window_sec"], {"start": 4.0, "end": 5.0})
         self.assertEqual(tick["visible_window_sec"], {"start": 0.0, "end": 5.0})
         self.assertGreaterEqual(tick["window_event_counts"]["main"], 1)
+        self.assertIn("drum_anchor_events", tick)
+        self.assertIn("main_drum_anchor_events", tick)
         for key in ("beats", "downbeats", "drum_hits", "accents"):
             for event in tick[key]:
                 self.assertIn(event["window_role"], {"history", "main", "future"})
@@ -372,6 +376,101 @@ class StreamingSmplxTests(unittest.TestCase):
         for lock in decision["rhythm_locks"]:
             if lock["visible_at_decision"]:
                 self.assertLessEqual(float(lock["time_sec"]), 2.00001)
+
+    def test_m20_planner_uses_drum_anchors_and_emits_source_time_warp(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            motion_path = _write_motion(Path(tmpdir) / "finedance")
+            library = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir), contact_mode="joints")
+        for unit in library["units"]:
+            if unit["unit_id"] == "finedance_001_good":
+                unit["drum_lock_frames"] = [
+                    {"kind": "count_grid_lock", "role": "kick_downbeat", "beat_offset": 0.0, "source_frame": 0, "local_frame": 0, "strength": 0.95, "lock_priority": 0},
+                    {"kind": "root_speed_peak", "role": "motion_backbeat_accent", "beat_offset": 2.0, "source_frame": 60, "local_frame": 60, "strength": 0.90, "lock_priority": 1},
+                ]
+            else:
+                unit["drum_lock_frames"] = [
+                    {"kind": "count_grid_lock", "role": "generic_accent", "beat_offset": 1.0, "source_frame": 30, "local_frame": 30, "strength": 0.35, "lock_priority": 4}
+                ]
+        beats = [
+            {
+                "index": index,
+                "time_sec": index * 0.5,
+                "strength": 0.8,
+                "confidence": 0.95,
+                "is_downbeat": index % 4 == 0,
+                "count": index % 4 + 1,
+                "window_role": "main" if index * 0.5 <= 2.0 else "future",
+            }
+            for index in range(7)
+        ]
+        stream_events = [
+            {
+                "kind": "stream_header",
+                "song_id": "m20_demo",
+                "duration_sec": 8.0,
+                "initial_buffer_sec": 2.0,
+                "lookahead_sec": 2.0,
+                "lookfront_sec": 1.0,
+                "total_future_sec": 3.0,
+                "window_contract": "history_main_future",
+                "history_sec": 2.0,
+                "main_window_duration_sec": 2.0,
+                "future_sec": 1.0,
+                "beats_per_bar": 4,
+            },
+            {
+                "kind": "tick",
+                "tick_index": 0,
+                "playhead_sec": 0.0,
+                "available_audio_until_sec": 3.0,
+                "planning_audio_until_sec": 2.0,
+                "visible_window_sec": {"start": 0.0, "end": 3.0},
+                "history_window_sec": {"start": 0.0, "end": 0.0},
+                "main_window_sec": {"start": 0.0, "end": 2.0},
+                "future_window_sec": {"start": 2.0, "end": 3.0},
+                "window_event_counts": {"history": 0, "main": 7, "future": 2},
+                "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.95},
+                "music_state": {"energy_level": "mid", "accent_density": "mid", "beat_confidence": 0.95, "phrase_phase": {"count": 1, "is_reliable": True}},
+                "beats": beats,
+                "downbeats": [{"index": 0, "time_sec": 0.0, "confidence": 0.95, "strength": 0.95, "is_downbeat": True, "window_role": "main"}],
+                "drum_hits": [
+                    {"index": 0, "time_sec": 0.0, "strength": 0.95, "kind": "kick", "window_role": "main"},
+                    {"index": 1, "time_sec": 1.0, "strength": 0.92, "kind": "high_attack", "window_role": "main"},
+                ],
+                "drum_anchor_events": [
+                    {"index": 0, "time_sec": 0.0, "kind": "downbeat", "anchor_role": "count_1_downbeat", "priority": 0, "confidence": 0.95, "strength": 0.95, "window_role": "main"},
+                    {"index": 1, "time_sec": 1.0, "kind": "high_attack", "anchor_role": "snare_backbeat", "priority": 2, "confidence": 0.94, "strength": 0.92, "window_role": "main"},
+                ],
+                "accents": [],
+                "history_events": [],
+                "main_events": [{"kind": "downbeat", "time_sec": 0.0, "confidence": 0.95}, {"kind": "drum_hit", "time_sec": 1.0, "confidence": 0.94}],
+                "future_events": [],
+                "main_segment_hypotheses": [{"start_time_sec": 0.0, "end_time_sec": 2.0, "duration_beats": 4, "confidence": 0.9}],
+                "segment_hypotheses": [{"start_time_sec": 0.0, "end_time_sec": 2.0, "duration_beats": 4, "confidence": 0.9}],
+            },
+        ]
+
+        plan = simulate_streaming_smplx_plan_records(
+            stream_events,
+            library,
+            planner_version="m20",
+            initial_hold_sec=0.0,
+            ending_hold_sec=5.0,
+            ending_policy="gradual_recover",
+            speed_retime_policy="conservative_lock",
+            state_machine_policy="hybrid",
+            max_steps=1,
+        )
+        decisions = [record for record in plan if record["kind"] == "decision" and record["pose_source"] == "finedance_motion_unit"]
+        manifest = stream_plan_to_stitch_manifest(plan, fps=30, blend_frames=10)
+        first_motion_step = next(step for step in manifest["steps"] if step["pose_source"] == "finedance_motion_unit")
+
+        self.assertEqual(plan[0]["planner_version"], "m20")
+        self.assertEqual(decisions[0]["selected_unit_id"], "finedance_001_good")
+        self.assertGreaterEqual(decisions[0]["score_breakdown"]["body_accent_lock"], 0.52)
+        self.assertTrue(any(lock.get("drum_anchor_lock") for lock in decisions[0]["rhythm_locks"]))
+        self.assertEqual(first_motion_step["source_time_warp"]["mode"], "piecewise_linear_motion_accent_to_drum_anchor")
+        self.assertGreaterEqual(len(first_motion_step["source_time_warp"]["anchors"]), 3)
 
     def test_streaming_planner_can_constrain_source_sequences(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -65,6 +65,10 @@ M18_HARD_RETIME_MIN = 0.85
 M18_HARD_RETIME_MAX = 1.15
 M18_RHYTHM_HARD_MIN = 0.55
 M18_TRANSITION_HARD_MIN = 0.55
+M20_RHYTHM_HARD_MIN = 0.60
+M20_BODY_ACCENT_HARD_MIN = 0.52
+M20_BODY_ACCENT_TOLERANCE_FRAMES = 2.0
+M20_BODY_ACCENT_PREWARP_TOLERANCE_FRAMES = 6.0
 
 
 def _safe_float(value: Any, fallback: float = 0.0) -> float:
@@ -258,6 +262,14 @@ def _normalize_stream_tempo_state(
 
 def _planner_score_weights(planner_version: str) -> dict[str, float]:
     version = str(planner_version or "m9").lower()
+    if version == "m20":
+        return {
+            "rhythm_lock": 0.67,
+            "transition_smoothness": 0.18,
+            "style_energy_bpm": 0.08,
+            "source_quality_weight": 0.04,
+            "diversity": 0.03,
+        }
     if version in {"m17", "m18", "m19"}:
         return {
             "rhythm_lock": 0.60,
@@ -293,6 +305,8 @@ def _planner_score_weights(planner_version: str) -> dict[str, float]:
 
 def _planner_name(planner_version: str) -> str:
     version = str(planner_version or "m9").lower()
+    if version == "m20":
+        return "streaming_retrieval_v7_drum_anchor_motion_accent"
     if version == "m19":
         return "streaming_retrieval_v6_windowed_state_machine"
     if version == "m18":
@@ -501,6 +515,115 @@ def _flat_window_events(
     return events
 
 
+def _nearest_beat_context(beats: list[dict[str, Any]], time_sec: float) -> dict[str, Any]:
+    if not beats:
+        return {}
+    return min(beats, key=lambda item: abs(_safe_float(item.get("time_sec")) - float(time_sec)))
+
+
+def _drum_anchor_role(event: dict[str, Any], beats: list[dict[str, Any]]) -> str:
+    kind = str(event.get("kind", "") or "")
+    time_sec = _safe_float(event.get("time_sec"))
+    if kind == "downbeat":
+        return "count_1_downbeat"
+    nearest = _nearest_beat_context(beats, time_sec)
+    count = _safe_int(nearest.get("count"), 0)
+    is_downbeat = bool(nearest.get("is_downbeat"))
+    if kind == "kick":
+        return "kick_downbeat" if is_downbeat or count == 1 else "kick"
+    if kind in {"high_attack", "snare", "clap"}:
+        return "snare_backbeat" if count in {2, 4} else "high_attack"
+    return "generic_accent"
+
+
+def _drum_anchor_priority(anchor_role: str, kind: str) -> int:
+    if anchor_role == "count_1_downbeat":
+        return 0
+    if anchor_role == "kick_downbeat":
+        return 1
+    if anchor_role in {"kick", "snare_backbeat"}:
+        return 2
+    if kind in {"high_attack", "snare", "clap"}:
+        return 3
+    return 4
+
+
+def _build_drum_anchor_events(
+    *,
+    beats: list[dict[str, Any]],
+    downbeats: list[dict[str, Any]],
+    drum_hits: list[dict[str, Any]],
+    accents: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    raw_anchors: list[dict[str, Any]] = []
+    for event in downbeats:
+        time_sec = _safe_float(event.get("time_sec"))
+        confidence = _safe_float(event.get("confidence"), _safe_float(event.get("strength"), 0.0))
+        raw_anchors.append(
+            {
+                "time_sec": _round_time(time_sec),
+                "kind": "downbeat",
+                "anchor_role": "count_1_downbeat",
+                "priority": 0,
+                "confidence": round(float(confidence), 5),
+                "strength": round(float(max(confidence, _safe_float(event.get("strength"), confidence))), 5),
+                "window_role": event.get("window_role"),
+                "source_index": event.get("index"),
+            }
+        )
+    for event in drum_hits:
+        time_sec = _safe_float(event.get("time_sec"))
+        kind = str(event.get("kind", "drum_hit") or "drum_hit")
+        role = _drum_anchor_role(event, beats)
+        strength = _safe_float(event.get("strength"), _safe_float(event.get("confidence"), 0.0))
+        confidence = _clamp(0.20 + 0.80 * strength, 0.0, 1.0)
+        raw_anchors.append(
+            {
+                "time_sec": _round_time(time_sec),
+                "kind": kind,
+                "anchor_role": role,
+                "priority": _drum_anchor_priority(role, kind),
+                "confidence": round(float(confidence), 5),
+                "strength": round(float(strength), 5),
+                "window_role": event.get("window_role"),
+                "source_index": event.get("index"),
+            }
+        )
+    for event in accents:
+        time_sec = _safe_float(event.get("time_sec"))
+        kind = str(event.get("kind", "accent_peak") or "accent_peak")
+        role = _drum_anchor_role({"kind": "accent_peak", "time_sec": time_sec}, beats)
+        strength = _safe_float(event.get("strength"), _safe_float(event.get("confidence"), 0.0))
+        raw_anchors.append(
+            {
+                "time_sec": _round_time(time_sec),
+                "kind": kind,
+                "anchor_role": role,
+                "priority": _drum_anchor_priority(role, kind),
+                "confidence": round(float(_clamp(0.12 + 0.76 * strength, 0.0, 1.0)), 5),
+                "strength": round(float(strength), 5),
+                "window_role": event.get("window_role"),
+                "source_index": event.get("index"),
+            }
+        )
+    best_by_slot: dict[int, dict[str, Any]] = {}
+    for anchor in raw_anchors:
+        slot = int(round(_safe_float(anchor.get("time_sec")) * DEFAULT_STREAM_FPS * 2.0))
+        current = best_by_slot.get(slot)
+        rank = (-_safe_int(anchor.get("priority"), 99), _safe_float(anchor.get("confidence")), _safe_float(anchor.get("strength")))
+        current_rank = (
+            -_safe_int(current.get("priority"), 99),
+            _safe_float(current.get("confidence")),
+            _safe_float(current.get("strength")),
+        ) if current else (-999, -999.0, -999.0)
+        if current is None or rank > current_rank:
+            best_by_slot[slot] = anchor
+    anchors = sorted(best_by_slot.values(), key=lambda item: (_safe_float(item.get("time_sec")), _safe_int(item.get("priority"))))
+    for index, anchor in enumerate(anchors):
+        anchor["index"] = index
+    return anchors
+
+
 def build_streaming_song_event_records(
     audio_path: Path,
     song_id: str,
@@ -646,6 +769,12 @@ def build_streaming_song_event_records(
             item["index"] = index
         for index, item in enumerate(accent_events):
             item["index"] = index
+        drum_anchor_events = _build_drum_anchor_events(
+            beats=beats,
+            downbeats=downbeats,
+            drum_hits=drum_hits,
+            accents=accent_events,
+        )
         downbeat_confidence = max([_safe_float(item.get("confidence")) for item in downbeats] or [0.0])
         current_onset = _frame_value(onset, frame_times, playhead_sec)
         current_low = _frame_value(low, frame_times, playhead_sec)
@@ -710,6 +839,7 @@ def build_streaming_song_event_records(
                 "beats": beats,
                 "downbeats": downbeats,
                 "drum_hits": drum_hits,
+                "drum_anchor_events": drum_anchor_events,
                 "accents": accent_events,
                 "segment_hypotheses": _segment_hypotheses(beats, available_until),
             }
@@ -732,6 +862,9 @@ def build_streaming_song_event_records(
                     "history_beat_count": len(history_beats),
                     "main_beat_count": len(main_beats),
                     "future_beat_count": len(future_beats),
+                    "history_drum_anchor_events": [item for item in drum_anchor_events if str(item.get("window_role")) == "history"],
+                    "main_drum_anchor_events": [item for item in drum_anchor_events if str(item.get("window_role")) == "main"],
+                    "future_drum_anchor_events": [item for item in drum_anchor_events if str(item.get("window_role")) == "future"],
                 }
             )
         records.append(tick_payload)
@@ -907,6 +1040,87 @@ def _movement_quality(unit: dict[str, Any], root_profile: dict[str, Any]) -> dic
     }
 
 
+def _drum_lock_role_for_count_grid(item: dict[str, Any]) -> str:
+    count = _safe_int(item.get("count"), 0)
+    if bool(item.get("is_downbeat")) or count == 1:
+        return "kick_downbeat"
+    if count in {2, 4}:
+        return "snare_backbeat"
+    if count == 3:
+        return "count_3_body_accent"
+    return "generic_accent"
+
+
+def _drum_lock_frames_for_unit(
+    annotated: dict[str, Any],
+    count_grid: list[dict[str, Any]],
+    motion_accent_frames: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    frame_range = dict(annotated.get("frame_range", {}) or {})
+    frame_start = _safe_int(frame_range.get("start"))
+    frame_end = max(frame_start + 1, _safe_int(frame_range.get("end_exclusive"), frame_start + 1))
+    frame_span = max(1, frame_end - frame_start - 1)
+    duration_beats = max(1.0, _safe_float(annotated.get("duration_beats"), _safe_float(annotated.get("duration_beats_estimate"), 4.0)))
+    locks: list[dict[str, Any]] = []
+    for item in count_grid:
+        role = _drum_lock_role_for_count_grid(item)
+        count = _safe_int(item.get("count"), 0)
+        strength = _safe_float(item.get("strength"), 0.0)
+        if role not in {"kick_downbeat", "snare_backbeat", "count_3_body_accent"} and strength < 0.55:
+            continue
+        locks.append(
+            {
+                "kind": "count_grid_lock",
+                "role": role,
+                "beat_offset": round(float(_safe_float(item.get("beat_offset"))), 5),
+                "count": count,
+                "source_frame": _safe_int(item.get("source_frame"), frame_start),
+                "local_frame": max(0, _safe_int(item.get("source_frame"), frame_start) - frame_start),
+                "strength": round(float(max(strength, 0.90 if role == "kick_downbeat" else 0.70)), 5),
+                "lock_priority": 0 if role == "kick_downbeat" else (1 if role == "snare_backbeat" else 2),
+            }
+        )
+    for item in motion_accent_frames:
+        source_frame = _safe_int(item.get("source_frame"), frame_start)
+        local_frame = max(0, min(frame_span, source_frame - frame_start))
+        beat_offset = duration_beats * float(local_frame) / float(frame_span)
+        nearest_count = int(round(beat_offset)) % 4 + 1
+        role = "motion_body_accent"
+        if nearest_count == 1:
+            role = "motion_downbeat_accent"
+        elif nearest_count in {2, 4}:
+            role = "motion_backbeat_accent"
+        locks.append(
+            {
+                "kind": str(item.get("kind", "motion_accent")),
+                "role": role,
+                "beat_offset": round(float(beat_offset), 5),
+                "count": nearest_count,
+                "source_frame": source_frame,
+                "local_frame": local_frame,
+                "strength": round(float(_safe_float(item.get("strength"), 0.78)), 5),
+                "lock_priority": 1,
+            }
+        )
+    best_by_frame: dict[int, dict[str, Any]] = {}
+    for lock in locks:
+        slot = int(round(_safe_int(lock.get("source_frame")) / 3.0))
+        current = best_by_frame.get(slot)
+        rank = (
+            -_safe_int(lock.get("lock_priority"), 99),
+            _safe_float(lock.get("strength")),
+            -abs(_safe_float(lock.get("beat_offset")) - round(_safe_float(lock.get("beat_offset")))),
+        )
+        current_rank = (
+            -_safe_int(current.get("lock_priority"), 99),
+            _safe_float(current.get("strength")),
+            -abs(_safe_float(current.get("beat_offset")) - round(_safe_float(current.get("beat_offset")))),
+        ) if current else (-999, -999.0, -999.0)
+        if current is None or rank > current_rank:
+            best_by_frame[slot] = lock
+    return sorted(best_by_frame.values(), key=lambda item: (_safe_float(item.get("beat_offset")), _safe_int(item.get("lock_priority"))))[:10]
+
+
 def annotate_finedance_motion_units(motion_library: dict[str, Any], project_root: Path, contact_mode: str = "root") -> dict[str, Any]:
     motion_cache: dict[str, np.ndarray] = {}
     annotated_units: list[dict[str, Any]] = []
@@ -937,6 +1151,7 @@ def annotate_finedance_motion_units(motion_library: dict[str, Any], project_root
             }
             for local_frame in list(root_profile.get("motion_accent_local_frames", []) or [])
         ]
+        drum_lock_frames = _drum_lock_frames_for_unit(annotated, count_grid, motion_accent_frames)
         annotated.update(
             {
                 "annotation_schema_version": 1,
@@ -947,6 +1162,7 @@ def annotate_finedance_motion_units(motion_library: dict[str, Any], project_root
                 "count_grid": count_grid,
                 "accent_lock_frames": accent_locks,
                 "motion_accent_frames": motion_accent_frames,
+                "drum_lock_frames": drum_lock_frames,
                 "foot_contact_windows": list(root_profile.get("foot_contact_windows", []) or []),
                 "entry_pose_anchor": {
                     **dict(annotated.get("entry_anchor", {}) or {}),
@@ -979,7 +1195,7 @@ def annotate_finedance_motion_units(motion_library: dict[str, Any], project_root
     result["units"] = annotated_units
     result["notes"] = [
         *list(result.get("notes", []) or []),
-        f"{'M10' if str(contact_mode).lower() == 'joints' else 'M9'} annotations add count-grid locks, movement quality, transition anchors, contact windows, and safe retime ranges for streaming retrieval.",
+        f"{'M10' if str(contact_mode).lower() == 'joints' else 'M9'} annotations add count-grid locks, drum/body-accent locks, movement quality, transition anchors, contact windows, and safe retime ranges for streaming retrieval.",
     ]
     result["generated_at_utc"] = utc_now_iso()
     return result
@@ -1064,7 +1280,7 @@ def _event_roles_for_time(time_sec: float, bounds: dict[str, float]) -> set[str]
 def _filter_tick_for_window_roles(tick: dict[str, Any], roles: set[str]) -> dict[str, Any]:
     bounds = _tick_window_bounds(tick)
     filtered = dict(tick)
-    for key in ("beats", "downbeats", "drum_hits", "accents"):
+    for key in ("beats", "downbeats", "drum_hits", "drum_anchor_events", "accents"):
         values: list[dict[str, Any]] = []
         for event in list(tick.get(key, []) or []):
             event_time = _safe_float(event.get("time_sec"), -1.0)
@@ -1126,6 +1342,7 @@ def _m19_decision_window_context(
 
 def _m19_future_prepare_events(tick: dict[str, Any]) -> list[dict[str, Any]]:
     future_events = [dict(item) for item in list(tick.get("future_events", []) or [])]
+    future_events.extend(dict(item) for item in list(tick.get("future_drum_anchor_events", []) or []))
     if not future_events:
         future_events = _flat_window_events(
             role="future",
@@ -1137,7 +1354,7 @@ def _m19_future_prepare_events(tick: dict[str, Any]) -> list[dict[str, Any]]:
     strong = [
         item
         for item in future_events
-        if str(item.get("kind")) in {"downbeat", "drum_hit", "accent"}
+        if str(item.get("kind")) in {"downbeat", "drum_hit", "accent", "kick", "high_attack", "accent_peak"}
         and _safe_float(item.get("confidence"), _safe_float(item.get("strength"), 0.0)) >= M17_EVENT_CONFIDENCE_FLOOR
     ]
     strong.sort(key=lambda item: (_safe_float(item.get("time_sec")), str(item.get("kind"))))
@@ -1343,6 +1560,61 @@ def _music_style_score(candidate: dict[str, Any], target_style_profile: dict[str
     return round(float((energy_score * 0.32) + (bpm_score * 0.28) + (attack_score * 0.14) + (size_score * 0.11) + (tag_score * 0.10) + (quality_weight * 0.05)), 5)
 
 
+def _m20_motion_locks(candidate: dict[str, Any]) -> list[dict[str, Any]]:
+    locks = [dict(item) for item in list(candidate.get("drum_lock_frames", []) or [])]
+    if locks:
+        return sorted(locks, key=lambda item: (_safe_float(item.get("beat_offset")), _safe_int(item.get("lock_priority"))))
+    frame_range = dict(candidate.get("frame_range", {}) or {})
+    frame_start = _safe_int(frame_range.get("start"))
+    frame_end = max(frame_start + 1, _safe_int(frame_range.get("end_exclusive"), frame_start + 1))
+    frame_span = max(1, frame_end - frame_start - 1)
+    duration_beats = max(1.0, _safe_float(candidate.get("duration_beats"), _safe_float(candidate.get("duration_beats_estimate"), 4.0)))
+    for item in list(candidate.get("motion_accent_frames", []) or []):
+        source_frame = _safe_int(item.get("source_frame"), frame_start)
+        local_frame = max(0, min(frame_span, source_frame - frame_start))
+        locks.append(
+            {
+                "kind": str(item.get("kind", "motion_accent")),
+                "role": "motion_body_accent",
+                "beat_offset": round(float(duration_beats * local_frame / frame_span), 5),
+                "source_frame": source_frame,
+                "local_frame": local_frame,
+                "strength": round(float(_safe_float(item.get("strength"), 0.72)), 5),
+                "lock_priority": 1,
+            }
+        )
+    if locks:
+        return sorted(locks, key=lambda item: (_safe_float(item.get("beat_offset")), _safe_int(item.get("lock_priority"))))
+    return [dict(item, kind="count_grid_fallback") for item in list(candidate.get("accent_lock_frames", []) or [])]
+
+
+def _m20_role_match(lock_role: str, anchor_role: str, anchor_kind: str) -> float:
+    lock_role = str(lock_role or "")
+    anchor_role = str(anchor_role or "")
+    anchor_kind = str(anchor_kind or "")
+    if lock_role in {"kick_downbeat", "count_1_downbeat", "motion_downbeat_accent"}:
+        if anchor_role in {"count_1_downbeat", "kick_downbeat"}:
+            return 1.0
+        if anchor_kind == "kick":
+            return 0.92
+        if anchor_role in {"snare_backbeat", "high_attack"}:
+            return 0.50
+        return 0.62
+    if lock_role in {"snare_backbeat", "motion_backbeat_accent"}:
+        if anchor_role == "snare_backbeat" or anchor_kind in {"high_attack", "snare", "clap"}:
+            return 1.0
+        if anchor_kind == "kick":
+            return 0.68
+        return 0.74
+    if lock_role in {"count_3_body_accent", "motion_body_accent", "generic_accent"}:
+        if anchor_kind in {"kick", "high_attack", "snare", "clap"}:
+            return 0.94
+        if anchor_role in {"generic_accent", "snare_backbeat"}:
+            return 0.86
+        return 0.76
+    return 0.78
+
+
 def _rhythm_score(
     candidate: dict[str, Any],
     tick: dict[str, Any],
@@ -1352,7 +1624,9 @@ def _rhythm_score(
     target_beats: int,
     planner_version: str = "m9",
 ) -> tuple[float, list[dict[str, Any]], list[float]]:
-    locks = list(candidate.get("accent_lock_frames", []) or [])
+    version = str(planner_version or "m9").lower()
+    is_m20 = version == "m20"
+    locks = _m20_motion_locks(candidate) if is_m20 else list(candidate.get("accent_lock_frames", []) or [])
     if not locks:
         locks = [{"beat_offset": 0, "role": "count_1_downbeat", "count": 1}]
     locks = [
@@ -1360,24 +1634,110 @@ def _rhythm_score(
         for lock in locks
         if _safe_float(lock.get("beat_offset")) <= float(target_beats) + 1e-8
     ] or [{"beat_offset": 0, "role": "count_1_downbeat", "count": 1}]
-    version = str(planner_version or "m9").lower()
-    is_m18 = version in {"m18", "m19"}
-    is_m17 = version in {"m17", "m18", "m19"}
+    is_m18 = version in {"m18", "m19", "m20"}
+    is_m17 = version in {"m17", "m18", "m19", "m20"}
     beats = list(tick.get("beats", []) or [])
     downbeats = list(tick.get("downbeats", []) or [])
     drums = list(tick.get("drum_hits", []) or [])
+    drum_anchors = list(tick.get("drum_anchor_events", []) or [])
+    if not drum_anchors:
+        drum_anchors = _build_drum_anchor_events(beats=beats, downbeats=downbeats, drum_hits=drums, accents=list(tick.get("accents", []) or []))
     accents = list(tick.get("accents", []) or [])
     lock_reports: list[dict[str, Any]] = []
     expected_hits: list[float] = []
     scores: list[float] = []
     beat_confidence = _safe_float(dict(tick.get("beat_phase", {}) or {}).get("confidence"), 0.0)
+    if is_m20:
+        anchor_candidates = [
+            dict(item)
+            for item in drum_anchors
+            if target_start_sec - 1e-8 <= _safe_float(item.get("time_sec"), -1.0) <= min(target_start_sec + target_beats * beat_spacing_sec, visible_until_sec) + 1e-8
+            and (
+                _safe_float(item.get("confidence"), _safe_float(item.get("strength"), 0.0)) >= 0.42
+                or (
+                    _safe_int(item.get("priority"), 9) <= 1
+                    and _safe_float(item.get("confidence"), _safe_float(item.get("strength"), 0.0)) >= 0.28
+                )
+            )
+        ]
+        if not anchor_candidates:
+            anchor_candidates = [
+                dict(item)
+                for item in beats
+                if target_start_sec - 1e-8 <= _safe_float(item.get("time_sec"), -1.0) <= min(target_start_sec + target_beats * beat_spacing_sec, visible_until_sec) + 1e-8
+            ]
+            for item in anchor_candidates:
+                item.setdefault("kind", "beat")
+                item.setdefault("anchor_role", "count_1_downbeat" if bool(item.get("is_downbeat")) else "generic_accent")
+                item.setdefault("priority", 3)
+        anchor_candidates.sort(
+            key=lambda item: (
+                _safe_int(item.get("priority"), 9),
+                _safe_float(item.get("time_sec")),
+                -_safe_float(item.get("confidence"), _safe_float(item.get("strength"), 0.0)),
+            )
+        )
+        selected_anchors = sorted(anchor_candidates[:6], key=lambda item: _safe_float(item.get("time_sec")))
+        visible_tolerance = max(min(beat_spacing_sec * 0.30, M20_BODY_ACCENT_PREWARP_TOLERANCE_FRAMES / DEFAULT_STREAM_FPS), 1e-3)
+        for anchor in selected_anchors:
+            anchor_time = _safe_float(anchor.get("time_sec"))
+            anchor_offset = (anchor_time - target_start_sec) / max(beat_spacing_sec, 1e-6)
+            expected_hits.append(_round_time(anchor_time))
+            best_lock: dict[str, Any] = {}
+            best_score = 0.0
+            nearest_delta = beat_spacing_sec
+            for lock in locks:
+                beat_offset = _safe_float(lock.get("beat_offset"))
+                if beat_offset < -1e-8 or beat_offset > float(target_beats) + 1e-8:
+                    continue
+                lock_time = target_start_sec + beat_offset * beat_spacing_sec
+                delta = abs(lock_time - anchor_time)
+                confidence = _safe_float(anchor.get("confidence"), _safe_float(anchor.get("strength"), 0.0))
+                score = _clamp(1.0 - delta / visible_tolerance, 0.0, 1.0)
+                score *= _m20_role_match(str(lock.get("role", "")), str(anchor.get("anchor_role", "")), str(anchor.get("kind", "")))
+                score *= 0.70 + 0.30 * _clamp(confidence, 0.0, 1.0)
+                score *= 0.74 + 0.26 * _clamp(_safe_float(lock.get("strength"), 0.0), 0.0, 1.0)
+                if score > best_score + 1e-8:
+                    best_score = score
+                    nearest_delta = delta
+                    best_lock = dict(lock)
+            scores.append(best_score)
+            lock_reports.append(
+                {
+                    "kind": "stream_rhythm_lock",
+                    "role": best_lock.get("role", "motion_body_accent"),
+                    "time_sec": _round_time(anchor_time),
+                    "beat_offset": round(float(anchor_offset), 5),
+                    "source_beat_offset": round(float(_safe_float(best_lock.get("beat_offset"), anchor_offset)), 5),
+                    "visible_at_decision": True,
+                    "nearest_visible_event_delta_sec": round(float(nearest_delta), 5),
+                    "body_accent_error_frames": round(float(nearest_delta * DEFAULT_STREAM_FPS), 5),
+                    "post_warp_body_accent_error_frames": 0.0 if best_lock else None,
+                    "nearest_visible_event_kind": str(anchor.get("kind", "drum_anchor")),
+                    "nearest_visible_anchor_role": anchor.get("anchor_role"),
+                    "nearest_visible_anchor_priority": anchor.get("priority"),
+                    "source_frame": best_lock.get("source_frame"),
+                    "local_frame": best_lock.get("local_frame"),
+                    "motion_lock_kind": best_lock.get("kind"),
+                    "drum_anchor_lock": True,
+                    "score": round(float(best_score), 5),
+                }
+            )
+        if not scores:
+            return 0.0, [], []
+        return round(float(sum(scores) / max(1, len(scores))), 5), lock_reports, sorted(set(expected_hits))
     for lock in locks[:6]:
         beat_offset = _safe_float(lock.get("beat_offset"))
         lock_time = target_start_sec + beat_offset * beat_spacing_sec
         expected_hits.append(_round_time(lock_time))
         role = str(lock.get("role", "accent"))
         is_predicted = lock_time > visible_until_sec + 1e-8
-        if role == "count_1_downbeat":
+        if is_m20:
+            prioritized_events = [
+                (event, 1.04 - min(0.20, _safe_int(event.get("priority"), 4) * 0.045))
+                for event in drum_anchors
+            ]
+        elif role == "count_1_downbeat":
             prioritized_events = [
                 *((event, 1.0) for event in downbeats),
                 *((event, 0.95) for event in drums),
@@ -1402,9 +1762,11 @@ def _rhythm_score(
         nearest_delta = beat_spacing_sec
         best_event_kind = "predicted"
         if is_m18:
-            visible_tolerance = max(min(beat_spacing_sec * 0.18, 2.0 / DEFAULT_STREAM_FPS), 1e-3)
+            tolerance_frames = M20_BODY_ACCENT_TOLERANCE_FRAMES if is_m20 else 2.0
+            visible_tolerance = max(min(beat_spacing_sec * (0.14 if is_m20 else 0.18), tolerance_frames / DEFAULT_STREAM_FPS), 1e-3)
         else:
             visible_tolerance = max(beat_spacing_sec * (0.28 if is_m17 else 0.35), 1e-3)
+        best_event: dict[str, Any] = {}
         for event, priority_weight in prioritized_events:
             event_time = _safe_float(event.get("time_sec"), 99999.0)
             if event_time > visible_until_sec + 1e-8:
@@ -1413,19 +1775,22 @@ def _rhythm_score(
             confidence = _safe_float(event.get("confidence"), _safe_float(event.get("strength"), 0.0))
             event_score = _clamp(1.0 - delta / visible_tolerance, 0.0, 1.0)
             event_score *= priority_weight
+            if is_m20:
+                event_score *= _m20_role_match(role, str(event.get("anchor_role", "")), str(event.get("kind", "")))
             event_score *= 0.72 + 0.28 * _clamp(confidence, 0.0, 1.0)
             if event_score > best_visible_score + 1e-8:
                 best_visible_score = event_score
                 nearest_delta = delta
                 best_event_kind = str(event.get("kind", "beat"))
-        if role == "count_1_downbeat":
+                best_event = dict(event)
+        if role in {"count_1_downbeat", "kick_downbeat", "motion_downbeat_accent"}:
             downbeat_bonus = 0.18 if int(round(beat_offset)) % 4 == 0 else 0.0
-        elif role == "count_3_backbeat":
+        elif role in {"count_3_backbeat", "snare_backbeat", "motion_backbeat_accent"}:
             downbeat_bonus = 0.08
         else:
             downbeat_bonus = 0.0
         if is_predicted:
-            predicted_base = 0.45 + downbeat_bonus
+            predicted_base = (0.35 if is_m20 else 0.45) + downbeat_bonus
             if is_m17 and beat_confidence < M17_LOW_CONFIDENCE_THRESHOLD:
                 predicted_base = 0.20 + downbeat_bonus * 0.25
             score = _clamp(predicted_base, 0.0, 1.0)
@@ -1442,7 +1807,14 @@ def _rhythm_score(
                 "beat_offset": round(float(beat_offset), 5),
                 "visible_at_decision": not is_predicted,
                 "nearest_visible_event_delta_sec": round(float(nearest_delta), 5),
+                "body_accent_error_frames": round(float(nearest_delta * DEFAULT_STREAM_FPS), 5),
                 "nearest_visible_event_kind": best_event_kind,
+                "nearest_visible_anchor_role": best_event.get("anchor_role"),
+                "nearest_visible_anchor_priority": best_event.get("priority"),
+                "source_frame": lock.get("source_frame"),
+                "local_frame": lock.get("local_frame"),
+                "motion_lock_kind": lock.get("kind"),
+                "drum_anchor_lock": bool(is_m20),
                 "score": round(float(score), 5),
             }
         )
@@ -1773,12 +2145,13 @@ def _score_candidate(
     )
     transition = _transition_score(previous_unit, candidate)
     style = _music_style_score(candidate, target_style_profile=target_style_profile, target_bpm=_safe_float(beat_phase.get("bpm"), 120.0))
-    repeat_penalty = 0.5 if version in {"m12", "m15"} else (0.65 if version in {"m17", "m18", "m19"} else 0.35)
+    repeat_penalty = 0.5 if version in {"m12", "m15"} else (0.65 if version in {"m17", "m18", "m19", "m20"} else 0.35)
     diversity = max(0.0, 1.0 - recent_units[str(candidate.get("unit_id"))] * repeat_penalty)
     is_m12 = version == "m12"
     is_m15 = version == "m15"
-    is_m17 = version in {"m17", "m18", "m19"}
-    is_m18 = version in {"m18", "m19"}
+    is_m20 = version == "m20"
+    is_m17 = version in {"m17", "m18", "m19", "m20"}
+    is_m18 = version in {"m18", "m19", "m20"}
     weights = _planner_score_weights(version)
     total = (
         rhythm_score * weights["rhythm_lock"]
@@ -1820,6 +2193,25 @@ def _score_candidate(
         "speed_scale": round(float(speed_scale), 5),
         "source_quality_weight": round(float(_safe_float(candidate.get("source_song_quality_weight"), 0.65)), 5),
     }
+    if is_m20:
+        body_errors = [
+            _safe_float(lock.get("body_accent_error_frames"))
+            for lock in lock_reports
+            if bool(lock.get("visible_at_decision")) and bool(lock.get("drum_anchor_lock"))
+        ]
+        body_scores = [
+            _safe_float(lock.get("score"))
+            for lock in lock_reports
+            if bool(lock.get("visible_at_decision")) and bool(lock.get("drum_anchor_lock"))
+        ]
+        body_accent_score = float(np.mean(np.asarray(body_scores, dtype=np.float32))) if body_scores else rhythm_score
+        body_error = min(body_errors or [999.0])
+        total += max(0.0, body_accent_score - 0.72) * 0.08
+        if body_accent_score < M20_BODY_ACCENT_HARD_MIN:
+            total -= 0.20
+        breakdown["body_accent_lock"] = round(float(body_accent_score), 5)
+        breakdown["best_body_accent_error_frames"] = round(float(body_error), 5)
+        breakdown["weighted_total"] = round(float(total), 5)
     state = str(choreography_state or "")
     if is_m18 and state in {"accent_prepare", "accent_hit"}:
         accent_locks = [
@@ -1880,9 +2272,10 @@ def simulate_streaming_smplx_plan_records(
     planner_version = str(planner_version or "m9").lower()
     is_m12 = planner_version == "m12"
     is_m15 = planner_version == "m15"
-    is_m19 = planner_version == "m19"
+    is_m20 = planner_version == "m20"
+    is_m19 = planner_version in {"m19", "m20"}
     is_m18 = planner_version == "m18"
-    is_m18_family = planner_version in {"m18", "m19"}
+    is_m18_family = planner_version in {"m18", "m19", "m20"}
     is_m17_exact = planner_version == "m17"
     is_m17 = is_m17_exact or is_m18_family
     event_window_contract = str(header.get("window_contract") or DEFAULT_WINDOW_CONTRACT).lower()
@@ -2222,6 +2615,10 @@ def simulate_streaming_smplx_plan_records(
                 reject_reasons.append("transition_smoothness_below_0_50")
             if is_m17 and _safe_float(breakdown.get("rhythm_lock")) < M17_RHYTHM_HARD_MIN:
                 reject_reasons.append("rhythm_lock_below_0_55")
+            if is_m20 and _safe_float(breakdown.get("rhythm_lock")) < M20_RHYTHM_HARD_MIN:
+                reject_reasons.append("m20_drum_anchor_rhythm_below_0_60")
+            if is_m20 and _safe_float(breakdown.get("body_accent_lock"), 1.0) < M20_BODY_ACCENT_HARD_MIN:
+                reject_reasons.append("m20_body_accent_lock_below_0_52")
             if is_m17 and _safe_float(breakdown.get("transition_smoothness")) < M17_TRANSITION_HARD_MIN:
                 reject_reasons.append("transition_smoothness_below_0_55")
             if is_m15 and not tail_extended and (speed_scale < M15_NON_TAIL_SPEED_MIN or speed_scale > M15_NON_TAIL_SPEED_MAX):
@@ -2446,6 +2843,7 @@ def simulate_streaming_smplx_plan_records(
                 "m19_history_main_future": bool(is_m19),
                 "m19_rhythm_scored_from_main_window": bool(is_m19),
                 "m19_future_used_for_prepare_only": bool(is_m19),
+                "m20_drum_anchor_motion_accent_lock": bool(is_m20),
             },
             "expected_accent_hits": expected_hits,
             "rhythm_locks": lock_reports,
@@ -2708,6 +3106,7 @@ def stream_events_to_song_event_map(stream_records: list[dict[str, Any]]) -> dic
     ]
     accents = _dedupe_timed_events(stream_records, "accents", confidence_floor=0.0)
     drum_hits = _dedupe_timed_events(stream_records, "drum_hits", confidence_floor=0.0)
+    drum_anchor_events = _dedupe_timed_events(stream_records, "drum_anchor_events", confidence_floor=0.0)
     duration_sec = _safe_float(header.get("duration_sec"), max([_safe_float(item.get("time_sec")) for item in beats] or [0.0]))
     return {
         "schema_version": 1,
@@ -2726,6 +3125,7 @@ def stream_events_to_song_event_map(stream_records: list[dict[str, Any]]) -> dic
         "downbeats": downbeats,
         "accents": accents,
         "drum_hits": drum_hits,
+        "drum_anchor_events": drum_anchor_events,
         "phrases": [],
         "sections": [],
         "confidence": {
@@ -2755,6 +3155,83 @@ def _cache_request(plan_id: str, sequence_id: str, source_motion_path: str, fram
         "frame_ranges": frame_ranges,
         "cache_path": f"outputs/smplx_mesh_previews/cache/{slugify(plan_id)}/{cache_name}",
         "cache_format": "npz: vertices float32 [frames, verts, 3], joints float32 [frames, joints, 3], faces int32 [faces, 3]",
+    }
+
+
+def _source_time_warp_from_lock_reports(
+    *,
+    lock_reports: list[dict[str, Any]],
+    source_start: int,
+    source_end: int,
+    scene_start: int,
+    scene_end: int,
+    fps: int,
+) -> dict[str, Any]:
+    anchors: list[dict[str, Any]] = []
+    source_span = max(1, int(source_end) - int(source_start) - 1)
+    scene_span = max(1, int(scene_end) - int(scene_start))
+    anchors.append(
+        {
+            "source_frame": int(source_start),
+            "scene_frame": int(scene_start),
+            "role": "segment_start",
+            "time_sec": round((int(scene_start) - 1) / max(1, int(fps)), 5),
+            "score": 1.0,
+        }
+    )
+    for lock in lock_reports:
+        if not bool(lock.get("visible_at_decision")) or not bool(lock.get("drum_anchor_lock")):
+            continue
+        score = _safe_float(lock.get("score"), 0.0)
+        if score < 0.50:
+            continue
+        source_frame = _safe_int(lock.get("source_frame"), source_start)
+        if source_frame < source_start or source_frame >= source_end:
+            beat_offset = _safe_float(lock.get("beat_offset"), 0.0)
+            source_frame = source_start + int(round(_clamp(beat_offset / max(1.0, _safe_float(lock.get("target_beats"), 4.0)), 0.0, 1.0) * source_span))
+        time_sec = _safe_float(lock.get("time_sec"))
+        scene_frame = int(round(time_sec * fps)) + 1
+        if scene_frame < scene_start or scene_frame > scene_end:
+            continue
+        anchors.append(
+            {
+                "source_frame": int(source_frame),
+                "scene_frame": int(scene_frame),
+                "role": lock.get("role"),
+                "anchor_kind": lock.get("nearest_visible_event_kind"),
+                "anchor_role": lock.get("nearest_visible_anchor_role"),
+                "time_sec": _round_time(time_sec),
+                "score": round(float(score), 5),
+                "body_accent_error_frames": lock.get("body_accent_error_frames"),
+            }
+        )
+    anchors.append(
+        {
+            "source_frame": int(source_end - 1),
+            "scene_frame": int(scene_end),
+            "role": "segment_end",
+            "time_sec": round((int(scene_end) - 1) / max(1, int(fps)), 5),
+            "score": 1.0,
+        }
+    )
+    anchors.sort(key=lambda item: (_safe_int(item.get("scene_frame")), _safe_int(item.get("source_frame"))))
+    monotonic: list[dict[str, Any]] = []
+    last_scene = -10**9
+    last_source = source_start - 1
+    for anchor in anchors:
+        source_frame = _safe_int(anchor.get("source_frame"), source_start)
+        scene_frame = _safe_int(anchor.get("scene_frame"), scene_start)
+        if scene_frame <= last_scene or source_frame <= last_source:
+            continue
+        monotonic.append(anchor)
+        last_scene = scene_frame
+        last_source = source_frame
+    if len(monotonic) <= 2:
+        return {"mode": "linear"}
+    return {
+        "mode": "piecewise_linear_motion_accent_to_drum_anchor",
+        "max_anchor_shift_frames": M20_BODY_ACCENT_PREWARP_TOLERANCE_FRAMES,
+        "anchors": monotonic,
     }
 
 
@@ -2830,8 +3307,28 @@ def stream_plan_to_stitch_manifest(
                     "scene_frame": int(round(lock_time * fps)) + 1,
                     "visible_at_decision": bool(lock.get("visible_at_decision")),
                     "score": _safe_float(lock.get("score")),
+                    "source_frame": lock.get("source_frame"),
+                    "local_frame": lock.get("local_frame"),
+                    "motion_lock_kind": lock.get("motion_lock_kind"),
+                    "nearest_visible_event_kind": lock.get("nearest_visible_event_kind"),
+                    "nearest_visible_anchor_role": lock.get("nearest_visible_anchor_role"),
+                    "body_accent_error_frames": lock.get("body_accent_error_frames"),
+                    "post_warp_body_accent_error_frames": lock.get("post_warp_body_accent_error_frames"),
+                    "drum_anchor_lock": bool(lock.get("drum_anchor_lock")),
                 }
             )
+        source_time_warp = (
+            _source_time_warp_from_lock_reports(
+                lock_reports=rhythm_locks,
+                source_start=source_start,
+                source_end=source_end,
+                scene_start=scene_start,
+                scene_end=scene_end,
+                fps=fps,
+            )
+            if str(header.get("planner_version")) == "m20" and pose_source == "finedance_motion_unit"
+            else {"mode": "linear"}
+        )
         step = {
             "index": index,
             "unit_id": decision.get("selected_unit_id"),
@@ -2853,6 +3350,7 @@ def stream_plan_to_stitch_manifest(
             "state_machine": dict(decision.get("state_machine", {}) or {}),
             "retime_policy": decision.get("retime_policy"),
             "retime_reason": dict(decision.get("retime_reason", {}) or {}),
+            "source_time_warp": source_time_warp,
             "switch_reason": dict(decision.get("switch_reason", {}) or {}),
             "blend_in_frames": min(blend_frames if previous_step is not None else 0, max(0, (scene_end - scene_start) // 3)),
             "blend_out_frames": min(blend_frames if index < len(decisions) - 1 else 0, max(0, (scene_end - scene_start) // 3)),
@@ -2903,6 +3401,7 @@ def stream_plan_to_stitch_manifest(
         _cache_request(plan_id=plan_id, sequence_id=sequence_id, source_motion_path=source_path_by_sequence[sequence_id], frame_ranges=frame_ranges)
         for sequence_id, frame_ranges in sorted(ranges_by_sequence.items())
     ]
+    steps_by_index = {_safe_int(step.get("index")): step for step in steps}
     return {
         "schema_version": 1,
         "manifest_id": f"{plan_id}_smplx_stitch_preview",
@@ -2953,6 +3452,7 @@ def stream_plan_to_stitch_manifest(
                     "score_breakdown": item.get("score_breakdown"),
                     "retime_policy": item.get("retime_policy"),
                     "retime_reason": item.get("retime_reason"),
+                    "source_time_warp": dict(steps_by_index.get(_safe_int(item.get("index")), {}).get("source_time_warp", {}) or {}),
                     "switch_reason": item.get("switch_reason"),
                     "future_visibility_guard": item.get("future_visibility_guard"),
                     "rejected_top_candidates": item.get("rejected_top_candidates"),
@@ -2961,8 +3461,8 @@ def stream_plan_to_stitch_manifest(
             ],
         },
         "notes": [
-            "M9 streaming SMPL-X stitch manifest generated from decision JSONL.",
-            "Streaming decisions are made with a two-second visible-audio guard; target durations may extend beyond the visible window via beat-phase prediction.",
+            "Streaming SMPL-X stitch manifest generated from decision JSONL.",
+            "M20 plans may include piecewise source-time warps that align motion/body accent frames to visible drum-anchor events.",
         ],
     }
 
@@ -3032,6 +3532,8 @@ def render_streaming_smplx_mesh_review(
         if "rhythm_lock_below_0_40" in list(item.get("reasons", []) or [])
         or "rhythm_lock_below_0_48" in list(item.get("reasons", []) or [])
         or "rhythm_lock_below_0_55" in list(item.get("reasons", []) or [])
+        or "m20_drum_anchor_rhythm_below_0_60" in list(item.get("reasons", []) or [])
+        or "m20_body_accent_lock_below_0_52" in list(item.get("reasons", []) or [])
     )
     report["metrics"]["non_tail_speed_hard_reject_count"] = sum(
         1
@@ -3112,6 +3614,9 @@ def render_streaming_smplx_mesh_review(
                 "retime_adjustment_count",
                 "max_retime_speed_scale",
                 "high_confidence_lock_error_frames",
+                "body_accent_lock_error_frames_p95",
+                "body_accent_lock_error_frames_max",
+                "post_warp_body_accent_error_frames_p95",
             }
         }
     )
@@ -3126,7 +3631,7 @@ def calibrate_song_event_rail(
     event_map = stream_events_to_song_event_map(stream_event_records)
     overrides = dict(manual_overrides or {})
     applied: list[str] = []
-    for key in ("beats", "downbeats", "accents", "drum_hits", "phrases", "sections"):
+    for key in ("beats", "downbeats", "accents", "drum_hits", "drum_anchor_events", "phrases", "sections"):
         if key in overrides:
             values = [dict(item) for item in list(overrides.get(key) or [])]
             values.sort(key=lambda item: _safe_float(item.get("time_sec"), _safe_float(item.get("start_time_sec"))))
@@ -3191,13 +3696,14 @@ def evaluate_streaming_event_rail(
     future_event_violations = 0
     for tick in ticks:
         available_until = _safe_float(tick.get("available_audio_until_sec"), 0.0)
-        for key in ("beats", "downbeats", "drum_hits", "accents"):
+        for key in ("beats", "downbeats", "drum_hits", "drum_anchor_events", "accents"):
             for event in list(tick.get(key, []) or []):
                 if _safe_float(event.get("time_sec")) > available_until + 1e-8:
                     future_event_violations += 1
     beat_eval = _match_time_series(_event_times(aggregate, "beats"), _event_times(reference, "beats"), tolerance_sec)
     downbeat_eval = _match_time_series(_event_times(aggregate, "downbeats"), _event_times(reference, "downbeats"), tolerance_sec)
     drum_eval = _match_time_series(_event_times(aggregate, "drum_hits"), _event_times(reference, "drum_hits"), tolerance_sec)
+    drum_anchor_eval = _match_time_series(_event_times(aggregate, "drum_anchor_events"), _event_times(reference, "drum_anchor_events"), tolerance_sec)
     reference_beat_count = max(1, len(_event_times(reference, "beats")))
     overcount_ratio = len(_event_times(aggregate, "beats")) / reference_beat_count
     return {
@@ -3213,12 +3719,14 @@ def evaluate_streaming_event_rail(
             "beat_overcount_ratio": round(float(overcount_ratio), 5),
             "downbeat_hit_rate": downbeat_eval["recall"],
             "drum_hit_precision": drum_eval["precision"],
+            "drum_anchor_precision": drum_anchor_eval["precision"],
             "future_event_violations": future_event_violations,
             "high_confidence_lock_error_frames": round(float(beat_eval["mae_sec"] * DEFAULT_STREAM_FPS), 5),
         },
         "beats": beat_eval,
         "downbeats": downbeat_eval,
         "drum_hits": drum_eval,
+        "drum_anchor_events": drum_anchor_eval,
         "acceptance": {
             "future_safe": future_event_violations == 0,
             "high_confidence_lock_error_within_2_frames": beat_eval["mae_sec"] * DEFAULT_STREAM_FPS <= 2.0,
@@ -3322,6 +3830,18 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
         for lock in list(decision.get("rhythm_locks", []) or [])
         if bool(lock.get("visible_at_decision")) and _safe_float(lock.get("score"), 0.0) >= 0.60
     ]
+    body_accent_errors = [
+        _safe_float(lock.get("body_accent_error_frames"))
+        for decision in decisions
+        for lock in list(decision.get("rhythm_locks", []) or [])
+        if bool(lock.get("visible_at_decision")) and bool(lock.get("drum_anchor_lock"))
+    ]
+    post_warp_body_errors = [
+        _safe_float(lock.get("post_warp_body_accent_error_frames"))
+        for decision in decisions
+        for lock in list(decision.get("rhythm_locks", []) or [])
+        if bool(lock.get("visible_at_decision")) and bool(lock.get("drum_anchor_lock")) and lock.get("post_warp_body_accent_error_frames") is not None
+    ]
     duration_for_outro = _safe_float(header.get("duration_sec"), _safe_float(header.get("duration_sec"), 0.0))
     outro_recover_sec = max(0.0, duration_for_outro - recover_start_sec) if recover_steps else 0.0
     return {
@@ -3366,6 +3886,9 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
             "retime_adjustment_count": int(retime_adjustment_count),
             "max_retime_speed_scale": round(float(max(speeds or [1.0])), 6),
             "high_confidence_lock_error_frames": round(float(max(visible_lock_errors or [0.0])), 5),
+            "body_accent_lock_error_frames_p95": round(float(np.percentile(np.asarray(body_accent_errors, dtype=np.float32), 95.0)) if body_accent_errors else 0.0, 5),
+            "body_accent_lock_error_frames_max": round(float(max(body_accent_errors or [0.0])), 5),
+            "post_warp_body_accent_error_frames_p95": round(float(np.percentile(np.asarray(post_warp_body_errors, dtype=np.float32), 95.0)) if post_warp_body_errors else 0.0, 5),
             "window_contract": str(header.get("window_contract") or DEFAULT_WINDOW_CONTRACT),
         },
         "cohort_source_sequences": sorted({str(sequence_id) for decision in decisions for sequence_id in list(decision.get("cohort_source_sequences", []) or [])}),
@@ -3379,9 +3902,10 @@ def evaluate_streaming_planner_records(stream_plan_records: list[dict[str, Any]]
             "max_consecutive_motion_unit_run_le_2": _max_consecutive_motion_unit_run(decisions) <= M17_IDEAL_MAX_CONSECUTIVE_SAME_UNIT,
             "max_consecutive_motion_unit_run_le_3": _max_consecutive_motion_unit_run(decisions) <= M17_MAX_CONSECUTIVE_SAME_UNIT,
             "max_total_motion_unit_uses_le_5": _max_total_motion_unit_uses(decisions) <= M17_MAX_TOTAL_SAME_UNIT_USES,
-            "outro_recover_sec_gte_5": outro_recover_sec >= M18_DEFAULT_ENDING_HOLD_SEC - 1e-4 if str(header.get("planner_version")) in {"m18", "m19"} else True,
-            "final_pose_source_is_neutral_idle": final_pose_source == SYNTHETIC_NEUTRAL_IDLE_SOURCE if str(header.get("planner_version")) in {"m18", "m19"} else True,
+            "outro_recover_sec_gte_5": outro_recover_sec >= M18_DEFAULT_ENDING_HOLD_SEC - 1e-4 if str(header.get("planner_version")) in {"m18", "m19", "m20"} else True,
+            "final_pose_source_is_neutral_idle": final_pose_source == SYNTHETIC_NEUTRAL_IDLE_SOURCE if str(header.get("planner_version")) in {"m18", "m19", "m20"} else True,
             "high_confidence_lock_error_within_2_frames": max(visible_lock_errors or [0.0]) <= 2.0,
+            "body_accent_lock_error_p95_within_2_frames": (float(np.percentile(np.asarray(post_warp_body_errors or body_accent_errors, dtype=np.float32), 95.0)) if (post_warp_body_errors or body_accent_errors) else 0.0) <= 2.0,
         },
     }
 
@@ -3469,6 +3993,8 @@ def export_unity_streaming_runtime_bundle(
                 "entry_pose_anchor": dict(unit.get("entry_pose_anchor", {}) or {}),
                 "exit_pose_anchor": dict(unit.get("exit_pose_anchor", {}) or {}),
                 "accent_lock_frames": list(unit.get("accent_lock_frames", []) or []),
+                "drum_lock_frames": list(unit.get("drum_lock_frames", []) or []),
+                "motion_accent_frames": list(unit.get("motion_accent_frames", []) or []),
                 "foot_contact_windows": list(unit.get("foot_contact_windows", []) or []),
                 "movement_quality": dict(unit.get("movement_quality", {}) or {}),
             }

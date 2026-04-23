@@ -299,7 +299,34 @@ def _sample_step_from_cache(step: dict[str, Any], cache: MeshCache) -> tuple[np.
     target_count = scene_end - scene_start + 1
     source_start = _safe_int(step.get("source_frame_start"))
     source_end = max(source_start + 1, _safe_int(step.get("source_frame_end_exclusive"), source_start + 1))
-    source_frames = np.rint(np.linspace(source_start, source_end - 1, num=target_count)).astype(np.int32)
+    time_warp = dict(step.get("source_time_warp", {}) or {})
+    anchors = [dict(item) for item in list(time_warp.get("anchors", []) or [])]
+    if str(time_warp.get("mode")) == "piecewise_linear_motion_accent_to_drum_anchor" and len(anchors) >= 3:
+        anchor_scene = np.asarray([_safe_int(item.get("scene_frame"), scene_start) for item in anchors], dtype=np.float32)
+        anchor_source = np.asarray([_safe_int(item.get("source_frame"), source_start) for item in anchors], dtype=np.float32)
+        order = np.argsort(anchor_scene)
+        anchor_scene = anchor_scene[order]
+        anchor_source = anchor_source[order]
+        unique_scene: list[float] = []
+        unique_source: list[float] = []
+        last_scene = -1e9
+        last_source = float(source_start) - 1.0
+        for scene_value, source_value in zip(anchor_scene.tolist(), anchor_source.tolist()):
+            source_value = float(np.clip(source_value, source_start, source_end - 1))
+            if scene_value <= last_scene or source_value <= last_source:
+                continue
+            unique_scene.append(float(scene_value))
+            unique_source.append(source_value)
+            last_scene = scene_value
+            last_source = source_value
+        if len(unique_scene) >= 2:
+            scene_frames = np.arange(scene_start, scene_end + 1, dtype=np.float32)
+            source_frames = np.rint(np.interp(scene_frames, np.asarray(unique_scene), np.asarray(unique_source))).astype(np.int32)
+            source_frames = np.clip(source_frames, source_start, source_end - 1)
+        else:
+            source_frames = np.rint(np.linspace(source_start, source_end - 1, num=target_count)).astype(np.int32)
+    else:
+        source_frames = np.rint(np.linspace(source_start, source_end - 1, num=target_count)).astype(np.int32)
     lookup = cache.frame_to_cache_index
     missing = [int(frame) for frame in source_frames.tolist() if int(frame) not in lookup]
     if missing:
@@ -409,6 +436,14 @@ def _rhythm_lock_reports(manifest: dict[str, Any], scene_start: int, scene_end: 
                     "rendered_scene_frame": min(max(target_frame, scene_start), scene_end),
                     "frame_error": int(error),
                     "time_sec": _safe_float(lock.get("time_sec")),
+                    "role": lock.get("role"),
+                    "source_frame": lock.get("source_frame"),
+                    "motion_lock_kind": lock.get("motion_lock_kind"),
+                    "nearest_visible_event_kind": lock.get("nearest_visible_event_kind"),
+                    "nearest_visible_anchor_role": lock.get("nearest_visible_anchor_role"),
+                    "body_accent_error_frames": lock.get("body_accent_error_frames"),
+                    "post_warp_body_accent_error_frames": lock.get("post_warp_body_accent_error_frames"),
+                    "drum_anchor_lock": bool(lock.get("drum_anchor_lock")),
                 }
             )
     return reports
@@ -690,6 +725,7 @@ def compose_stitched_mesh_sequence(
                 "source_frame_start": int(source_frames[0]),
                 "source_frame_end": int(source_frames[-1]),
                 "sampled_frame_count": int(raw_vertices.shape[0]),
+                "source_time_warp": dict(step.get("source_time_warp", {}) or {}),
                 "blend_in_frames": blend_in,
                 "blend_out_frames": blend_out,
                 "root_offset_xyz": [round(float(value), 6) for value in offset.tolist()],
@@ -881,6 +917,8 @@ def _timed_events(
                 "strength": round(_safe_float(item.get("strength")), 5),
                 "level": item.get("level"),
                 "band": item.get("band"),
+                "anchor_role": item.get("anchor_role"),
+                "priority": item.get("priority"),
                 "is_downbeat": bool(item.get("is_downbeat", kind == "downbeat")),
             }
         )
@@ -903,8 +941,11 @@ def build_rhythm_mapping(manifest: dict[str, Any], song_event_map: dict[str, Any
     accents = _timed_events(list(song.get("accents", []) or []), start_time_sec, end_time_sec, fps, "accent")
     drum_source = list(song.get("drum_hits", []) or song.get("kick_hits", []) or song.get("accents", []) or song.get("downbeats", []) or [])
     drum_hits = _timed_events(drum_source, start_time_sec, end_time_sec, fps, "drum_hit")
+    drum_anchor_events = _timed_events(list(song.get("drum_anchor_events", []) or []), start_time_sec, end_time_sec, fps, "drum_anchor")
     if not drum_hits:
         drum_hits = [dict(item, kind="drum_hit", strength=item.get("strength") or 1.0) for item in downbeats]
+    if not drum_anchor_events:
+        drum_anchor_events = [dict(item, kind="drum_anchor", strength=item.get("strength") or 1.0, anchor_role="count_1_downbeat") for item in downbeats]
     step_maps: list[dict[str, Any]] = []
     for step in steps:
         step_start = _safe_float(step.get("start_time_sec"), start_time_sec)
@@ -932,6 +973,7 @@ def build_rhythm_mapping(manifest: dict[str, Any], song_event_map: dict[str, Any
                 "music_state": dict(step.get("music_state", {}) or {}),
                 "retime_policy": step.get("retime_policy"),
                 "retime_reason": dict(step.get("retime_reason", {}) or {}),
+                "source_time_warp": dict(step.get("source_time_warp", {}) or {}),
                 "switch_reason": dict(step.get("switch_reason", {}) or {}),
                 "transition_score": _safe_float(step.get("transition_score")),
                 "blend": {
@@ -952,12 +994,14 @@ def build_rhythm_mapping(manifest: dict[str, Any], song_event_map: dict[str, Any
         "downbeats": downbeats,
         "accents": accents,
         "drum_hits": drum_hits,
+        "drum_anchor_events": drum_anchor_events,
         "steps": step_maps,
         "summary": {
             "beat_count": len(beats),
             "downbeat_count": len(downbeats),
             "accent_count": len(accents),
             "drum_hit_count": len(drum_hits),
+            "drum_anchor_count": len(drum_anchor_events),
             "step_count": len(step_maps),
         },
     }
@@ -1013,6 +1057,7 @@ def build_mesh_stitch_report(
             "downbeat_count": int(rhythm_mapping["summary"]["downbeat_count"]),
             "accent_count": int(rhythm_mapping["summary"]["accent_count"]),
             "drum_hit_count": int(rhythm_mapping["summary"]["drum_hit_count"]),
+            "drum_anchor_count": int(rhythm_mapping["summary"].get("drum_anchor_count", 0)),
             "max_joint_delta_after_blend": round(_max_metric(transition_reports, "joint_delta_after_blend"), 6),
             "max_vertex_delta_after_blend": round(_max_metric(transition_reports, "vertex_delta_after_blend"), 6),
             "max_temporal_joint_delta_after_smoothing": round(_max_metric(transition_reports, "max_temporal_joint_delta_after_smoothing"), 6),
@@ -1047,6 +1092,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
             "downbeats": rhythm_mapping.get("downbeats", []),
             "accents": rhythm_mapping.get("accents", []),
             "drumHits": rhythm_mapping.get("drum_hits", []),
+            "drumAnchors": rhythm_mapping.get("drum_anchor_events", []),
             "segments": segment_mapping,
             "transitions": transitions,
             "streamingWindows": [
@@ -1100,6 +1146,9 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
             pose_source = str(item.get("pose_source") or "finedance_motion_unit")
             state = str(item.get("choreography_state") or dict(item.get("switch_reason", {}) or {}).get("choreography_state") or "-")
             retime = dict(item.get("retime_reason", {}) or {})
+            source_warp = dict(item.get("source_time_warp", {}) or {})
+            warp_mode = str(source_warp.get("mode") or "-")
+            warp_anchor_count = len(list(source_warp.get("anchors", []) or []))
             window_summary = (
                 f"H {history_window.get('start', '-')}-{history_window.get('end', '-')} | "
                 f"M {main_window.get('start', '-')}-{main_window.get('end', '-')} | "
@@ -1122,7 +1171,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
                 f"<td>{html.escape(str(item.get('selected_from_tier')))}</td>"
                 f"<td>{html.escape(','.join(list(item.get('cohort_source_sequences', []) or [])[:8]))}</td>"
                 f"<td>{html.escape(state)}</td>"
-                f"<td>{html.escape(str(item.get('retime_policy') or '-'))}:{html.escape(str(retime.get('selected_beats', '-')))}b</td>"
+                f"<td>{html.escape(str(item.get('retime_policy') or '-'))}:{html.escape(str(retime.get('selected_beats', '-')))}b<br>{html.escape(warp_mode)}({warp_anchor_count})</td>"
                 f"<td>{html.escape(str(item.get('target_energy')))} / {html.escape(str(item.get('target_bpm')))}</td>"
                 f"<td>{html.escape(str(item.get('speed_scale')))} / {html.escape(str(item.get('score')))}</td>"
                 f"<td>{html.escape(str(guard.get('passed')))} r={html.escape(str(score.get('rhythm_lock')))} t={html.escape(str(score.get('transition_smoothness')))}</td>"
@@ -1133,15 +1182,18 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
 
     def lock_rows() -> str:
         if not locks:
-            return "<tr><td colspan=\"4\">No explicit step rhythm locks. Use beat/downbeat/accent map above for this smoke pass.</td></tr>"
+            return "<tr><td colspan=\"7\">No explicit step rhythm locks. Use beat/downbeat/accent map above for this smoke pass.</td></tr>"
         rows = []
         for item in locks:
             rows.append(
                 "<tr>"
                 f"<td>{html.escape(str(item.get('step_index')))}</td>"
                 f"<td>{html.escape(str(item.get('kind')))}</td>"
+                f"<td>{html.escape(str(item.get('role')))}</td>"
                 f"<td>{html.escape(str(item.get('target_scene_frame')))}</td>"
                 f"<td>{html.escape(str(item.get('frame_error')))}</td>"
+                f"<td>{html.escape(str(item.get('nearest_visible_event_kind')))} / {html.escape(str(item.get('nearest_visible_anchor_role')))}</td>"
+                f"<td>{html.escape(str(item.get('body_accent_error_frames')))} -> {html.escape(str(item.get('post_warp_body_accent_error_frames')))}</td>"
                 "</tr>"
             )
         return "\n".join(rows)
@@ -1346,7 +1398,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
       </table>
       <h2>Rhythm Locks</h2>
       <table>
-        <thead><tr><th>step</th><th>kind</th><th>target frame</th><th>error</th></tr></thead>
+        <thead><tr><th>step</th><th>kind</th><th>role</th><th>target frame</th><th>error</th><th>nearest anchor</th><th>body err frames</th></tr></thead>
         <tbody>{lock_rows()}</tbody>
       </table>
       <p class="path">{html.escape(str(report.get('artifacts', {}).get('report', '')))}</p>
@@ -1435,6 +1487,15 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
         ctx.arc(x, 112, 4, 0, Math.PI * 2);
         ctx.fill();
       }}
+      for (const anchor of rhythmData.drumAnchors || []) {{
+        const x = xFor(anchor.time_sec);
+        ctx.strokeStyle = anchor.anchor_role === "count_1_downbeat" ? "#ffffff" : "#f4c95d";
+        ctx.lineWidth = anchor.priority <= 1 ? 3 : 2;
+        ctx.beginPath();
+        ctx.moveTo(x, 82);
+        ctx.lineTo(x, 124);
+        ctx.stroke();
+      }}
       for (const transition of rhythmData.transitions || []) {{
         const segment = (rhythmData.segments || []).find((item) => Number(item.index) === Number(transition.incoming_step));
         if (!segment) continue;
@@ -1459,7 +1520,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
       ctx.fillText("segments", 8, 12);
       ctx.fillText("H/M/F window bands", 112, 12);
       ctx.fillText("beats/downbeats", 8, 72);
-      ctx.fillText("drum hits / accents", 8, 120);
+      ctx.fillText("drum anchors / hits / accents", 8, 120);
     }}
     syncPlay?.addEventListener("click", async () => {{
       if (audio) audio.currentTime = start + video.currentTime;

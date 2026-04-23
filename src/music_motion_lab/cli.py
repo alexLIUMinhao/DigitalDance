@@ -236,7 +236,7 @@ def build_parser() -> argparse.ArgumentParser:
     stream_plan.add_argument("--library", required=True)
     stream_plan.add_argument("--output", help="Optional JSONL stream plan output path inside outputs/.")
     stream_plan.add_argument("--max-steps", type=int, default=0)
-    stream_plan.add_argument("--planner-version", choices=["m9", "m12", "m15", "m17", "m18", "m19"], default="m18")
+    stream_plan.add_argument("--planner-version", choices=["m9", "m12", "m15", "m17", "m18", "m19", "m20"], default="m18")
     stream_plan.add_argument("--tail-policy", choices=["none", "recover"], default="none")
     stream_plan.add_argument("--source-sequence-allowlist", help="Comma-separated FineDance source sequence ids for visually coherent planning.")
     stream_plan.add_argument("--initial-hold-sec", type=float, default=5.0, help="Hold an initial pose before starting retrieval.")
