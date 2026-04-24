@@ -238,7 +238,7 @@ def build_parser() -> argparse.ArgumentParser:
     stream_plan.add_argument("--library", required=True)
     stream_plan.add_argument("--output", help="Optional JSONL stream plan output path inside outputs/.")
     stream_plan.add_argument("--max-steps", type=int, default=0)
-    stream_plan.add_argument("--planner-version", choices=["m9", "m12", "m15", "m17", "m18", "m19", "m20", "m21", "m22"], default="m18")
+    stream_plan.add_argument("--planner-version", choices=["m9", "m12", "m15", "m17", "m18", "m19", "m20", "m21", "m22", "m23"], default="m18")
     stream_plan.add_argument("--tail-policy", choices=["none", "recover"], default="none")
     stream_plan.add_argument("--source-sequence-allowlist", help="Comma-separated FineDance source sequence ids for visually coherent planning.")
     stream_plan.add_argument("--initial-hold-sec", type=float, default=5.0, help="Hold an initial pose before starting retrieval.")
@@ -248,6 +248,10 @@ def build_parser() -> argparse.ArgumentParser:
     stream_plan.add_argument("--ending-policy", choices=["none", "gradual_recover"], default="gradual_recover")
     stream_plan.add_argument("--speed-retime-policy", choices=["none", "conservative_lock"], default="conservative_lock")
     stream_plan.add_argument("--state-machine-policy", choices=["none", "hybrid"], default="hybrid")
+    stream_plan.add_argument("--anchor-policy", choices=["legacy", "tiered_strongbeat"], default="legacy")
+    stream_plan.add_argument("--tempo-mode-policy", choices=["legacy", "adaptive"], default="legacy")
+    stream_plan.add_argument("--heading-stability-policy", choices=["legacy", "strict"], default="legacy")
+    stream_plan.add_argument("--middle-synthetic-policy", choices=["allow", "disabled"], default="allow")
 
     stream_render = subparsers.add_parser(
         "render-streaming-smplx-mesh-review",
@@ -620,6 +624,10 @@ def main() -> int:
             ending_policy=args.ending_policy,
             speed_retime_policy=args.speed_retime_policy,
             state_machine_policy=args.state_machine_policy,
+            anchor_policy=args.anchor_policy,
+            tempo_mode_policy=args.tempo_mode_policy,
+            heading_stability_policy=args.heading_stability_policy,
+            middle_synthetic_policy=args.middle_synthetic_policy,
         )
         header = next((record for record in records if record.get("kind") == "stream_plan_header"), {})
         song_id = str(header.get("song_id", "stream_song") or "stream_song")

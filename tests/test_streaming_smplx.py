@@ -726,6 +726,215 @@ class StreamingSmplxTests(unittest.TestCase):
         self.assertLessEqual(report["max_temporal_vertex_delta_after_smoothing"], report["m22_delta_limit_target_vertex"] + 1e-5)
         self.assertIn("foot_slide_after_smoothing_proxy", report)
 
+    def test_m23_prefers_strong_anchor_match_and_heading_stability(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            motion_path = _write_motion(Path(tmpdir) / "finedance")
+            library = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir), contact_mode="joints")
+        good = next(unit for unit in library["units"] if unit["unit_id"] == "finedance_001_good")
+        good["quality_thresholds"] = {
+            "motion_quality_min": 0.2,
+            "accent_clarity_min": 0.2,
+            "danceability_min": 0.2,
+            "transition_risk_max": 0.9,
+        }
+        good["motion_quality_score"] = 0.82
+        good["accent_clarity_score"] = 0.86
+        good["danceability_score"] = 0.84
+        good["transition_risk_score"] = 0.22
+        good["drum_lock_frames"] = [
+            {"kind": "count_grid_lock", "role": "kick_downbeat", "beat_offset": 0.0, "source_frame": 0, "local_frame": 0, "strength": 0.95, "lock_priority": 0},
+            {"kind": "root_speed_peak", "role": "motion_backbeat_accent", "beat_offset": 2.0, "source_frame": 60, "local_frame": 60, "strength": 0.92, "lock_priority": 1},
+        ]
+        good["entry_pose_anchor"] = {"planar_speed": 0.2, "root_yaw_deg": 0.0}
+        good["exit_pose_anchor"] = {"planar_speed": 0.22, "root_yaw_deg": 6.0}
+        weak = dict(good)
+        weak["unit_id"] = "finedance_001_m23_weak"
+        weak["drum_lock_frames"] = [
+            {"kind": "count_grid_lock", "role": "generic_accent", "beat_offset": 1.0, "source_frame": 30, "local_frame": 30, "strength": 0.55, "lock_priority": 4}
+        ]
+        turny = dict(good)
+        turny["unit_id"] = "finedance_004_turny"
+        turny["source_sequence"] = "004"
+        turny["entry_pose_anchor"] = {"planar_speed": 0.2, "root_yaw_deg": 145.0}
+        turny["exit_pose_anchor"] = {"planar_speed": 0.22, "root_yaw_deg": 158.0}
+        turny["movement_quality"] = {"attack": "sharp", "size": "medium_motion", "travel": "in_place", "turning": "turning"}
+        library["units"] = [good, weak, turny]
+        stream_events = [
+            {
+                "kind": "stream_header",
+                "song_id": "m23_anchor_heading",
+                "duration_sec": 8.0,
+                "initial_buffer_sec": 2.0,
+                "lookahead_sec": 2.0,
+                "lookfront_sec": 1.0,
+                "total_future_sec": 3.0,
+                "window_contract": "history_main_future",
+                "history_sec": 2.0,
+                "main_window_duration_sec": 2.0,
+                "future_sec": 1.0,
+                "beats_per_bar": 4,
+            },
+            {
+                "kind": "tick",
+                "tick_index": 0,
+                "playhead_sec": 0.0,
+                "available_audio_until_sec": 3.0,
+                "planning_audio_until_sec": 2.0,
+                "visible_window_sec": {"start": 0.0, "end": 3.0},
+                "history_window_sec": {"start": 0.0, "end": 0.0},
+                "main_window_sec": {"start": 0.0, "end": 2.0},
+                "future_window_sec": {"start": 2.0, "end": 3.0},
+                "beat_phase": {"bpm": 120.0, "spacing_sec": 0.5, "offset_sec": 0.0, "confidence": 0.95},
+                "music_state": {"energy_level": "mid", "accent_density": "high", "beat_confidence": 0.95, "music_intent": "drum_lock"},
+                "music_intent": "drum_lock",
+                "phrase_context": {"music_intent": "drum_lock", "preferred_unit_beats": [4, 2, 8]},
+                "beats": [{"index": index, "time_sec": index * 0.5, "strength": 0.8, "confidence": 0.95, "is_downbeat": index % 4 == 0, "count": index % 4 + 1, "window_role": "main"} for index in range(5)],
+                "downbeats": [{"index": 0, "time_sec": 0.0, "confidence": 0.95, "strength": 0.95, "is_downbeat": True, "window_role": "main"}],
+                "drum_hits": [
+                    {"index": 0, "time_sec": 0.0, "strength": 0.95, "kind": "kick", "window_role": "main"},
+                    {"index": 1, "time_sec": 1.0, "strength": 0.94, "kind": "high_attack", "window_role": "main"},
+                ],
+                "drum_anchor_events": [
+                    {"index": 0, "time_sec": 0.0, "kind": "downbeat", "anchor_role": "count_1_downbeat", "priority": 0, "confidence": 0.95, "strength": 0.95, "window_role": "main"},
+                    {"index": 1, "time_sec": 1.0, "kind": "high_attack", "anchor_role": "snare_backbeat", "priority": 2, "confidence": 0.94, "strength": 0.94, "window_role": "main"},
+                ],
+                "accents": [],
+                "history_events": [],
+                "main_events": [{"kind": "downbeat", "time_sec": 0.0, "confidence": 0.95}, {"kind": "drum_hit", "time_sec": 1.0, "confidence": 0.94}],
+                "future_events": [],
+                "segment_hypotheses": [{"start_time_sec": 0.0, "end_time_sec": 2.0, "duration_beats": 4, "confidence": 0.9}],
+            },
+        ]
+
+        plan = simulate_streaming_smplx_plan_records(
+            stream_events,
+            library,
+            planner_version="m23",
+            initial_hold_sec=0.0,
+            ending_hold_sec=0.0,
+            ending_policy="none",
+            speed_retime_policy="conservative_lock",
+            state_machine_policy="hybrid",
+            anchor_policy="tiered_strongbeat",
+            tempo_mode_policy="adaptive",
+            heading_stability_policy="strict",
+            middle_synthetic_policy="disabled",
+            max_steps=1,
+        )
+        decisions = [record for record in plan if record["kind"] == "decision" and record["pose_source"] == "finedance_motion_unit"]
+        decision = decisions[0]
+        rejected_reasons = [reason for item in decision["rejected_top_candidates"] for reason in list(item.get("reasons", []) or [])]
+        evaluation = evaluate_streaming_planner_records(plan)
+
+        self.assertEqual(plan[0]["planner_version"], "m23")
+        self.assertEqual(decision["selected_unit_id"], "finedance_001_good")
+        self.assertEqual(decision["tempo_mode"], "normal")
+        self.assertGreaterEqual(decision["score_breakdown"]["strong_anchor_lock"], 0.58)
+        self.assertIn("m23_strong_anchor_lock_below_0_58", rejected_reasons)
+        self.assertIn("m23_heading_delta_above_strict_limit", rejected_reasons)
+        self.assertIn("heading_continuity", decision["score_breakdown"])
+        self.assertIn("strong_anchor_error_frames", evaluation["metrics"])
+        self.assertIn("heading_flip_count", evaluation["metrics"])
+        self.assertTrue(evaluation["acceptance"]["no_future_visibility_violations"])
+
+    def test_m23_slow_balanced_prefers_longer_units_and_reports_tempo_metrics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            motion_path = _write_motion(Path(tmpdir) / "finedance")
+            library = annotate_finedance_motion_units(_library(motion_path), project_root=Path(tmpdir), contact_mode="joints")
+        long_unit = dict(next(unit for unit in library["units"] if unit["unit_id"] == "finedance_001_good"))
+        long_unit["unit_id"] = "finedance_001_long8"
+        long_unit["frame_range"] = {"start": 0, "end_exclusive": 180}
+        long_unit["duration_sec"] = 6.0
+        long_unit["duration_beats"] = 8
+        long_unit["duration_beats_estimate"] = 8.0
+        long_unit["beat_range"] = {"start": 0, "end_exclusive": 8}
+        long_unit["drum_lock_frames"] = [
+            {"kind": "count_grid_lock", "role": "kick_downbeat", "beat_offset": 0.0, "source_frame": 0, "local_frame": 0, "strength": 0.95, "lock_priority": 0},
+            {"kind": "root_speed_peak", "role": "motion_body_accent", "beat_offset": 4.0, "source_frame": 90, "local_frame": 90, "strength": 0.84, "lock_priority": 1},
+        ]
+        short_unit = dict(long_unit)
+        short_unit["unit_id"] = "finedance_001_short2"
+        short_unit["frame_range"] = {"start": 0, "end_exclusive": 60}
+        short_unit["duration_sec"] = 2.0
+        short_unit["duration_beats"] = 2
+        short_unit["duration_beats_estimate"] = 2.0
+        short_unit["beat_range"] = {"start": 0, "end_exclusive": 2}
+        short_unit["drum_lock_frames"] = [
+            {"kind": "count_grid_lock", "role": "kick_downbeat", "beat_offset": 0.0, "source_frame": 0, "local_frame": 0, "strength": 0.95, "lock_priority": 0}
+        ]
+        library["units"] = [short_unit, long_unit]
+        stream_events = [
+            {
+                "kind": "stream_header",
+                "song_id": "m23_slow_balanced",
+                "duration_sec": 14.0,
+                "initial_buffer_sec": 2.0,
+                "lookahead_sec": 2.0,
+                "lookfront_sec": 1.0,
+                "total_future_sec": 3.0,
+                "window_contract": "history_main_future",
+                "history_sec": 2.0,
+                "main_window_duration_sec": 2.0,
+                "future_sec": 1.0,
+                "beats_per_bar": 4,
+            },
+            {
+                "kind": "tick",
+                "tick_index": 0,
+                "playhead_sec": 0.0,
+                "available_audio_until_sec": 3.0,
+                "planning_audio_until_sec": 2.0,
+                "visible_window_sec": {"start": 0.0, "end": 3.0},
+                "history_window_sec": {"start": 0.0, "end": 0.0},
+                "main_window_sec": {"start": 0.0, "end": 2.0},
+                "future_window_sec": {"start": 2.0, "end": 3.0},
+                "beat_phase": {"bpm": 80.0, "spacing_sec": 0.75, "offset_sec": 0.0, "confidence": 0.95},
+                "music_state": {"energy_level": "low", "accent_density": "low", "beat_confidence": 0.95, "music_intent": "smooth_flow"},
+                "music_intent": "smooth_flow",
+                "phrase_context": {
+                    "music_intent": "smooth_flow",
+                    "preferred_unit_beats": [8, 16, 4],
+                    "preferred_movement_quality": {"attack": "smooth", "size": "small_motion", "travel": "in_place"},
+                },
+                "beats": [{"index": index, "time_sec": index * 0.75, "strength": 0.7, "confidence": 0.95, "is_downbeat": index % 4 == 0, "count": index % 4 + 1, "window_role": "main" if index <= 2 else "future"} for index in range(6)],
+                "downbeats": [{"index": 0, "time_sec": 0.0, "confidence": 0.95, "strength": 0.95, "is_downbeat": True, "window_role": "main"}],
+                "drum_hits": [{"index": 0, "time_sec": 0.0, "strength": 0.75, "kind": "kick", "window_role": "main"}],
+                "drum_anchor_events": [{"index": 0, "time_sec": 0.0, "kind": "downbeat", "anchor_role": "count_1_downbeat", "priority": 0, "confidence": 0.95, "strength": 0.95, "window_role": "main"}],
+                "accents": [],
+                "history_events": [],
+                "main_events": [{"kind": "downbeat", "time_sec": 0.0, "confidence": 0.95}],
+                "future_events": [],
+                "segment_hypotheses": [{"start_time_sec": 0.0, "end_time_sec": 6.0, "duration_beats": 8, "confidence": 0.9}],
+            },
+        ]
+
+        plan = simulate_streaming_smplx_plan_records(
+            stream_events,
+            library,
+            planner_version="m23",
+            initial_hold_sec=0.0,
+            ending_hold_sec=0.0,
+            ending_policy="none",
+            speed_retime_policy="conservative_lock",
+            state_machine_policy="hybrid",
+            anchor_policy="tiered_strongbeat",
+            tempo_mode_policy="adaptive",
+            heading_stability_policy="strict",
+            middle_synthetic_policy="disabled",
+            max_steps=1,
+        )
+        decisions = [record for record in plan if record["kind"] == "decision" and record["pose_source"] == "finedance_motion_unit"]
+        decision = decisions[0]
+        evaluation = evaluate_streaming_planner_records(plan)
+
+        self.assertEqual(decision["tempo_mode"], "slow_balanced")
+        self.assertEqual(decision["selected_unit_id"], "finedance_001_long8")
+        self.assertEqual(decision["target_beats"], 8)
+        self.assertIn("tempo_mode_counts", evaluation["metrics"])
+        self.assertEqual(evaluation["metrics"]["tempo_mode_counts"]["slow_balanced"], 1)
+        self.assertIn("local_anchor_retime_stress_p95", evaluation["metrics"])
+        self.assertLessEqual(decision["retime_stress_score"], 0.58)
+
     def test_streaming_planner_can_constrain_source_sequences(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             motion_path = _write_motion(Path(tmpdir) / "finedance")

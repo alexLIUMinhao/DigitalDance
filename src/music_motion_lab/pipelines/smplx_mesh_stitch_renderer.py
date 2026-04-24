@@ -1194,13 +1194,16 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
             source_warp = dict(item.get("source_time_warp", {}) or {})
             warp_mode = str(source_warp.get("mode") or "-")
             warp_anchor_count = len(list(source_warp.get("anchors", []) or []))
+            tempo_mode = str(item.get("tempo_mode") or score.get("tempo_mode") or "-")
             score_summary = (
                 f"r={score.get('rhythm_lock')} t={score.get('transition_smoothness')} "
-                f"body={score.get('body_accent_lock', '-')} stress={item.get('retime_stress_score', '-')}"
+                f"body={score.get('body_accent_lock', '-')} strong={score.get('strong_anchor_lock', '-')} "
+                f"head={score.get('heading_continuity', '-')} stress={item.get('retime_stress_score', '-')}"
             )
             quality_summary = (
                 f"q={score.get('motion_quality_score', '-')} a={score.get('accent_clarity_score', '-')} "
-                f"d={score.get('danceability_score', '-')} risk={score.get('transition_risk_score', '-')}"
+                f"d={score.get('danceability_score', '-')} risk={score.get('transition_risk_score', '-')} "
+                f"tier={score.get('tiered_anchor_hit_rate', '-')} flip={score.get('heading_flip', '-')}"
             )
             window_summary = (
                 f"H {history_window.get('start', '-')}-{history_window.get('end', '-')} | "
@@ -1223,7 +1226,7 @@ def build_mesh_stitch_review_html(report: dict[str, Any], video_href: str, strip
                 f"<td>{html.escape(str(item.get('source_sequence')))}:{html.escape(str(source_frames.get('start')))}-{html.escape(str(source_frames.get('end_exclusive')))} [{html.escape(pose_source)}]</td>"
                 f"<td>{html.escape(str(item.get('selected_from_tier')))}</td>"
                 f"<td>{html.escape(','.join(list(item.get('cohort_source_sequences', []) or [])[:8]))}</td>"
-                f"<td>{html.escape(state)}<br>{html.escape(str(item.get('music_intent') or '-'))}</td>"
+                f"<td>{html.escape(state)}<br>{html.escape(str(item.get('music_intent') or '-'))}<br>{html.escape(tempo_mode)}</td>"
                 f"<td>{html.escape(str(item.get('retime_policy') or '-'))}:{html.escape(str(retime.get('selected_beats', '-')))}b<br>{html.escape(warp_mode)}({warp_anchor_count})</td>"
                 f"<td>{html.escape(str(item.get('target_energy')))} / {html.escape(str(item.get('target_bpm')))}</td>"
                 f"<td>{html.escape(str(item.get('speed_scale')))} / {html.escape(str(item.get('score')))}</td>"
